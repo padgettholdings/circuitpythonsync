@@ -2,6 +2,11 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+function fromBinaryArray(bytes: Uint8Array): string {
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(bytes);
+}
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -21,10 +26,34 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	//show info if text doc changed
 	const x=vscode.workspace.onDidSaveTextDocument(async (event) => {
+		vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
 		const fles=await vscode.workspace.findFiles('**/.vscode/cpfiles.txt');
-		if(fles.length>0){vscode.window.showInformationMessage('Found cpfiles.txt');}
-		vscode.window.showInformationMessage('file changed: '+event.fileName);
+		if(fles.length>0){
+			let msg:string = 'Found cpfiles.txt ';
+			//vscode.window.showInformationMessage('Found cpfiles.txt');
+			let fil=await vscode.workspace.fs.readFile(fles[0]);
+			let sfil=fromBinaryArray(fil);
+			//vscode.window.showInformationMessage('cpfiles.txt contents: '+sfil);
+			msg=msg+' --- cpfiles.txt contents: '+sfil;
+			const lines:string[]= sfil.split(/\n/);
+			const foundEl=lines.find((el) => {
+				let elNoWS:string = el.replace(/\s/g, "");
+				if(!elNoWS){return false;}
+				const fromTo:string[]=elNoWS.split('->');
+				if (event.fileName.toLowerCase().endsWith(fromTo[0].toLowerCase())) {
+					return true;
+				} else {
+					return false;
+				}
+			});
+			if (foundEl){
+				msg=msg+' --- found file '+event.fileName+' in cpfiles.txt';
+			} else {
+				msg=msg+' --- DID NOT FIND file '+event.fileName+' in cpfiles.txt';
+			}
+			vscode.window.showInformationMessage(msg);
+		}
 	});
 	context.subscriptions.push(disposable);
 }
