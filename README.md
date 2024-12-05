@@ -2,6 +2,9 @@
 
 This is the README for your extension "circuitpythonsync". After writing up a brief description, we recommend including the following sections.
 
+## ISSUES-TODO
+* if code.py not in root won't activate, but also won't if code.py added???
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.

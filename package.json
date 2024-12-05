@@ -18,6 +18,10 @@
       {
         "command": "circuitpythonsync.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "circuitpythonsync.button1",
+        "title": "CP Button1"
       }
     ]
   },

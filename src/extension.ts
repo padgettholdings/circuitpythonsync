@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+let statusBarItem1: vscode.StatusBarItem;
+
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
@@ -23,7 +25,26 @@ export function activate(context: vscode.ExtensionContext) {
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello from CircuitPythonSync!');
 	});
+	context.subscriptions.push(disposable);
+
+	const button1Id:string ='circuitpythonsync.button1';
+
+	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
+		vscode.window.showInformationMessage('button 1 pushed');
+		statusBarItem1.color='#00ff00';
+	});
 	
+	context.subscriptions.push(sbItemCmd);
+
+	//create the status bar button
+	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
+	statusBarItem1.command=button1Id;
+	statusBarItem1.text='CPCopy';
+	statusBarItem1.color='#00ff00';
+	context.subscriptions.push(statusBarItem1);
+	//show the status bar item
+	statusBarItem1.show();
+
 	//show info if text doc changed
 	const x=vscode.workspace.onDidSaveTextDocument(async (event) => {
 		vscode.window.showInformationMessage('file changed: '+event.fileName);
@@ -49,13 +70,25 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 			if (foundEl){
 				msg=msg+' --- found file '+event.fileName+' in cpfiles.txt';
+				statusBarItem1.color='#fbc500';
 			} else {
 				msg=msg+' --- DID NOT FIND file '+event.fileName+' in cpfiles.txt';
 			}
 			vscode.window.showInformationMessage(msg);
+			statusBarItem1.show();
+		} else {
+			let msg:string='';
+			//check to see if just code.py was change
+			if (event.fileName.toLowerCase().endsWith('code.py')) {
+				msg='cpfiles.txt NOT found, code.py WAS the changed file';
+				statusBarItem1.color='#fbc500';
+			} else {
+				msg='cpfiles.txt NOT found, code.py WAS NOT the changed file';
+			}
+			vscode.window.showInformationMessage(msg);
+			statusBarItem1.show();
 		}
 	});
-	context.subscriptions.push(disposable);
 }
 
 // This method is called when your extension is deactivated
