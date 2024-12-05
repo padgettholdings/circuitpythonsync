@@ -31,7 +31,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
 		vscode.window.showInformationMessage('button 1 pushed');
-		statusBarItem1.color='#00ff00';
+		//statusBarItem1.color='#00ff00';
+		statusBarItem1.backgroundColor=undefined;
 	});
 	
 	context.subscriptions.push(sbItemCmd);
@@ -40,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
 	statusBarItem1.text='CPCopy';
-	statusBarItem1.color='#00ff00';
+	//statusBarItem1.color='#00ff00';
 	context.subscriptions.push(statusBarItem1);
 	//show the status bar item
 	statusBarItem1.show();
@@ -70,7 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 			if (foundEl){
 				msg=msg+' --- found file '+event.fileName+' in cpfiles.txt';
-				statusBarItem1.color='#fbc500';
+				//statusBarItem1.color='#fbc500';
+				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 			} else {
 				msg=msg+' --- DID NOT FIND file '+event.fileName+' in cpfiles.txt';
 			}
@@ -81,7 +83,8 @@ export function activate(context: vscode.ExtensionContext) {
 			//check to see if just code.py was change
 			if (event.fileName.toLowerCase().endsWith('code.py')) {
 				msg='cpfiles.txt NOT found, code.py WAS the changed file';
-				statusBarItem1.color='#fbc500';
+				//statusBarItem1.color='#fbc500';
+				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 			} else {
 				msg='cpfiles.txt NOT found, code.py WAS NOT the changed file';
 			}
