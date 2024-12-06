@@ -10,7 +10,8 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:/code.py"
+    "workspaceContains:/code.py",
+    "workspaceContains:/main.py"
   ],
   "main": "./out/extension.js",
   "contributes": {
