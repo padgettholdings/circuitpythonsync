@@ -46,6 +46,25 @@ export function activate(context: vscode.ExtensionContext) {
 	//show the status bar item
 	statusBarItem1.show();
 
+	//command to test open file dialog
+	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+		//get option for currently saved uri
+		let curDriveConf=vscode.workspace.getConfiguration('circuitpythonsync');
+		let curDrive=curDriveConf.get('drivepath','');
+		const opts: vscode.OpenDialogOptions={
+			canSelectFiles:false,
+			canSelectFolders:true,
+			canSelectMany:false,
+			defaultUri: curDrive==='' ? undefined : vscode.Uri.parse(curDrive)
+			};
+		const dirs=await vscode.window.showOpenDialog(opts);
+		if(dirs){
+			vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
+			//save the config
+			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
+		}
+	});
+
 	//show info if text doc changed
 	const x=vscode.workspace.onDidSaveTextDocument(async (event) => {
 		vscode.window.showInformationMessage('file changed: '+event.fileName);

@@ -3,11 +3,22 @@
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
   "version": "0.0.1",
+  "publisher": "standsi",
+  "license":"MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/standsi/circuitpythonsync.git"
+  },
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.91.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages"
+  ],
+  "keywords": [
+    "circuitpython",
+    "adafruit",
+    "python"
   ],
   "activationEvents": [
     "workspaceContains:/code.py",
@@ -23,8 +34,26 @@
       {
         "command": "circuitpythonsync.button1",
         "title": "CP Button1"
+      },
+      {
+        "command": "circuitpythonsync.opendir",
+        "title": "CP Set Drive"
       }
-    ]
+    ],
+    "configuration":{     
+        "title": "CircuitPython Sync",
+        "properties": {
+          "circuitpythonsync.drivepath": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null,
+            "description": "Last path saved for the attached board. Intended to be set at the workspace level.",
+            "scope": "window"
+          }
+        }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -35,7 +64,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "^1.91.0",
     "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
     "@typescript-eslint/eslint-plugin": "^8.10.0",
