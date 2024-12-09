@@ -19,6 +19,28 @@ function getCurrentDriveConfig(): string {
 	return curDrive;
 }
 
+async function updateStatusBarItem() {
+	if(curDriveSetting===''){
+		//no drive mapped, put error icon in text
+		statusBarItem1.text='CPCopy $(error)';
+		//and the right tooltip
+		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
+	} else {
+		//check to see if boot_out.txt is there, warn if not
+		const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
+		const fles=await vscode.workspace.findFiles(srchPath.fsPath);
+		if(fles.length===0) {
+			statusBarItem1.text='CPCopy $(warning)';
+			//and the right tooltip
+			statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+		} else {
+			statusBarItem1.text='CPCopy';
+			statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+		}
+	}
+	//?? do we do show here??
+}
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -47,7 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('**** copy done ****');
 			statusBarItem1.backgroundColor=undefined;
 		}
-		//statusBarItem1.color='#00ff00';
 	});
 	
 	context.subscriptions.push(sbItemCmd);
@@ -60,9 +81,9 @@ export function activate(context: vscode.ExtensionContext) {
 	//create the status bar button
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
-	statusBarItem1.text='CPCopy';
-	if(curDriveSetting===''){statusBarItem1.color='#444444';}
-	//statusBarItem1.color='#00ff00';
+	updateStatusBarItem();
+	//statusBarItem1.text='CPCopy';
+	//if(curDriveSetting===''){statusBarItem1.color='#444444';}
 	context.subscriptions.push(statusBarItem1);
 	//show the status bar item
 	statusBarItem1.show();
@@ -84,7 +105,8 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
 			//set the status bar text to active and save setting locally
 			curDriveSetting=dirs[0].fsPath;
-			statusBarItem1.color=undefined;
+			//statusBarItem1.color=undefined;
+			updateStatusBarItem();
 		} else {
 			// ??? leave the status bar color as is??
 		}
@@ -99,11 +121,12 @@ export function activate(context: vscode.ExtensionContext) {
 			const curDrive=getCurrentDriveConfig();
 			if (curDriveSetting!==curDrive) {
 				curDriveSetting=curDrive;
-				if(curDrive===''){
-					statusBarItem1.color='#444444';
-				} else {
-					statusBarItem1.color=undefined;
-				}
+				updateStatusBarItem();
+				// if(curDrive===''){
+				// 	statusBarItem1.color='#444444';
+				// } else {
+				// 	statusBarItem1.color=undefined;
+				// }
 				statusBarItem1.show();
 			}
 		}
@@ -137,8 +160,9 @@ export function activate(context: vscode.ExtensionContext) {
 				msg=msg+' --- found file '+event.fileName+' in cpfiles.txt';
 				//statusBarItem1.color='#fbc500';
 				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				updateStatusBarItem();
 				//also need to set text color properly for drive map
-				if(curDriveSetting===''){statusBarItem1.color='#444444';}
+				//if(curDriveSetting===''){statusBarItem1.color='#00FF00';}
 			} else {
 				msg=msg+' --- DID NOT FIND file '+event.fileName+' in cpfiles.txt';
 			}
@@ -151,8 +175,9 @@ export function activate(context: vscode.ExtensionContext) {
 				msg='cpfiles.txt NOT found, code.py WAS the changed file';
 				//statusBarItem1.color='#fbc500';
 				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				updateStatusBarItem();
 				//also need to set text color properly for drive map
-				if(curDriveSetting===''){statusBarItem1.color='#444444';}
+				//if(curDriveSetting===''){statusBarItem1.color='#444444';}
 			} else {
 				msg='cpfiles.txt NOT found, code.py WAS NOT the changed file';
 			}
