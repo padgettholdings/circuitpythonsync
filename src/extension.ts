@@ -3,10 +3,20 @@
 import * as vscode from 'vscode';
 
 let statusBarItem1: vscode.StatusBarItem;
+// current drive config
+let curDriveSetting: string;
 
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
+}
+
+function getCurrentDriveConfig(): string {
+	const curDriveConf=vscode.workspace.getConfiguration('circuitpythonsync');
+	let curDrive=curDriveConf.get('drivepath','');
+	//still can be null, coalesce to ''
+	curDrive=curDrive ?? '';
+	return curDrive;
 }
 
 // This method is called when your extension is activated
@@ -30,43 +40,78 @@ export function activate(context: vscode.ExtensionContext) {
 	const button1Id:string ='circuitpythonsync.button1';
 
 	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
-		vscode.window.showInformationMessage('button 1 pushed');
+		//if don't have drive can't copy
+		if(curDriveSetting==='') {
+			vscode.window.showInformationMessage('!! Must set drive before copy !!');
+		} else {
+			vscode.window.showInformationMessage('**** copy done ****');
+			statusBarItem1.backgroundColor=undefined;
+		}
 		//statusBarItem1.color='#00ff00';
-		statusBarItem1.backgroundColor=undefined;
 	});
 	
 	context.subscriptions.push(sbItemCmd);
+
+	//get the initial drive setting, save for button setup
+	curDriveSetting=getCurrentDriveConfig();
+	//????? save in ext state?
+	//context.subscriptions.push(curDriveSetting);
 
 	//create the status bar button
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
 	statusBarItem1.text='CPCopy';
+	if(curDriveSetting===''){statusBarItem1.color='#444444';}
 	//statusBarItem1.color='#00ff00';
 	context.subscriptions.push(statusBarItem1);
 	//show the status bar item
 	statusBarItem1.show();
 
-	//command to test open file dialog
+	//command to get drive using open file dialog
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
 		//get option for currently saved uri
-		let curDriveConf=vscode.workspace.getConfiguration('circuitpythonsync');
-		let curDrive=curDriveConf.get('drivepath','');
+		let curDrive=getCurrentDriveConfig();
 		const opts: vscode.OpenDialogOptions={
 			canSelectFiles:false,
 			canSelectFolders:true,
 			canSelectMany:false,
-			defaultUri: curDrive==='' ? undefined : vscode.Uri.parse(curDrive)
+			defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(curDrive)
 			};
 		const dirs=await vscode.window.showOpenDialog(opts);
 		if(dirs){
 			vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
 			//save the config
 			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
+			//set the status bar text to active and save setting locally
+			curDriveSetting=dirs[0].fsPath;
+			statusBarItem1.color=undefined;
+		} else {
+			// ??? leave the status bar color as is??
 		}
+		statusBarItem1.show();
+
 	});
 
+	// look for config change
+	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
+		//see if the drivepath changed
+		if (event.affectsConfiguration('circuitpythonsync.drivepath')) {
+			const curDrive=getCurrentDriveConfig();
+			if (curDriveSetting!==curDrive) {
+				curDriveSetting=curDrive;
+				if(curDrive===''){
+					statusBarItem1.color='#444444';
+				} else {
+					statusBarItem1.color=undefined;
+				}
+				statusBarItem1.show();
+			}
+		}
+	});
+	context.subscriptions.push(cfgChg);
+
 	//show info if text doc changed
-	const x=vscode.workspace.onDidSaveTextDocument(async (event) => {
+	const txtChg=vscode.workspace.onDidSaveTextDocument(async (event) => {
 		vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
 		const fles=await vscode.workspace.findFiles('**/.vscode/cpfiles.txt');
@@ -92,6 +137,8 @@ export function activate(context: vscode.ExtensionContext) {
 				msg=msg+' --- found file '+event.fileName+' in cpfiles.txt';
 				//statusBarItem1.color='#fbc500';
 				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				//also need to set text color properly for drive map
+				if(curDriveSetting===''){statusBarItem1.color='#444444';}
 			} else {
 				msg=msg+' --- DID NOT FIND file '+event.fileName+' in cpfiles.txt';
 			}
@@ -104,6 +151,8 @@ export function activate(context: vscode.ExtensionContext) {
 				msg='cpfiles.txt NOT found, code.py WAS the changed file';
 				//statusBarItem1.color='#fbc500';
 				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				//also need to set text color properly for drive map
+				if(curDriveSetting===''){statusBarItem1.color='#444444';}
 			} else {
 				msg='cpfiles.txt NOT found, code.py WAS NOT the changed file';
 			}
@@ -111,6 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
 			statusBarItem1.show();
 		}
 	});
+	context.subscriptions.push(txtChg);
 }
 
 // This method is called when your extension is deactivated
