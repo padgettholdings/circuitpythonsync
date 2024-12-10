@@ -27,8 +27,9 @@ async function updateStatusBarItem() {
 		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
 	} else {
 		//check to see if boot_out.txt is there, warn if not
-		const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
-		const fles=await vscode.workspace.findFiles(srchPath.fsPath);
+		let rel=new vscode.RelativePattern(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
+		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
+		const fles=await vscode.workspace.findFiles(rel);
 		if(fles.length===0) {
 			statusBarItem1.text='CPCopy $(warning)';
 			//and the right tooltip
