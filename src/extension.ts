@@ -178,8 +178,8 @@ export function activate(context: vscode.ExtensionContext) {
 		// 	detail: '           $(debug-disconnect) Auto Detected'
 		// };
 		// picks.unshift(mappedDrive);
-		//see if the curDrive is not included in the detected ones, if not add it
-		if(!detectedPaths.includes(curDrive)) {
+		//see if the curDrive is not included in the detected ones, if not add it, ONLY if not blank
+		if(curDrive!=='' && !detectedPaths.includes(curDrive)) {
 			picks.unshift(
 				{
 					path: curDrive,
@@ -207,8 +207,8 @@ export function activate(context: vscode.ExtensionContext) {
 		if(result) {vscode.window.showInformationMessage(result.label);};
 		//if no choice just get out
 		if(!result){return;}
-		//if no change, just get out
-		if(result && result.path===curDrive) {return;}
+		//if got path selection (that is, not manual select) but no change, just get out
+		if(result.path!=='' && result.path===curDrive) {return;}
 		//otherwise if selected detected drive, just update config, else open file dialog
 		if(result.path!=='') {
 			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
