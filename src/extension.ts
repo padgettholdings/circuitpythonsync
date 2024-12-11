@@ -6,6 +6,12 @@ let statusBarItem1: vscode.StatusBarItem;
 // current drive config
 let curDriveSetting: string;
 
+//define quick pick type for drive pick
+interface drivePick extends vscode.QuickPickItem {
+	path: string
+}
+
+
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
@@ -89,30 +95,78 @@ export function activate(context: vscode.ExtensionContext) {
 	//show the status bar item
 	statusBarItem1.show();
 
-	//command to get drive using open file dialog
+	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+		// TBD- get drivelist, but for now fake it
+		let picks: drivePick[]= [
+			{
+				path:'/media',
+				label: '/media',
+				description: ''
+			},
+			{
+				path:'/etc',
+				label: '/etc',
+				description: ''
+			},
+			{
+				path:'',
+				label: 'Pick Manually',
+				description: ''
+			}
+		];
 		//get option for currently saved uri
 		let curDrive=getCurrentDriveConfig();
-		const opts: vscode.OpenDialogOptions={
-			canSelectFiles:false,
-			canSelectFolders:true,
-			canSelectMany:false,
-			defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(curDrive)
-			};
-		const dirs=await vscode.window.showOpenDialog(opts);
-		if(dirs){
-			vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
-			//save the config
-			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
+		//look to see if one of the picks is the curDrive
+		if(curDrive!=='') {
+			picks.forEach(pick => {
+				if(pick.path===curDrive){
+					pick.description='   (Current)';
+				}
+			});
+		}
+		// const result=await vscode.window.showQuickPick(['/media','/etc','Pick Manually'],{
+		// 	placeHolder:'Pick detected drive or select manually',
+		// 	title: 'CP Drive Select'
+		// });
+		const result=await vscode.window.showQuickPick<drivePick>(picks,{
+			placeHolder:'Pick detected drive or select manually',
+			title: 'CP Drive Select'
+		});
+		if(result) {vscode.window.showInformationMessage(result.label);};
+		//if no choice just get out
+		if(!result){return;}
+		//if no change, just get out
+		if(result && result.path===curDrive) {return;}
+		//otherwise if selected detected drive, just update config, else open file dialog
+		if(result.path!=='') {
+			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
 			//set the status bar text to active and save setting locally
-			curDriveSetting=dirs[0].fsPath;
+			curDriveSetting=result.path;
 			//statusBarItem1.color=undefined;
 			updateStatusBarItem();
 		} else {
-			// ??? leave the status bar color as is??
+			const opts: vscode.OpenDialogOptions={
+				canSelectFiles:false,
+				canSelectFolders:true,
+				canSelectMany:false,
+				defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(curDrive),
+				title: 'Pick drive or mount point for CP'
+				};
+			const dirs=await vscode.window.showOpenDialog(opts);
+			if(dirs){
+				vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
+				//save the config
+				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
+				//set the status bar text to active and save setting locally
+				curDriveSetting=dirs[0].fsPath;
+				//statusBarItem1.color=undefined;
+				updateStatusBarItem();
+			} else {
+				// ??? leave the status bar color as is??
+			}
 		}
 		statusBarItem1.show();
-
 	});
 
 	// look for config change
