@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as drivelist from 'drivelist';
 
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
@@ -126,6 +127,17 @@ export function activate(context: vscode.ExtensionContext) {
 				description: ''
 			}
 		];
+		//try to find the CP drive
+		try {
+			const drives:drivelist.Drive[] = await drivelist.list();
+			drives.forEach(drv => {
+			  if(drv.mountpoints.length>0) {
+				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
+			  }
+			});
+		} catch (error) {
+			console.error('Error listing drives:', error);
+		}		
 		//FAKE this is the "detected" drive
 		const mappedDrive:drivePick={
 			path:'/media/stan',
