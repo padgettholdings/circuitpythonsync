@@ -127,26 +127,59 @@ export function activate(context: vscode.ExtensionContext) {
 				description: ''
 			}
 		];
-		//try to find the CP drive
+		//try to find the CP drive:
+		//- it has to have a mountpoint with a non-empty path, only first is used
+		//- must be a usb type drive 
+		//- if CIRCUITPY shows up in path it is setup as CP drive
+		//- if boot_out.txt is found in the root of the path it is a CP drive
+		let detectedPaths:string[]=[];	//this is for checking curDrive later
 		try {
 			const drives:drivelist.Drive[] = await drivelist.list();
-			drives.forEach(drv => {
+			drives.forEach(async drv => {
 			  if(drv.mountpoints.length>0) {
 				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
+				const drvPath:string=drv.mountpoints[0].path;
+				let detectedPath:string='';
+				if(drvPath && drv.isUSB) {
+					//see if path contains circuitpy
+					if(drvPath.toLowerCase().includes('circuitpy')) {
+						detectedPath=drvPath;
+					} else {
+						//not detected yet, see if boot_out.txt at path
+						let rel=new vscode.RelativePattern(vscode.Uri.parse(drvPath),'boot_out.txt');
+						const fles=await vscode.workspace.findFiles(rel);
+						if(fles.length>0) {
+							//got the file
+							detectedPath=drvPath;
+						}
+					}
+					//if detected the path push it in picks array and add to list
+					if(detectedPath) {
+						detectedPaths.push(detectedPath);
+						const mappedDrive:drivePick={
+							path:detectedPath,
+							label:detectedPath,
+							description:'',
+							detail: '           $(debug-disconnect) Auto Detected'
+						};
+						picks.unshift(mappedDrive);				
+					}
+				}
 			  }
 			});
 		} catch (error) {
 			console.error('Error listing drives:', error);
 		}		
 		//FAKE this is the "detected" drive
-		const mappedDrive:drivePick={
-			path:'/media/stan',
-			label:'/media/stan',
-			description:'',
-			detail: '           $(debug-disconnect) Auto Detected'
-		};
-		picks.unshift(mappedDrive);
-		if(curDrive!==mappedDrive.path) {
+		// const mappedDrive:drivePick={
+		// 	path:'/media/stan',
+		// 	label:'/media/stan',
+		// 	description:'',
+		// 	detail: '           $(debug-disconnect) Auto Detected'
+		// };
+		// picks.unshift(mappedDrive);
+		//see if the curDrive is not included in the detected ones, if not add it
+		if(!detectedPaths.includes(curDrive)) {
 			picks.unshift(
 				{
 					path: curDrive,
