@@ -98,6 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
 	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
 		// TBD- get drivelist, but for now fake it
+		/*
 		let picks: drivePick[]= [
 			{
 				path:'/media',
@@ -115,8 +116,33 @@ export function activate(context: vscode.ExtensionContext) {
 				description: ''
 			}
 		];
+		*/
 		//get option for currently saved uri
 		let curDrive=getCurrentDriveConfig();
+		let picks: drivePick[] = [
+			{
+				path:'',
+				label: 'Pick Manually',
+				description: ''
+			}
+		];
+		//FAKE this is the "detected" drive
+		const mappedDrive:drivePick={
+			path:'/media/stan',
+			label:'/media/stan',
+			description:'',
+			detail: '           $(debug-disconnect) Auto Detected'
+		};
+		picks.unshift(mappedDrive);
+		if(curDrive!==mappedDrive.path) {
+			picks.unshift(
+				{
+					path: curDrive,
+					label: curDrive,
+					description: ''
+				}
+			);
+		}
 		//look to see if one of the picks is the curDrive
 		if(curDrive!=='') {
 			picks.forEach(pick => {
