@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
+import os from 'os';
 
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
@@ -23,6 +24,10 @@ function getCurrentDriveConfig(): string {
 	let curDrive=curDriveConf.get('drivepath','');
 	//still can be null, coalesce to ''
 	curDrive=curDrive ?? '';
+	//if on windows, remove backslashes 
+	if(os.platform()==='win32') {
+		curDrive=curDrive.replace(/\\/g,'');
+	}
 	return curDrive;
 }
 
@@ -34,7 +39,12 @@ async function updateStatusBarItem() {
 		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
 	} else {
 		//check to see if boot_out.txt is there, warn if not
-		let rel=new vscode.RelativePattern(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
+		//need to add file scheme in windows
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
 		const fles=await vscode.workspace.findFiles(rel);
 		if(fles.length===0) {
@@ -135,10 +145,15 @@ export function activate(context: vscode.ExtensionContext) {
 		let detectedPaths:string[]=[];	//this is for checking curDrive later
 		try {
 			const drives:drivelist.Drive[] = await drivelist.list();
-			drives.forEach(async drv => {
+			for(const drv of drives) {
+			//drives.forEach(drv => {
 			  if(drv.mountpoints.length>0) {
 				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
-				const drvPath:string=drv.mountpoints[0].path;
+				let drvPath:string=drv.mountpoints[0].path;
+				//if windows remove backslashes
+				if(os.platform()==='win32') {
+					drvPath=drvPath.replace(/\\/g,'');
+				}
 				let detectedPath:string='';
 				if(drvPath && drv.isUSB) {
 					//see if path contains circuitpy
@@ -146,12 +161,19 @@ export function activate(context: vscode.ExtensionContext) {
 						detectedPath=drvPath;
 					} else {
 						//not detected yet, see if boot_out.txt at path
-						let rel=new vscode.RelativePattern(vscode.Uri.parse(drvPath),'boot_out.txt');
-						const fles=await vscode.workspace.findFiles(rel);
-						if(fles.length>0) {
-							//got the file
-							detectedPath=drvPath;
+						//need to add file scheme in windows
+						let baseUri=drvPath;
+						if (os.platform()==='win32') {
+							baseUri='file:'+baseUri;
 						}
+						let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
+						const fles=await vscode.workspace.findFiles(rel);
+						//vscode.workspace.findFiles(rel).then(fles => {
+							if(fles.length>0) {
+								//got the file
+								detectedPath=drvPath;
+							}
+						//});
 					}
 					//if detected the path push it in picks array and add to list
 					if(detectedPath) {
@@ -166,7 +188,7 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				}
 			  }
-			});
+			};
 		} catch (error) {
 			console.error('Error listing drives:', error);
 		}		
@@ -217,20 +239,32 @@ export function activate(context: vscode.ExtensionContext) {
 			//statusBarItem1.color=undefined;
 			updateStatusBarItem();
 		} else {
+			let baseUri=curDrive;
+			if (os.platform()==='win32') {
+				baseUri='file:'+baseUri+'//';
+			}
 			const opts: vscode.OpenDialogOptions={
 				canSelectFiles:false,
 				canSelectFolders:true,
 				canSelectMany:false,
-				defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(curDrive),
+				defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(baseUri),
 				title: 'Pick drive or mount point for CP'
 				};
 			const dirs=await vscode.window.showOpenDialog(opts);
 			if(dirs){
 				vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
 				//save the config
-				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
-				//set the status bar text to active and save setting locally
 				curDriveSetting=dirs[0].fsPath;
+				//if windows upper case and remove backslashes
+				//UNLESS it has path after drive letter, then change \\ to //
+				if(os.platform()==='win32') {
+					curDriveSetting=curDriveSetting.replace(/\\/g,'/');
+					if(curDriveSetting.endsWith('/')) {
+						curDriveSetting=curDriveSetting.toUpperCase().replace(/\//g,'');
+					}
+				}
+				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',curDriveSetting);
+				//set the status bar text to active and save setting locally
 				//statusBarItem1.color=undefined;
 				updateStatusBarItem();
 			} else {
