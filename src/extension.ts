@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
 import os from 'os';
+//import { validateHeaderValue } from 'http';
 
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
@@ -44,10 +45,21 @@ async function updateStatusBarItem() {
 		if (os.platform()==='win32') {
 			baseUri='file:'+baseUri;
 		}
-		let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
+		//**replace glob find files with dir read for performance
+		const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+		let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+			if(value.length>0){
+				return value[0]==='boot_out.txt';
+			} else {
+				return false;
+			}
+		});
+		//
+		//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
-		const fles=await vscode.workspace.findFiles(rel);
-		if(fles.length===0) {
+		//const fles=await vscode.workspace.findFiles(rel);
+		//if(fles.length===0) {
+		if(!foundBootFile){
 			statusBarItem1.text='CPCopy $(warning)';
 			//and the right tooltip
 			statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
@@ -166,13 +178,23 @@ export function activate(context: vscode.ExtensionContext) {
 						if (os.platform()==='win32') {
 							baseUri='file:'+baseUri;
 						}
-						let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
-						const fles=await vscode.workspace.findFiles(rel);
-						//vscode.workspace.findFiles(rel).then(fles => {
-							if(fles.length>0) {
-								//got the file
-								detectedPath=drvPath;
+						//**replace glob find files with dir read for performance
+						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+							if(value.length>0){
+								return value[0]==='boot_out.txt';
+							} else {
+								return false;
 							}
+						});
+						//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
+						//const fles=await vscode.workspace.findFiles(rel);
+						//vscode.workspace.findFiles(rel).then(fles => {
+						//if(fles.length>0) {
+						if(foundBootFile){
+							//got the file
+							detectedPath=drvPath;
+						}
 						//});
 					}
 					//if detected the path push it in picks array and add to list
@@ -226,7 +248,7 @@ export function activate(context: vscode.ExtensionContext) {
 			placeHolder:'Pick detected drive or select manually',
 			title: 'CP Drive Select'
 		});
-		if(result) {vscode.window.showInformationMessage(result.label);};
+		//if(result) {vscode.window.showInformationMessage(result.label);};
 		//if no choice just get out
 		if(!result){return;}
 		//if got path selection (that is, not manual select) but no change, just get out
@@ -252,7 +274,7 @@ export function activate(context: vscode.ExtensionContext) {
 				};
 			const dirs=await vscode.window.showOpenDialog(opts);
 			if(dirs){
-				vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
+				//vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
 				//save the config
 				curDriveSetting=dirs[0].fsPath;
 				//if windows upper case and remove backslashes
@@ -295,7 +317,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//show info if text doc changed
 	const txtChg=vscode.workspace.onDidSaveTextDocument(async (event) => {
-		vscode.window.showInformationMessage('file changed: '+event.fileName);
+		//vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
 		const fles=await vscode.workspace.findFiles('**/.vscode/cpfiles.txt');
 		if(fles.length>0){
