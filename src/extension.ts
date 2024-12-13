@@ -1,10 +1,18 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as drivelist from 'drivelist';
+import os from 'os';
 
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
 let curDriveSetting: string;
+
+//define quick pick type for drive pick
+interface drivePick extends vscode.QuickPickItem {
+	path: string
+}
+
 
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
@@ -16,6 +24,10 @@ function getCurrentDriveConfig(): string {
 	let curDrive=curDriveConf.get('drivepath','');
 	//still can be null, coalesce to ''
 	curDrive=curDrive ?? '';
+	//if on windows, remove backslashes 
+	if(os.platform()==='win32') {
+		curDrive=curDrive.replace(/\\/g,'');
+	}
 	return curDrive;
 }
 
@@ -27,7 +39,12 @@ async function updateStatusBarItem() {
 		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
 	} else {
 		//check to see if boot_out.txt is there, warn if not
-		let rel=new vscode.RelativePattern(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
+		//need to add file scheme in windows
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
 		const fles=await vscode.workspace.findFiles(rel);
 		if(fles.length===0) {
@@ -89,30 +106,172 @@ export function activate(context: vscode.ExtensionContext) {
 	//show the status bar item
 	statusBarItem1.show();
 
-	//command to get drive using open file dialog
+	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+		// TBD- get drivelist, but for now fake it
+		/*
+		let picks: drivePick[]= [
+			{
+				path:'/media',
+				label: '/media',
+				description: ''
+			},
+			{
+				path:'/etc',
+				label: '/etc',
+				description: ''
+			},
+			{
+				path:'',
+				label: 'Pick Manually',
+				description: ''
+			}
+		];
+		*/
 		//get option for currently saved uri
 		let curDrive=getCurrentDriveConfig();
-		const opts: vscode.OpenDialogOptions={
-			canSelectFiles:false,
-			canSelectFolders:true,
-			canSelectMany:false,
-			defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(curDrive)
+		let picks: drivePick[] = [
+			{
+				path:'',
+				label: 'Pick Manually',
+				description: ''
+			}
+		];
+		//try to find the CP drive:
+		//- it has to have a mountpoint with a non-empty path, only first is used
+		//- must be a usb type drive 
+		//- if CIRCUITPY shows up in path it is setup as CP drive
+		//- if boot_out.txt is found in the root of the path it is a CP drive
+		let detectedPaths:string[]=[];	//this is for checking curDrive later
+		try {
+			const drives:drivelist.Drive[] = await drivelist.list();
+			for(const drv of drives) {
+			//drives.forEach(drv => {
+			  if(drv.mountpoints.length>0) {
+				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
+				let drvPath:string=drv.mountpoints[0].path;
+				//if windows remove backslashes
+				if(os.platform()==='win32') {
+					drvPath=drvPath.replace(/\\/g,'');
+				}
+				let detectedPath:string='';
+				if(drvPath && drv.isUSB) {
+					//see if path contains circuitpy
+					if(drvPath.toLowerCase().includes('circuitpy')) {
+						detectedPath=drvPath;
+					} else {
+						//not detected yet, see if boot_out.txt at path
+						//need to add file scheme in windows
+						let baseUri=drvPath;
+						if (os.platform()==='win32') {
+							baseUri='file:'+baseUri;
+						}
+						let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
+						const fles=await vscode.workspace.findFiles(rel);
+						//vscode.workspace.findFiles(rel).then(fles => {
+							if(fles.length>0) {
+								//got the file
+								detectedPath=drvPath;
+							}
+						//});
+					}
+					//if detected the path push it in picks array and add to list
+					if(detectedPath) {
+						detectedPaths.push(detectedPath);
+						const mappedDrive:drivePick={
+							path:detectedPath,
+							label:detectedPath,
+							description:'',
+							detail: '           $(debug-disconnect) Auto Detected'
+						};
+						picks.unshift(mappedDrive);				
+					}
+				}
+			  }
 			};
-		const dirs=await vscode.window.showOpenDialog(opts);
-		if(dirs){
-			vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
-			//save the config
-			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',dirs[0].fsPath);
+		} catch (error) {
+			console.error('Error listing drives:', error);
+		}		
+		//FAKE this is the "detected" drive
+		// const mappedDrive:drivePick={
+		// 	path:'/media/stan',
+		// 	label:'/media/stan',
+		// 	description:'',
+		// 	detail: '           $(debug-disconnect) Auto Detected'
+		// };
+		// picks.unshift(mappedDrive);
+		//see if the curDrive is not included in the detected ones, if not add it, ONLY if not blank
+		if(curDrive!=='' && !detectedPaths.includes(curDrive)) {
+			picks.unshift(
+				{
+					path: curDrive,
+					label: curDrive,
+					description: ''
+				}
+			);
+		}
+		//look to see if one of the picks is the curDrive
+		if(curDrive!=='') {
+			picks.forEach(pick => {
+				if(pick.path===curDrive){
+					pick.description='   (Current)';
+				}
+			});
+		}
+		// const result=await vscode.window.showQuickPick(['/media','/etc','Pick Manually'],{
+		// 	placeHolder:'Pick detected drive or select manually',
+		// 	title: 'CP Drive Select'
+		// });
+		const result=await vscode.window.showQuickPick<drivePick>(picks,{
+			placeHolder:'Pick detected drive or select manually',
+			title: 'CP Drive Select'
+		});
+		if(result) {vscode.window.showInformationMessage(result.label);};
+		//if no choice just get out
+		if(!result){return;}
+		//if got path selection (that is, not manual select) but no change, just get out
+		if(result.path!=='' && result.path===curDrive) {return;}
+		//otherwise if selected detected drive, just update config, else open file dialog
+		if(result.path!=='') {
+			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
 			//set the status bar text to active and save setting locally
-			curDriveSetting=dirs[0].fsPath;
+			curDriveSetting=result.path;
 			//statusBarItem1.color=undefined;
 			updateStatusBarItem();
 		} else {
-			// ??? leave the status bar color as is??
+			let baseUri=curDrive;
+			if (os.platform()==='win32') {
+				baseUri='file:'+baseUri+'//';
+			}
+			const opts: vscode.OpenDialogOptions={
+				canSelectFiles:false,
+				canSelectFolders:true,
+				canSelectMany:false,
+				defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(baseUri),
+				title: 'Pick drive or mount point for CP'
+				};
+			const dirs=await vscode.window.showOpenDialog(opts);
+			if(dirs){
+				vscode.window.showInformationMessage('selected: '+dirs[0].fsPath);
+				//save the config
+				curDriveSetting=dirs[0].fsPath;
+				//if windows upper case and remove backslashes
+				//UNLESS it has path after drive letter, then change \\ to //
+				if(os.platform()==='win32') {
+					curDriveSetting=curDriveSetting.replace(/\\/g,'/');
+					if(curDriveSetting.endsWith('/')) {
+						curDriveSetting=curDriveSetting.toUpperCase().replace(/\//g,'');
+					}
+				}
+				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',curDriveSetting);
+				//set the status bar text to active and save setting locally
+				//statusBarItem1.color=undefined;
+				updateStatusBarItem();
+			} else {
+				// ??? leave the status bar color as is??
+			}
 		}
 		statusBarItem1.show();
-
 	});
 
 	// look for config change
