@@ -20,7 +20,7 @@ jobs:
                     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                     tag: ${{ github.ref_name }}
               run: |
-                gh release create '$tag' \
+                gh release create "${{ env.tag }}" \
                     --repo="${{ github.repository }}" \
-                    --title="${tag#v}" \
+                    --title="${{ env.tag#v }}" \
                     --generate-notes
