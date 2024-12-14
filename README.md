@@ -12,3 +12,4 @@ test release 4b
 test release 4c
 
 test no release
+test release 4d with empty tags
