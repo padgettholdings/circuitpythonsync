@@ -20,3 +20,4 @@ test push without a tag to make sure no action done
 test release v0.0.4k to create vsix 2
 test release v0.0.4m to create all targets
 test release v0.0.4n to create all after fix typo in workflow
+test release v0.0.4p to create release just once
