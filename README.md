@@ -16,3 +16,4 @@ test release 4d with empty tags
 test release 4f with all starting empty
 test release 4g by pushing tag first
 test release 4h after removing branch from workflow
+test push without a tag to make sure no action done
