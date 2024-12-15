@@ -13,3 +13,4 @@ test release 4c
 
 test no release
 test release 4d with empty tags
+test release 4f with all starting empty
