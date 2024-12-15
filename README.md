@@ -17,3 +17,4 @@ test release 4f with all starting empty
 test release 4g by pushing tag first
 test release 4h after removing branch from workflow
 test push without a tag to make sure no action done
+test release v4k to create vsix 2
