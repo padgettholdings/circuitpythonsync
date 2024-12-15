@@ -77,8 +77,7 @@ jobs:
             env:
               GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               tag: ${{ github.ref_name }}
+            # NOTE that on windows=>powershell, \ is not valid line ending so don't make it multiline
             run: |
-              gh release upload "${{ env.tag }}" \
-                  --repo="${{ github.repository }}" \
-                  --clobber \
-                  $(ls *.vsix)
+              gh release upload "${{ env.tag }}" --repo="${{ github.repository }}" --clobber $(ls *.vsix)
+
