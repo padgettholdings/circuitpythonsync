@@ -1,0 +1,83 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - v** # Push events to matching v*, i.e. v1.0, v20.15.10
+permissions:
+  contents: write
+  
+jobs:
+    release:
+      name: Release
+      runs-on: ubuntu-latest
+      steps:
+        - name: Create Release
+          id: create_release
+          env:
+              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              tag: ${{ github.ref_name }}
+          run: |
+            gh release create "${{ env.tag }}" \
+                --repo="${{ github.repository }}" \
+                --title="${{ env.tag }}" \
+                --generate-notes
+
+    builds:
+        needs: release
+        strategy:
+            matrix:
+              include:
+              - os: windows-latest
+                platform: win32
+                arch: x64
+                npm_config_arch: x64
+              - os: ubuntu-latest
+                platform: linux
+                arch: x64
+                npm_config_arch: x64
+              - os: ubuntu-latest
+                platform: linux
+                arch: arm64
+                npm_config_arch: arm64
+              - os: ubuntu-latest
+                platform: linux
+                arch: armhf
+                npm_config_arch: arm
+              - os: macos-latest
+                platform: darwin
+                arch: x64
+                npm_config_arch: x64
+              - os: macos-latest
+                platform: darwin
+                arch: arm64
+                npm_config_arch: arm64
+        runs-on: ${{ matrix.os }}
+        steps:
+          - uses: actions/checkout@v3
+          - uses: actions/setup-node@v4
+            with:
+              node-version: '20.x'
+              cache: "npm"
+          - uses: actions/setup-python@v5
+            with:
+              python-version: "3.11"
+          - run: npm i -g npm@latest
+          - run: npm --version
+          - run: npm install
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              npm_config_arch: ${{ matrix.npm_config_arch }}
+          - name: Stay on target
+            shell: pwsh
+            run: echo "target=${{ matrix.platform }}-${{ matrix.arch }}" >> $env:GITHUB_ENV
+          - name: Build Package
+            run: npx vsce package --target ${{ env.target }}
+          - name: Upload Release Asset
+            env:
+              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              tag: ${{ github.ref_name }}
+            # NOTE that on windows=>powershell, \ is not valid line ending so don't make it multiline
+            run: |
+              gh release upload "${{ env.tag }}" --repo="${{ github.repository }}" --clobber $(ls *.vsix)
+
