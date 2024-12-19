@@ -65,9 +65,9 @@ jobs:
               python-version: "3.11"
           - run: npm i -g npm@latest
           - run: npm --version
-          - if: matrix.arch == 'aarch64'
+          - if: ${{ matrix.arch }} == 'aarch64'
             run: sudo apt-get install build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          - if: matrix.arch == 'aarch64'
+          - if: ${{ matrix.arch }} == 'aarch64'
             run: npm install
             env:
               CC: aarch64-linux-gnu-gcc
@@ -75,7 +75,7 @@ jobs:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               npm_config_arch: arm64
               npm_config_platform: linux
-          - if: matrix.arch != 'aarch64'
+          - if: ${{ matrix.arch }} != 'aarch64'
             run: npm install
             env:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
