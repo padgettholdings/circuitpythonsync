@@ -27,4 +27,5 @@ test release v0.0.4q with upload gh command fixed
 test release v0.0.5 with arm64 on linux build
 test release v0.0.5a with fixed aarch conditional steps
 test release v0.0.5b with expression all in braces
+test release v0.0.5c with fix to matrix property
 
