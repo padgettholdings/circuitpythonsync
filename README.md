@@ -22,3 +22,10 @@ test release v0.0.4m to create all targets
 test release v0.0.4n to create all after fix typo in workflow
 test release v0.0.4p to create release just once
 test release v0.0.4q with upload gh command fixed
+
+### after adding special handling for arm64
+test release v0.0.5 with arm64 on linux build
+test release v0.0.5a with fixed aarch conditional steps
+test release v0.0.5b with expression all in braces
+test release v0.0.5c with fix to matrix property
+

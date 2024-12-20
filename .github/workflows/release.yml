@@ -36,10 +36,11 @@ jobs:
                 platform: linux
                 arch: x64
                 npm_config_arch: x64
+              # this requires special native npm install setup using conditionals below
               - os: ubuntu-latest
                 platform: linux
                 arch: arm64
-                npm_config_arch: arm64
+                npm_config_arch: aarch64
               - os: ubuntu-latest
                 platform: linux
                 arch: armhf
@@ -64,7 +65,18 @@ jobs:
               python-version: "3.11"
           - run: npm i -g npm@latest
           - run: npm --version
-          - run: npm install
+          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
+            run: sudo apt-get install build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
+            run: npm install
+            env:
+              CC: aarch64-linux-gnu-gcc
+              CXX: aarch64-linux-gnu-g++
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              npm_config_arch: arm64
+              npm_config_platform: linux
+          - if: ${{ matrix.npm_config_arch != 'aarch64' }}
+            run: npm install
             env:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               npm_config_arch: ${{ matrix.npm_config_arch }}
