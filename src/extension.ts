@@ -252,7 +252,11 @@ export function activate(context: vscode.ExtensionContext) {
 		//if no choice just get out
 		if(!result){return;}
 		//if got path selection (that is, not manual select) but no change, just get out
-		if(result.path!=='' && result.path===curDrive) {return;}
+		//NO, issue #2, update button anyway in case contents changed
+		if(result.path!=='' && result.path===curDrive) {
+			updateStatusBarItem();	
+			return;
+		}
 		//otherwise if selected detected drive, just update config, else open file dialog
 		if(result.path!=='') {
 			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
