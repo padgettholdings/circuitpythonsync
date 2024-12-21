@@ -70,6 +70,8 @@ async function updateStatusBarItem() {
 			//and the right tooltip
 			statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
 		} else {
+			//TODO- try to see if location of boot file matches one of the drives but not usb
+			//	then can use the $(info) icon with a warning
 			statusBarItem1.text='CPCopy';
 			statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
 		}
