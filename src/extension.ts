@@ -113,7 +113,7 @@ async function updateStatusBarItem() {
 			let gotValidDrive:boolean=true;
 			if(lastDrives){
 				let validDrive=lastDrives.find((value:drvlstDrive,index,ary) => {
-					curDriveSetting===value.drvPath && !value.isUsb;
+					curDriveSetting===value.drvPath && value.isUsb;
 				});
 				gotValidDrive=validDrive ? true : false;
 			} 

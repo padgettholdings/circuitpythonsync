@@ -31,4 +31,5 @@ test release v0.0.5c with fix to matrix property
 
 ### after addressing issues
 test release v0.0.6 for multi platform testing of issues fixes
+test release v0.0.6a to fix bug in checking drive map status
 
