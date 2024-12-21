@@ -29,3 +29,6 @@ test release v0.0.5a with fixed aarch conditional steps
 test release v0.0.5b with expression all in braces
 test release v0.0.5c with fix to matrix property
 
+### after addressing issues
+test release v0.0.6 for multi platform testing of issues fixes
+
