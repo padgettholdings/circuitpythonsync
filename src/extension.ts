@@ -8,6 +8,8 @@ import os from 'os';
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
 let curDriveSetting: string;
+// need explicit flag to make sure workspace is set so can disable everythin
+let haveCurrentWorkspace: boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -74,10 +76,15 @@ async function updateStatusBarItem() {
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "circuitpythonsync" is now active!');
+	// this event should re-occur when a new workspace is opened, but need to 
+	//	make sure nothing "bad" can happen if there is no workspace
+	// set flag whether workspace is open, can use to disable actions
+	haveCurrentWorkspace=vscode.workspace.workspaceFolders ? true : false;
+	if (haveCurrentWorkspace) {
+		console.log('Extension "circuitpythonsync" is now active in a workspace');
+	} else {
+		console.log('Extension is active BUT NOT IN WORKSPACE, SHOULD RE-ACTIVATE ON WS OPEN');
+	}
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
@@ -85,17 +92,27 @@ export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('circuitpythonsync.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello from CircuitPythonSync!');
+		if(haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
+		} else {
+			vscode.window.showInformationMessage('Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!');
+		}
 	});
 	context.subscriptions.push(disposable);
 
 	const button1Id:string ='circuitpythonsync.button1';
 
 	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
 			vscode.window.showInformationMessage('!! Must set drive before copy !!');
 		} else {
+			//###TBD### do copy
 			vscode.window.showInformationMessage('**** copy done ****');
 			statusBarItem1.backgroundColor=undefined;
 		}
@@ -104,11 +121,13 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(sbItemCmd);
 
 	//get the initial drive setting, save for button setup
+	//NOTE that if no workspace this will be empty string, so OK
 	curDriveSetting=getCurrentDriveConfig();
 	//????? save in ext state?
 	//context.subscriptions.push(curDriveSetting);
 
 	//create the status bar button
+	//NOTE even with no workspace create but don't show
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
 	updateStatusBarItem();
@@ -116,10 +135,32 @@ export function activate(context: vscode.ExtensionContext) {
 	//if(curDriveSetting===''){statusBarItem1.color='#444444';}
 	context.subscriptions.push(statusBarItem1);
 	//show the status bar item
-	statusBarItem1.show();
+	//* if no workspace hide the button, will generally show because activate runs when workspace setup
+	//	BUT can also show on workspace event???
+	if(haveCurrentWorkspace) {
+		statusBarItem1.show();
+	} else {
+		statusBarItem1.hide();
+	}
+
+	// listen to the workspace change event to see if button should be shown 
+	//	** this is probably not needed since "normal" workspace changes will re-trigger activate
+	const wkspcChg=vscode.workspace.onDidChangeWorkspaceFolders( (event) => {
+		haveCurrentWorkspace=vscode.workspace.workspaceFolders ? true : false;
+		if(haveCurrentWorkspace) {
+			statusBarItem1.show();
+		}
+	});
+
+	context.subscriptions.push(wkspcChg);
 
 	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+		// ** if no workspace this command does nothing but give warning **
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		} 
 		// TBD- get drivelist, but for now fake it
 		/*
 		let picks: drivePick[]= [
@@ -302,6 +343,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
+		//NOTE can't affect this ext config if no workspace, not global
+		// BUT just return to keep noise level down
+		if(!haveCurrentWorkspace){return;}
 		//see if the drivepath changed
 		if (event.affectsConfiguration('circuitpythonsync.drivepath')) {
 			const curDrive=getCurrentDriveConfig();
@@ -321,6 +365,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//show info if text doc changed
 	const txtChg=vscode.workspace.onDidSaveTextDocument(async (event) => {
+		//NOTE ASSUME THAT file change doesn't affect this ext if no workspace????
+		// BUT just return to keep noise level down
+		if(!haveCurrentWorkspace){return;}
 		//vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
 		const fles=await vscode.workspace.findFiles('**/.vscode/cpfiles.txt');
