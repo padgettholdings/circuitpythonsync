@@ -48,14 +48,18 @@ async function updateStatusBarItem() {
 			baseUri='file:'+baseUri;
 		}
 		//**replace glob find files with dir read for performance
-		const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-		let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-			if(value.length>0){
-				return value[0]==='boot_out.txt';
-			} else {
-				return false;
-			}
-		});
+		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
+		let foundBootFile:any=undefined;
+		try {
+			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+				if(value.length>0){
+					return value[0]==='boot_out.txt';
+				} else {
+					return false;
+				}
+			});
+		} catch {foundBootFile=undefined;}
 		//
 		//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
