@@ -2,17 +2,55 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
-import os from 'os';
+import os, { devNull } from 'os';
 //import { validateHeaderValue } from 'http';
 
 let statusBarItem1: vscode.StatusBarItem;
 // current drive config
 let curDriveSetting: string;
+// need explicit flag to make sure workspace is set so can disable everythin
+let haveCurrentWorkspace: boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
 	path: string
 }
+
+//need cache of drives from drivelist, first define type
+interface drvlstDrive {
+	drvPath: string;
+	isUsb: boolean;
+}
+
+//now the last drives queried
+let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+
+//refresh the drive list
+async function refreshDrives() {
+	//use a temp array in case of error
+	let tmpLastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+	try {
+		const drives:drivelist.Drive[] = await drivelist.list();
+		for(const drv of drives) {
+			if(drv.mountpoints.length>0) {
+				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
+				let drvPath:string=drv.mountpoints[0].path;
+				//if windows remove backslashes
+				if(os.platform()==='win32') {
+					drvPath=drvPath.replace(/\\/g,'');
+				}
+				//add to array
+				const tmpDrv:drvlstDrive={
+					drvPath:drvPath,
+					isUsb: drv.isUSB ?? false
+				};
+				tmpLastDrives.push(tmpDrv);
+			}
+		}
+		//since no error replace the global cache with tmp
+		lastDrives=tmpLastDrives;
+	} catch {}
+} 
 
 
 function fromBinaryArray(bytes: Uint8Array): string {
@@ -46,14 +84,18 @@ async function updateStatusBarItem() {
 			baseUri='file:'+baseUri;
 		}
 		//**replace glob find files with dir read for performance
-		const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-		let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-			if(value.length>0){
-				return value[0]==='boot_out.txt';
-			} else {
-				return false;
-			}
-		});
+		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
+		let foundBootFile:any=undefined;
+		try {
+			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+				if(value.length>0){
+					return value[0]==='boot_out.txt';
+				} else {
+					return false;
+				}
+			});
+		} catch {foundBootFile=undefined;}
 		//
 		//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 		//const srchPath=vscode.Uri.joinPath(vscode.Uri.parse(curDriveSetting),'boot_out.txt');
@@ -64,8 +106,24 @@ async function updateStatusBarItem() {
 			//and the right tooltip
 			statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
 		} else {
-			statusBarItem1.text='CPCopy';
-			statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+			//Try to see if location of boot file matches one of the drives but not usb
+			//	then can use the $(info) icon with a warning
+			//SO logic is if no lastDrives or curDriveSetting is NOT in array or if it is in array
+			//  but is not USB add the info icon with tooltip. Else normal copy enabled.
+			let gotValidDrive:boolean=true;
+			if(lastDrives){
+				let validDrive=lastDrives.find((value:drvlstDrive,index,ary) => {
+					return (curDriveSetting===value.drvPath && value.isUsb);
+				});
+				gotValidDrive=validDrive ? true : false;
+			} 
+			if(gotValidDrive) {
+				statusBarItem1.text='CPCopy';
+				statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+			} else {
+				statusBarItem1.text='CPCopy $(info)';
+				statusBarItem1.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+			}
 		}
 	}
 	//?? do we do show here??
@@ -73,11 +131,16 @@ async function updateStatusBarItem() {
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "circuitpythonsync" is now active!');
+export async function activate(context: vscode.ExtensionContext) {
+	// this event should re-occur when a new workspace is opened, but need to 
+	//	make sure nothing "bad" can happen if there is no workspace
+	// set flag whether workspace is open, can use to disable actions
+	haveCurrentWorkspace=vscode.workspace.workspaceFolders ? true : false;
+	if (haveCurrentWorkspace) {
+		console.log('Extension "circuitpythonsync" is now active in a workspace');
+	} else {
+		console.log('Extension is active BUT NOT IN WORKSPACE, SHOULD RE-ACTIVATE ON WS OPEN');
+	}
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
@@ -85,17 +148,27 @@ export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('circuitpythonsync.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello from CircuitPythonSync!');
+		if(haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
+		} else {
+			vscode.window.showInformationMessage('Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!');
+		}
 	});
 	context.subscriptions.push(disposable);
 
 	const button1Id:string ='circuitpythonsync.button1';
 
 	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
 			vscode.window.showInformationMessage('!! Must set drive before copy !!');
 		} else {
+			//###TBD### do copy
 			vscode.window.showInformationMessage('**** copy done ****');
 			statusBarItem1.backgroundColor=undefined;
 		}
@@ -103,12 +176,17 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	context.subscriptions.push(sbItemCmd);
 
+	// ** query attached drives for the initial cache
+	await refreshDrives();
+
 	//get the initial drive setting, save for button setup
+	//NOTE that if no workspace this will be empty string, so OK
 	curDriveSetting=getCurrentDriveConfig();
 	//????? save in ext state?
 	//context.subscriptions.push(curDriveSetting);
 
 	//create the status bar button
+	//NOTE even with no workspace create but don't show
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
 	updateStatusBarItem();
@@ -116,10 +194,32 @@ export function activate(context: vscode.ExtensionContext) {
 	//if(curDriveSetting===''){statusBarItem1.color='#444444';}
 	context.subscriptions.push(statusBarItem1);
 	//show the status bar item
-	statusBarItem1.show();
+	//* if no workspace hide the button, will generally show because activate runs when workspace setup
+	//	BUT can also show on workspace event???
+	if(haveCurrentWorkspace) {
+		statusBarItem1.show();
+	} else {
+		statusBarItem1.hide();
+	}
+
+	// listen to the workspace change event to see if button should be shown 
+	//	** this is probably not needed since "normal" workspace changes will re-trigger activate
+	const wkspcChg=vscode.workspace.onDidChangeWorkspaceFolders( (event) => {
+		haveCurrentWorkspace=vscode.workspace.workspaceFolders ? true : false;
+		if(haveCurrentWorkspace) {
+			statusBarItem1.show();
+		}
+	});
+
+	context.subscriptions.push(wkspcChg);
 
 	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+		// ** if no workspace this command does nothing but give warning **
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		} 
 		// TBD- get drivelist, but for now fake it
 		/*
 		let picks: drivePick[]= [
@@ -154,7 +254,8 @@ export function activate(context: vscode.ExtensionContext) {
 		//- must be a usb type drive 
 		//- if CIRCUITPY shows up in path it is setup as CP drive
 		//- if boot_out.txt is found in the root of the path it is a CP drive
-		let detectedPaths:string[]=[];	//this is for checking curDrive later
+		let detectedPaths:string[]=[];	//this is for checking curDrive later and classifying
+		let detectedPathsNotUsb:string[]=[];
 		try {
 			const drives:drivelist.Drive[] = await drivelist.list();
 			for(const drv of drives) {
@@ -167,10 +268,13 @@ export function activate(context: vscode.ExtensionContext) {
 					drvPath=drvPath.replace(/\\/g,'');
 				}
 				let detectedPath:string='';
-				if(drvPath && drv.isUSB) {
+				let detectedPathNotUsb:string='';
+				//Issue #7, defer usb decision so can list possible but not usb detections
+				if(drvPath) {	// && drv.isUSB) {
 					//see if path contains circuitpy
 					if(drvPath.toLowerCase().includes('circuitpy')) {
-						detectedPath=drvPath;
+						detectedPath= drv.isUSB ? drvPath : '';
+						detectedPathNotUsb= !drv.isUSB ? drvPath : '';
 					} else {
 						//not detected yet, see if boot_out.txt at path
 						//need to add file scheme in windows
@@ -193,11 +297,13 @@ export function activate(context: vscode.ExtensionContext) {
 						//if(fles.length>0) {
 						if(foundBootFile){
 							//got the file
-							detectedPath=drvPath;
+							//check if it is usb or not
+							detectedPath= drv.isUSB ? drvPath : '';
+							detectedPathNotUsb= !drv.isUSB ? drvPath : '';
 						}
 						//});
 					}
-					//if detected the path push it in picks array and add to list
+					//if detected the path push it in picks array and add to list (this is usb)
 					if(detectedPath) {
 						detectedPaths.push(detectedPath);
 						const mappedDrive:drivePick={
@@ -205,6 +311,17 @@ export function activate(context: vscode.ExtensionContext) {
 							label:detectedPath,
 							description:'',
 							detail: '           $(debug-disconnect) Auto Detected'
+						};
+						picks.unshift(mappedDrive);				
+					}
+					//else see if detected but not usb
+					if(detectedPathNotUsb) {
+						detectedPathsNotUsb.push(detectedPathNotUsb);
+						const mappedDrive:drivePick={
+							path:detectedPathNotUsb,
+							label:detectedPathNotUsb,
+							description:'',
+							detail: '           $(info) Auto Detected but NOT USB'
 						};
 						picks.unshift(mappedDrive);				
 					}
@@ -223,7 +340,8 @@ export function activate(context: vscode.ExtensionContext) {
 		// };
 		// picks.unshift(mappedDrive);
 		//see if the curDrive is not included in the detected ones, if not add it, ONLY if not blank
-		if(curDrive!=='' && !detectedPaths.includes(curDrive)) {
+		// also include not usb paths if any
+		if(curDrive!=='' && !(detectedPaths.includes(curDrive) || detectedPathsNotUsb.includes(curDrive))) {
 			picks.unshift(
 				{
 					path: curDrive,
@@ -251,8 +369,15 @@ export function activate(context: vscode.ExtensionContext) {
 		//if(result) {vscode.window.showInformationMessage(result.label);};
 		//if no choice just get out
 		if(!result){return;}
+		// ** at this point may have changes so go ahead and refresh the drive list
+		await refreshDrives();
+		// **
 		//if got path selection (that is, not manual select) but no change, just get out
-		if(result.path!=='' && result.path===curDrive) {return;}
+		//NO, issue #2, update button anyway in case contents changed
+		if(result.path!=='' && result.path===curDrive) {
+			updateStatusBarItem();	
+			return;
+		}
 		//otherwise if selected detected drive, just update config, else open file dialog
 		if(result.path!=='') {
 			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
@@ -298,6 +423,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
+		//NOTE can't affect this ext config if no workspace, not global
+		// BUT just return to keep noise level down
+		if(!haveCurrentWorkspace){return;}
+		// ** refresh drive list in case changed
+		await refreshDrives();
+		// **
 		//see if the drivepath changed
 		if (event.affectsConfiguration('circuitpythonsync.drivepath')) {
 			const curDrive=getCurrentDriveConfig();
@@ -317,6 +448,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//show info if text doc changed
 	const txtChg=vscode.workspace.onDidSaveTextDocument(async (event) => {
+		//NOTE ASSUME THAT file change doesn't affect this ext if no workspace????
+		// BUT just return to keep noise level down
+		if(!haveCurrentWorkspace){return;}
+		// ** refresh drive list in case changed
+		await refreshDrives();
+		// **
 		//vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
 		const fles=await vscode.workspace.findFiles('**/.vscode/cpfiles.txt');
