@@ -33,4 +33,5 @@ test release v0.0.5c with fix to matrix property
 test release v0.0.6 for multi platform testing of issues fixes
 test release v0.0.6a to fix bug in checking drive map status
 test release v0.0.6b to fix remaining bug in button update re usb
+close #7 - finished testing 6b on all platforms
 
