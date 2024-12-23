@@ -35,3 +35,5 @@ test release v0.0.6a to fix bug in checking drive map status
 test release v0.0.6b to fix remaining bug in button update re usb
 close #7 - finished testing 6b on all platforms
 
+### new enhancements
+create release v0.0.7 for testing issue #10
