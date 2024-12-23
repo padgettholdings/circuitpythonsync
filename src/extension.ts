@@ -237,7 +237,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(connectDrvPath){
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
-					const pickRes=await vscode.window.showInformationMessage('Found a potential CircuitPython Board on drive: '+connectDrvPath+' Do you want to map it?','Yes','No');
+					const pickRes=await vscode.window.showInformationMessage('Found a potential CircuitPython Board on drive: "'+connectDrvPath+'".  Do you want to map it?','Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',connectDrvPath);
 						curDriveSetting=connectDrvPath;
