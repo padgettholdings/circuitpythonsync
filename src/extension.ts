@@ -202,6 +202,52 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem1.hide();
 	}
 
+	// ** Issue #10 - see if a usb drive with boot file exists, if so, offer to connect but only if not current **
+	//	have the current mapping and the last drive list
+	// find the first usb drive in last drives, if any
+	//BUT can't do anything if no workspace
+	if(haveCurrentWorkspace) {
+		const connectCandidate=lastDrives.find((drv:drvlstDrive,index,ary) => {
+			return drv.isUsb;
+		});
+		//if got a candidate, check it...
+		let connectDrvPath:string='';
+		if(connectCandidate) {
+			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy')) {
+				connectDrvPath=connectCandidate.drvPath;
+			} else {
+				// need to search for the boot file
+				let baseUri=connectCandidate.drvPath;
+				if (os.platform()==='win32') {
+					baseUri='file:'+baseUri;
+				}
+				const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+				let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+					if(value.length>0){
+						return value[0]==='boot_out.txt';
+					} else {
+						return false;
+					}
+				});
+				if(foundBootFile){
+					connectDrvPath=connectCandidate.drvPath;
+				}
+			}
+			//if got a connect path, offer it in info message
+			if(connectDrvPath){
+				//make sure is not same as current mapping
+				if(connectDrvPath!==curDriveSetting) {
+					const pickRes=await vscode.window.showInformationMessage('Found a potential CircuitPython Board on drive: "'+connectDrvPath+'".  Do you want to map it?','Yes','No');
+					if(pickRes==='Yes') {
+						vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',connectDrvPath);
+						curDriveSetting=connectDrvPath;
+						updateStatusBarItem();
+					}
+				}
+			}
+		}
+	}
+
 	// listen to the workspace change event to see if button should be shown 
 	//	** this is probably not needed since "normal" workspace changes will re-trigger activate
 	const wkspcChg=vscode.workspace.onDidChangeWorkspaceFolders( (event) => {
