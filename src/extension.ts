@@ -3,6 +3,8 @@
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
+import { fstat } from 'fs';
+import { stringify } from 'querystring';
 //import { validateHeaderValue } from 'http';
 
 let statusBarItem1: vscode.StatusBarItem;
@@ -10,6 +12,10 @@ let statusBarItem1: vscode.StatusBarItem;
 let curDriveSetting: string;
 // need explicit flag to make sure workspace is set so can disable everythin
 let haveCurrentWorkspace: boolean;
+// track whether library folder is there or not
+let libraryFolderExists: boolean;
+// track whether py files exist that can be copied ???? needed ????
+let pyFilesExist: boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -129,6 +135,7 @@ async function updateStatusBarItem() {
 	//?? do we do show here??
 }
 
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -184,6 +191,37 @@ export async function activate(context: vscode.ExtensionContext) {
 	curDriveSetting=getCurrentDriveConfig();
 	//????? save in ext state?
 	//context.subscriptions.push(curDriveSetting);
+
+	//set the flags for whether have files and/or lib to copy
+	//just read the top level of the base workspace folder, if workspace open
+	libraryFolderExists=false;
+	pyFilesExist=false;
+	if(vscode.workspace.workspaceFolders) {
+		const wsContents=await vscode.workspace.fs.readDirectory(vscode.workspace.workspaceFolders[0].uri);
+		//first see if lib there
+		const foundLib=wsContents.find((value:[string,vscode.FileType],index,ary) => {
+			if(value.length>0){
+				return (value[0].includes("lib") || value[0].includes("Lib")) && value[1]===vscode.FileType.Directory;
+			} else {
+				return false;
+			}
+		});
+		if(foundLib) {
+			libraryFolderExists=true;
+		}
+		//now the files
+		//####TBD#### look at cpfiles first???
+		const foundPys=wsContents.find((value:[string,vscode.FileType],index,ary) => {
+			if(value.length>0){
+				return (value[0].includes("main.py") || value[0].includes("code.py")) && value[1]===vscode.FileType.File;
+			} else {
+				return false;
+			}
+		});
+		if(foundPys) {
+			pyFilesExist=true;
+		}
+	}
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show
@@ -551,6 +589,42 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(txtChg);
+
+	//see if workspace folders changed to determine if library is there or was removed
+	//const wsFlderChg=vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
+	// ** NOTE this does not track folder changes in workspace, only workspace changes itself
+	//file sytem watchers do watch files and folders
+
+	const libWatcher=vscode.workspace.createFileSystemWatcher("**/[Ll]ib");
+	const libWatchCreate=libWatcher.onDidCreate((uri) => {
+		libraryFolderExists=true;
+		vscode.window.showInformationMessage("got create: "+uri.fsPath);
+	});
+	const libWatchDelete=libWatcher.onDidDelete((uri) => {
+		libraryFolderExists=false;
+		vscode.window.showInformationMessage("got delete: "+uri.fsPath);
+	});
+	context.subscriptions.push(libWatcher);
+	context.subscriptions.push(libWatchCreate);
+	context.subscriptions.push(libWatchDelete);
+
+	const pyFileWatcher=vscode.workspace.createFileSystemWatcher("**/*.py");
+	const pyWatchCreate=pyFileWatcher.onDidCreate((uri) => {
+		vscode.window.showInformationMessage("got py create: "+uri.fsPath);
+		//sort out if code or main, or if matches cpfiles.txt
+		//  then set flag 
+		pyFilesExist=true;
+	});
+	const pyWatchDelete=pyFileWatcher.onDidDelete((uri) => {
+		vscode.window.showInformationMessage("got py delete: "+uri.fsPath);
+		//sort out if code or main, or if matches cpfiles.txt
+		//  then set flag 
+		pyFilesExist=false;
+	});
+	context.subscriptions.push(pyFileWatcher);
+	context.subscriptions.push(pyWatchCreate);
+	context.subscriptions.push(pyWatchDelete);
+
 }
 
 // This method is called when your extension is deactivated
