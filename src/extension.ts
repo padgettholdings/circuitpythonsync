@@ -5,6 +5,7 @@ import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
 import { fstat } from 'fs';
 import { stringify } from 'querystring';
+import { CustomPromisifyLegacy } from 'util';
 //import { validateHeaderValue } from 'http';
 
 let statusBarItem1: vscode.StatusBarItem;
@@ -30,6 +31,74 @@ interface drvlstDrive {
 
 //now the last drives queried
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+
+//interface for cpfiles parsed line
+interface cpFileLine {
+	src: string,
+	dest: string,
+	inLib: boolean
+}
+
+// parse cpfiles.txt into lines
+// schema is:
+//	src | src->dest | lib/src | lib/src -> dest (dest in lib implied) | lib/src -> lib/dest
+async function parseCpfiles(): Promise<cpFileLine[]>  {
+	let outLines:cpFileLine[]=Array<cpFileLine>(0);
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return outLines;}
+	const relPat=new vscode.RelativePattern(wsRootFolder,'.vscode/cpfiles.txt');
+	const fles=await vscode.workspace.findFiles(relPat);
+	if(fles.length>0){
+		//cpfiles exists, read and split into lines
+		let fil=await vscode.workspace.fs.readFile(fles[0]);
+		let sfil=fromBinaryArray(fil);
+		const lines:string[]= sfil.split(/\n/);
+		let fromFile:string='';
+		let toFile:string='';
+		let inLib:boolean=false;
+		if(lines) {
+			for(const lineOrig of lines) {
+				const fromTo:string[]=lineOrig.split('->');
+				fromFile=fromTo[0].trim();
+				toFile=fromTo.length>1 ? fromTo[1].trim() : '';
+				inLib=fromFile.toLowerCase().startsWith('lib/');
+				if(fromFile) {
+					outLines.push(
+						{
+							src: fromFile,
+							dest: toFile,
+							inLib: inLib
+						}
+					);
+				}
+			}
+		}
+	}
+	return outLines;
+}
+
+//helper type for return of file states
+interface fileStates {
+	pyExists: boolean,
+	libExists: boolean
+}
+
+//determine if files from cpFilesLine[] exist in either root or lib folder
+async function name(cpLines:cpFileLine[]):Promise<fileStates> {
+	let retVal:fileStates={
+		pyExists: false,
+		libExists: false
+	};
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return retVal;}
+	//first the py files in root
+	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+	
+
+
+
+	return retVal;
+}
 
 //refresh the drive list
 async function refreshDrives() {
