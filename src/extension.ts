@@ -9,7 +9,11 @@ import { CustomPromisifyLegacy } from 'util';
 import { validateHeaderValue } from 'http';
 //import { validateHeaderValue } from 'http';
 
+//the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
+//and this is lib
+let statusBarItem2: vscode.StatusBarItem;
+
 // current drive config
 let curDriveSetting: string;
 // need explicit flag to make sure workspace is set so can disable everythin
@@ -192,19 +196,25 @@ function getCurrentDriveConfig(): string {
 	}
 	return curDrive;
 }
-
-async function updateStatusBarItem() {
+// ** update both status bar buttons
+async function updateStatusBarItems() {
 	if(curDriveSetting===''){
-		//no drive mapped, put error icon in text
+		//no drive mapped, put error icon in text of both
 		statusBarItem1.text='CPCopy $(error)';
+		statusBarItem2.text='CPLib $(error)';
 		//and the right tooltip
 		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
+		statusBarItem2.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
 	} else {
 		//NEXT see if have valid files to copy, if not show no sync
+		//NOTE will need to short circuit further actions on these exists flags
 		if(!pyFilesExist) {
 			statusBarItem1.text='CPCopy $(sync-ignored)';
 			statusBarItem1.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
-			return;
+		}
+		if(!libFilesExist){
+			statusBarItem2.text='CPLib $(sync-ignored)';
+			statusBarItem2.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
 		}
 
 		//check to see if boot_out.txt is there, warn if not
@@ -232,9 +242,16 @@ async function updateStatusBarItem() {
 		//const fles=await vscode.workspace.findFiles(rel);
 		//if(fles.length===0) {
 		if(!foundBootFile){
-			statusBarItem1.text='CPCopy $(warning)';
-			//and the right tooltip
-			statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+			if(pyFilesExist){
+				statusBarItem1.text='CPCopy $(warning)';
+				//and the right tooltip
+				statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+			}
+			if(libFilesExist){
+				statusBarItem2.text='CPLib $(warning)';
+				//and the right tooltip
+				statusBarItem2.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+			}
 		} else {
 			//Try to see if location of boot file matches one of the drives but not usb
 			//	then can use the $(info) icon with a warning
@@ -248,11 +265,23 @@ async function updateStatusBarItem() {
 				gotValidDrive=validDrive ? true : false;
 			} 
 			if(gotValidDrive) {
-				statusBarItem1.text='CPCopy';
-				statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+				if(pyFilesExist){
+					statusBarItem1.text='CPCopy';
+					statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+				}
+				if(libFilesExist){
+					statusBarItem2.text='CPLib';
+					statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+				}
 			} else {
-				statusBarItem1.text='CPCopy $(info)';
-				statusBarItem1.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+				if(pyFilesExist){
+					statusBarItem1.text='CPCopy $(info)';
+					statusBarItem1.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+				}
+				if(libFilesExist){
+					statusBarItem2.text='CPLib $(info)';
+					statusBarItem2.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+				}
 			}
 		}
 	}
@@ -288,8 +317,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 
 	const button1Id:string ='circuitpythonsync.button1';
+	const button2Id:string ='circuitpythonsync.button2';
 
-	const sbItemCmd=vscode.commands.registerCommand(button1Id,() => {
+	// ** the copy files button
+	const sbItemCmd1=vscode.commands.registerCommand(button1Id,() => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage('!! Must have open workspace !!');
@@ -310,8 +341,32 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	
-	context.subscriptions.push(sbItemCmd);
+	context.subscriptions.push(sbItemCmd1);
 
+	// ** the copy lib button
+	const sbItemCmd2=vscode.commands.registerCommand(button2Id,() => {
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		}
+		//if don't have drive can't copy
+		if(curDriveSetting==='') {
+			vscode.window.showInformationMessage('!! Must set drive before copy !!');
+		} else {
+			//see if no valid lib to copy
+			if(!libFilesExist) {
+				vscode.window.showInformationMessage('!! No libraries specified to copy exist !!');
+				return;
+			}
+			//###TBD### do copy
+			vscode.window.showInformationMessage('**** copy done ****');
+			statusBarItem2.backgroundColor=undefined;
+		}
+	});
+	
+	context.subscriptions.push(sbItemCmd2);
+	
 	// ** query attached drives for the initial cache
 	await refreshDrives();
 
@@ -331,7 +386,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		//first see if lib there
 		const foundLib=wsContents.find((value:[string,vscode.FileType],index,ary) => {
 			if(value.length>0){
-				return (value[0].includes("lib") || value[0].includes("Lib")) && value[1]===vscode.FileType.Directory;
+				const gotLib=value[0].match(/^[lL]ib$/) ? true : false;
+				return gotLib && value[1]===vscode.FileType.Directory;
 			} else {
 				return false;
 			}
@@ -377,17 +433,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	//NOTE even with no workspace create but don't show
 	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
 	statusBarItem1.command=button1Id;
-	updateStatusBarItem();
+	statusBarItem2=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
+	statusBarItem2.command=button2Id;
+	updateStatusBarItems();
 	//statusBarItem1.text='CPCopy';
 	//if(curDriveSetting===''){statusBarItem1.color='#444444';}
 	context.subscriptions.push(statusBarItem1);
+	context.subscriptions.push(statusBarItem2);
 	//show the status bar item
 	//* if no workspace hide the button, will generally show because activate runs when workspace setup
 	//	BUT can also show on workspace event???
 	if(haveCurrentWorkspace) {
 		statusBarItem1.show();
+		statusBarItem2.show();
 	} else {
 		statusBarItem1.hide();
+		statusBarItem2.hide();
 	}
 
 	// ** Issue #10 - see if a usb drive with boot file exists, if so, offer to connect but only if not current **
@@ -429,7 +490,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',connectDrvPath);
 						curDriveSetting=connectDrvPath;
-						updateStatusBarItem();
+						updateStatusBarItems();
 					}
 				}
 			}
@@ -442,6 +503,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		haveCurrentWorkspace=vscode.workspace.workspaceFolders ? true : false;
 		if(haveCurrentWorkspace) {
 			statusBarItem1.show();
+			statusBarItem2.show();
 		}
 	});
 
@@ -609,7 +671,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//if got path selection (that is, not manual select) but no change, just get out
 		//NO, issue #2, update button anyway in case contents changed
 		if(result.path!=='' && result.path===curDrive) {
-			updateStatusBarItem();	
+			updateStatusBarItems();	
 			return;
 		}
 		//otherwise if selected detected drive, just update config, else open file dialog
@@ -618,7 +680,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			//set the status bar text to active and save setting locally
 			curDriveSetting=result.path;
 			//statusBarItem1.color=undefined;
-			updateStatusBarItem();
+			updateStatusBarItems();
 		} else {
 			let baseUri=curDrive;
 			if (os.platform()==='win32') {
@@ -647,12 +709,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',curDriveSetting);
 				//set the status bar text to active and save setting locally
 				//statusBarItem1.color=undefined;
-				updateStatusBarItem();
+				updateStatusBarItems();
 			} else {
 				// ??? leave the status bar color as is??
 			}
 		}
 		statusBarItem1.show();
+		statusBarItem2.show();
 	});
 
 	// look for config change
@@ -668,13 +731,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			const curDrive=getCurrentDriveConfig();
 			if (curDriveSetting!==curDrive) {
 				curDriveSetting=curDrive;
-				updateStatusBarItem();
+				updateStatusBarItems();
 				// if(curDrive===''){
 				// 	statusBarItem1.color='#444444';
 				// } else {
 				// 	statusBarItem1.color=undefined;
 				// }
 				statusBarItem1.show();
+				statusBarItem2.show();
 			}
 		}
 	});
@@ -686,6 +750,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// BUT just return to keep noise level down
 		//NOTE,  just saving should not change the validity of the file or library copies
 		//  UNLESS it is cpfiles, so do the refresh and then check current file against copy specs
+		// ALSO tracking library changes should be done in filewatcher not here
 		if(!haveCurrentWorkspace){return;}
 		// ** refresh drive list in case changed
 		await refreshDrives();
@@ -713,8 +778,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(foundEl){
 			statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 		}
-		updateStatusBarItem();
+		updateStatusBarItems();
 		statusBarItem1.show();
+		statusBarItem2.show();
 
 		//vscode.window.showInformationMessage('file changed: '+event.fileName);
 		//see if cpfiles.txt is in .vscode dir
@@ -778,7 +844,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//none of this can work if not a workspace, will reload when go into workspace
 	if(haveCurrentWorkspace && vscode.workspace.workspaceFolders){
 		//first the library watch
-		const relLibPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],"[Ll]ib");
+		const relLibPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],"[Ll]ib/**");
 		const libWatcher=vscode.workspace.createFileSystemWatcher(relLibPath);
 		const libWatchCreate=libWatcher.onDidCreate(async (uri) => {
 			libraryFolderExists=true;
@@ -789,12 +855,31 @@ export async function activate(context: vscode.ExtensionContext) {
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources) {
 				libFilesExist=fileSources.libExists;
-			}	
+				statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+			} else {
+				statusBarItem2.backgroundColor=undefined;
+			}
+			updateStatusBarItems();
 		});
-		const libWatchDelete=libWatcher.onDidDelete((uri) => {
-			libraryFolderExists=false;
-			libFilesExist=false;
+		const libWatchDelete=libWatcher.onDidDelete(async (uri) => {
+			//since looking down in lib folder, see if folder itself deleted first
+			if(uri.fsPath.match(/[lL]ib$/)){
+				libraryFolderExists=false;
+				libFilesExist=false;
+				statusBarItem2.backgroundColor=undefined;
+			} else {
+				libraryFolderExists=true;
+				//look at remaining status
+				let cpFileLines=await parseCpfiles();
+				//don't need to pass defaults if cpfilesempty, just checking library
+				const fileSources=await checkSources(cpFileLines);
+				if(fileSources) {
+					libFilesExist=fileSources.libExists;
+					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				}
+			}
 			vscode.window.showInformationMessage("got delete: "+uri.fsPath);
+			updateStatusBarItems();
 		});
 		context.subscriptions.push(libWatcher);
 		context.subscriptions.push(libWatchCreate);
@@ -820,9 +905,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources) {
 				pyFilesExist=fileSources.pyExists;
+				// ** since a valid file was created, treat like a change and light it up
+				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 			}
 			//now update status button
-			await updateStatusBarItem();
+			await updateStatusBarItems();
 		});
 		const pyWatchDelete=pyFileWatcher.onDidDelete(async (uri) => {
 			vscode.window.showInformationMessage("got py delete: "+uri.fsPath);
@@ -844,7 +931,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				pyFilesExist=fileSources.pyExists;
 			}
 			//now update status button
-			await updateStatusBarItem();
+			await updateStatusBarItems();
 		});
 		context.subscriptions.push(pyFileWatcher);
 		context.subscriptions.push(pyWatchCreate);
