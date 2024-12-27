@@ -3,10 +3,10 @@
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
-import { fstat } from 'fs';
-import { stringify } from 'querystring';
-import { CustomPromisifyLegacy } from 'util';
-import { validateHeaderValue } from 'http';
+//import { fstat } from 'fs';
+//import { stringify } from 'querystring';
+//import { CustomPromisifyLegacy } from 'util';
+//import { validateHeaderValue } from 'http';
 //import { validateHeaderValue } from 'http';
 
 //the statusbar buttons - this is CPCopy
@@ -139,8 +139,10 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 					retVal.libExists=true;
 				} else {
 					const filesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
-						const srch:[string,vscode.FileType]=[cpfle.src,vscode.FileType.File];
-						return cpfle.inLib && libDir.includes(srch);
+						//NOTE can't use search object in includes, it is not the same object!!
+						//const srch:[string,vscode.FileType]=[cpfle.src,vscode.FileType.File];
+						//return cpfle.inLib && libDir.includes(srch);
+						return cpfle.inLib && libDir.some(entry => entry[0]===cpfle.src && entry[1]===vscode.FileType.File);
 					});
 					if(filesInDir) {
 						retVal.libExists=true;
@@ -853,7 +855,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			let cpFileLines=await parseCpfiles();
 			//don't need to pass defaults if cpfilesempty, just checking library
 			const fileSources=await checkSources(cpFileLines);
-			if(fileSources) {
+			if(fileSources.libExists) {
 				libFilesExist=fileSources.libExists;
 				statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 			} else {
@@ -873,7 +875,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				let cpFileLines=await parseCpfiles();
 				//don't need to pass defaults if cpfilesempty, just checking library
 				const fileSources=await checkSources(cpFileLines);
-				if(fileSources) {
+				if(fileSources.libExists) {
 					libFilesExist=fileSources.libExists;
 					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 				}
@@ -903,7 +905,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
-			if(fileSources) {
+			if(fileSources.pyExists) {
 				pyFilesExist=fileSources.pyExists;
 				// ** since a valid file was created, treat like a change and light it up
 				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
@@ -927,7 +929,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
-			if(fileSources) {
+			if(fileSources.pyExists) {
 				pyFilesExist=fileSources.pyExists;
 			}
 			//now update status button
