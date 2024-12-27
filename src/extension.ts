@@ -859,6 +859,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				libFilesExist=fileSources.libExists;
 				statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 			} else {
+				libFilesExist=false;
 				statusBarItem2.backgroundColor=undefined;
 			}
 			updateStatusBarItems();
@@ -878,6 +879,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				if(fileSources.libExists) {
 					libFilesExist=fileSources.libExists;
 					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				} else {
+					libFilesExist=false;
 				}
 			}
 			vscode.window.showInformationMessage("got delete: "+uri.fsPath);
@@ -906,9 +909,21 @@ export async function activate(context: vscode.ExtensionContext) {
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources.pyExists) {
+				//in any case valid files are in cpfiles
 				pyFilesExist=fileSources.pyExists;
-				// ** since a valid file was created, treat like a change and light it up
-				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				//make sure the file created is valid to copy to decide lighting
+				if(cpFileLines && cpFileLines.length>0){
+					//cpfiles exists, make sure new file in there to light it up
+					if(cpFileLines.some(entry => !entry.inLib && uri.path.endsWith(entry.src))){
+						// ** since a valid file was created, treat like a change and light it up
+						statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					}
+				} else {
+					// ** cp files empty so it's a valid file, treat like a change and light it up
+					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				}
+			} else {
+				pyFilesExist=false;
 			}
 			//now update status button
 			await updateStatusBarItems();
@@ -931,6 +946,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources.pyExists) {
 				pyFilesExist=fileSources.pyExists;
+			} else {
+				pyFilesExist=false;
 			}
 			//now update status button
 			await updateStatusBarItems();
