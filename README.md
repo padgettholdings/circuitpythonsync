@@ -37,3 +37,6 @@ close #7 - finished testing 6b on all platforms
 
 ### new enhancements
 create release v0.0.7 for testing issue #10
+
+### issue 11, library functionality
+create release v0.0.8 for testing on all platforms
