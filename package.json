@@ -38,6 +38,10 @@
         "title": "CP Button1"
       },
       {
+        "command": "circuitpythonsync.button2",
+        "title": "CP Button2"
+      },
+      {
         "command": "circuitpythonsync.opendir",
         "title": "CP Set Drive"
       }
