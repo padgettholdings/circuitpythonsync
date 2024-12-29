@@ -24,6 +24,8 @@ let libraryFolderExists: boolean;
 let pyFilesExist: boolean;
 // and track whether lib files exist and can be copied
 let libFilesExist: boolean;
+// global to track whether entire lib copy should be confirmed or has been disabled
+let confirmFullLibCopy: boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -346,7 +348,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(sbItemCmd1);
 
 	// ** the copy lib button
-	const sbItemCmd2=vscode.commands.registerCommand(button2Id,() => {
+	//when activated, set confirm of full lib copy to be on
+	confirmFullLibCopy=true;
+	const sbItemCmd2=vscode.commands.registerCommand(button2Id, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage('!! Must have open workspace !!');
@@ -356,10 +360,27 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(curDriveSetting==='') {
 			vscode.window.showInformationMessage('!! Must set drive before copy !!');
 		} else {
-			//see if no valid lib to copy
+			//see if no valid lib to copy do msg and get out
 			if(!libFilesExist) {
 				vscode.window.showInformationMessage('!! No libraries specified to copy exist !!');
 				return;
+			}
+			//#16, add confirmation if entire library is to be copied
+			//read the cpfiles to see if no specs so whole library is the source...
+			//but only if confirmation turned off
+			if(confirmFullLibCopy){
+				const cpFileLines=await parseCpfiles();
+				if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
+					//yes, whole lib to be copied, confirm
+					const confAns=await vscode.window.showWarningMessage("WARNING! Entire lib folder will be copied, continue?","Yes","No, cancel","No, don't ask again");
+					if(!confAns || confAns==="No, cancel"){
+						return;
+					}
+					if(confAns==="No, don't ask again") {
+						confirmFullLibCopy=false;
+						return;
+					}
+				}
 			}
 			//###TBD### do copy
 			vscode.window.showInformationMessage('**** copy done ****');
