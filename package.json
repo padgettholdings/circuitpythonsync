@@ -22,7 +22,9 @@
   ],
   "activationEvents": [
     "workspaceContains:/code.py",
-    "workspaceContains:/main.py"
+    "workspaceContains:/main.py",
+    "workspaceContains:/lib/**",
+    "workspaceContains:/Lib/**"
   ],
   "main": "./out/extension.js",
   "contributes": {
