@@ -775,10 +775,27 @@ export async function activate(context: vscode.ExtensionContext) {
 			pyFilesExist=fileSources.pyExists;
 			libFilesExist=fileSources.libExists;
 		}
-		// see if file event was in the specs
+		// if either type is not valid, need to turn off lighting
+		if(!pyFilesExist){
+			statusBarItem1.backgroundColor=undefined;
+		}
+		if(!libFilesExist){
+			statusBarItem2.backgroundColor=undefined;
+		}
+		// see if file event was in the specs, libs don't show up here since not edited
+		// note this won't be found if pyFilesExist is false
 		const foundEl=cpFileLines.some(lne => !lne.inLib && event.fileName.toLowerCase().endsWith(lne.src.toLowerCase()));
 		if(foundEl){
 			statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+		}
+		//now check whether change was in cpfiles itself, if so and flags are on, light up
+		if(event.fileName.toLowerCase().endsWith("cpfiles.txt")){
+			if(pyFilesExist){
+				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+			}
+			if(libFilesExist){
+				statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+			}
 		}
 		updateStatusBarItems();
 		statusBarItem1.show();
@@ -855,21 +872,28 @@ export async function activate(context: vscode.ExtensionContext) {
 			let cpFileLines=await parseCpfiles();
 			//don't need to pass defaults if cpfilesempty, just checking library
 			const fileSources=await checkSources(cpFileLines);
+			//turn off the light, only turn on if valid
+			statusBarItem2.backgroundColor=undefined;
 			if(fileSources.libExists) {
 				libFilesExist=fileSources.libExists;
-				statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				//check to see if created file/folder is "valid" to light:
+				//	- cpfiles has no lib listings, in which case whole folder is valid
+				//	- cpfiles has the path created
+				if(!cpFileLines.some(lne => lne.inLib) || cpFileLines.some(lne => uri.path.endsWith(lne.src))){
+					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				}
 			} else {
 				libFilesExist=false;
-				statusBarItem2.backgroundColor=undefined;
 			}
 			updateStatusBarItems();
 		});
 		const libWatchDelete=libWatcher.onDidDelete(async (uri) => {
 			//since looking down in lib folder, see if folder itself deleted first
+			//turn off the light, only turn on if valid
+			statusBarItem2.backgroundColor=undefined;
 			if(uri.fsPath.match(/[lL]ib$/)){
 				libraryFolderExists=false;
 				libFilesExist=false;
-				statusBarItem2.backgroundColor=undefined;
 			} else {
 				libraryFolderExists=true;
 				//look at remaining status
@@ -878,7 +902,12 @@ export async function activate(context: vscode.ExtensionContext) {
 				const fileSources=await checkSources(cpFileLines);
 				if(fileSources.libExists) {
 					libFilesExist=fileSources.libExists;
-					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					//check to see if deleted file/folder is "valid" to light:
+					//	- cpfiles has no lib listings, in which case whole folder is valid
+					//	- cpfiles has the path deleted so it will be cleaned up on copy
+					if(!cpFileLines.some(lne => lne.inLib) || cpFileLines.some(lne => uri.path.endsWith(lne.src))){
+						statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					}
 				} else {
 					libFilesExist=false;
 				}
