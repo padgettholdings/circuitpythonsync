@@ -3,6 +3,8 @@
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
+//import { arrayBuffer } from 'stream/consumers';
+//import { error } from 'console';
 //import { fstat } from 'fs';
 //import { stringify } from 'querystring';
 //import { CustomPromisifyLegacy } from 'util';
@@ -91,6 +93,36 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 	return outLines;
 }
 
+// ** write cpfiles.txt, creating if needed and making one level backup **
+async function writeCpfiles(fileContents:string): Promise<string | undefined>{
+	// ** should never call without workspace, this is just to get compiler to work **
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return "";}
+	const relPat=new vscode.RelativePattern(wsRootFolder,'.vscode/cpfiles.txt');
+	const fles=await vscode.workspace.findFiles(relPat);
+	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.txt');
+	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.bak');
+	if(!fles){
+		try{
+			await vscode.workspace.fs.createDirectory(cpFilePath);
+		} catch(error) {
+			return "Could not create cpfiles.txt";
+		}
+	} else {
+		//file existed, make the backup
+		await vscode.workspace.fs.copy(cpFilePath,cpFilePathBkup,{overwrite:true});
+	}
+	//now write the file from contents, including blank file
+	const bFil=toBinaryArray(fileContents);
+	try{
+		await vscode.workspace.fs.writeFile(cpFilePath,bFil);
+	} catch(error) {
+		return "Could not write cpfiles.txt";
+	}
+	return "";
+}
+
+
 //helper type for return of file states
 interface fileStates {
 	pyExists: boolean,
@@ -156,6 +188,57 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 	return retVal;
 }
 
+//checked list interface for lib
+interface libListSelect {
+	src: string,
+	dest: string,
+	fullPath: string,
+	selected: boolean,
+	fType: vscode.FileType
+}
+
+// support #15, for library only, merge  parsed cpfiles with actual directory, returning checked list
+async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> {
+	// **Only works if workspace, but should not ever call this if not one **
+	let retVal:libListSelect[]=Array<libListSelect>(0);
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return retVal;}
+	// ** also should not call if lib folder doesn't exist, but this is for safety
+	if(!libraryFolderExists) { return retVal;}
+	//first filter cpLines to only lib entries...
+	// NOTE don't know if cpfiles exists at this point, check later
+	const cpLinesLib=cpLines.filter(lne => lne.inLib);
+	//the rootDir array should have lib folder name, find it
+	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+	const libName=rootDir.find((value:[string,vscode.FileType],index,ary) => {
+		return value[1]===vscode.FileType.Directory && value[0].toLowerCase()==='lib';
+	});
+	//libName must be there but for safety check it
+	if(!libName) {return retVal;}
+	//now read the lib directory, libName has proper case for path
+	const libPath=vscode.Uri.joinPath(wsRootFolder.uri,libName[0]);
+	const libDir=await vscode.workspace.fs.readDirectory(libPath);
+	//now go through libDir, adding to output array and merging cpLinesLib
+	for(const entry of libDir) {
+		let curEntry:libListSelect={
+			src:entry[0],
+			dest:"",
+			fullPath:libName[0]+"/"+entry[0],
+			selected:false,
+			fType:entry[1]
+		};
+		const matchedCp=cpLinesLib.find((value) => {
+			return value.src===curEntry.src;
+		});
+		if(matchedCp){
+			curEntry.dest=matchedCp.dest;
+			curEntry.selected=true;
+		}
+		retVal.push(curEntry);
+	}
+	return retVal;
+}
+
 //refresh the drive list
 async function refreshDrives() {
 	//use a temp array in case of error
@@ -187,6 +270,11 @@ async function refreshDrives() {
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
+}
+
+function toBinaryArray(str: string):Uint8Array {
+	const encoder=new TextEncoder();
+	return encoder.encode(str);
 }
 
 function getCurrentDriveConfig(): string {
@@ -389,6 +477,88 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	
 	context.subscriptions.push(sbItemCmd2);
+
+	//custom object for pick to save src only
+	interface libSelPick extends vscode.QuickPickItem {
+		src:string,
+		dest:string
+	}
+
+	//#15, command to manage cpfiles library settings
+	const cmdMngLibSettings=vscode.commands.registerCommand("circuitpythonsync.mngcpfiles", async () => {
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			return;
+		}
+		if(!libFilesExist) {
+			vscode.window.showInformationMessage('!! No libraries yet created !!');
+			return;
+		}
+		//first read the current cpfile
+		const cpLines=await parseCpfiles();
+		//then get the current merged list
+		let libListSelects=await getlibListSelect(cpLines);
+		//now create a list of quickpicks
+		// construct themeicons to use in pick instead of literals
+		const fileIcon:vscode.ThemeIcon=new vscode.ThemeIcon("file");
+		const folderIcon:vscode.ThemeIcon=new vscode.ThemeIcon("folder");
+		let picks:libSelPick[]=Array<libSelPick>(0);
+		for(const libSel of libListSelects) {
+			const pick:libSelPick={
+				label: libSel.fullPath + (libSel.dest ? " -> "+libSel.dest : ""),
+				picked:libSel.selected,
+				iconPath:(libSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
+				src:libSel.src,
+				dest:libSel.dest
+			};
+			picks.push(pick);
+		}
+		const pickOpt:vscode.QuickPickOptions={
+			canPickMany:true,
+			placeHolder: "Check or uncheck desired files and folders",
+			title: "Choose Libraries for cpfiles.txt"
+		};
+		const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
+			{title:"Choose Libraries for cpfiles.txt",placeHolder:"Check or uncheck desired files and folders",canPickMany:true}
+		);
+		if(newChoices){
+			//the return is only the new picks, all others in cpfiles should be deleted
+			//just format the file again from cpLines and newChoices
+			// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
+			if(
+				cpLines.some((cpl) => {
+					return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+				})
+			){
+				let ans=await vscode.window.showWarningMessage("Destination mappings will be deleted, continue?","Yes","No");
+				if(ans==="No"){return;}
+			}
+			// **ALSO, if all lib paths are taken out warn that entire library will be copied
+			if(newChoices.length===0){
+				let ans=await vscode.window.showWarningMessage("No lib folders/files selected, entire lib folder will be copied, continue?","Yes","No");
+				if(ans==="No"){return;}
+			}
+			//get the files only lines from cpLines
+			const cpLinesPy=cpLines.filter(lne => !lne.inLib);
+			//now start constructing the new file
+			let newFileContents:string="";
+			for(const lne of cpLinesPy){
+				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
+			}
+			//now add the selections from choices 
+			for(const nc of newChoices){
+				newFileContents+=nc.label+"\n";
+			}
+			//write cpfiles, creating if needed and making backup if orig not empty
+			const wrslt=await writeCpfiles(newFileContents);
+			if(wrslt){
+				//give error message
+				vscode.window.showErrorMessage(wrslt);
+			}
+		}
+	});
+	context.subscriptions.push(cmdMngLibSettings);
 	
 	// ** query attached drives for the initial cache
 	await refreshDrives();

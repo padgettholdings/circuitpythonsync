@@ -44,6 +44,10 @@
       {
         "command": "circuitpythonsync.opendir",
         "title": "CP Set Drive"
+      },
+      {
+        "command": "circuitpythonsync.mngcpfiles",
+        "title": "CP Manage Lib"
       }
     ],
     "configuration":{     
