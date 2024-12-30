@@ -41,3 +41,6 @@
 ### issue 11, library functionality
 - create release v0.0.8 for testing on all platforms
 - create release v0.0.8a for testing on all platforms, correct version in package
+
+### issue 15, library manage
+- create release v0.0.9 for testing all platforms because of file management
