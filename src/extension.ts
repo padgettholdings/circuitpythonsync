@@ -102,12 +102,16 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	const fles=await vscode.workspace.findFiles(relPat);
 	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.txt');
 	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.bak');
-	if(!fles){
+	if(!fles || fles.length===0){
+		// ** NO, don't need to create explicitly, write will create, and .vscode has to exist
+		//	because can't get here without drive mapping
+		/*
 		try{
 			await vscode.workspace.fs.createDirectory(cpFilePath);
 		} catch(error) {
 			return "Could not create cpfiles.txt";
 		}
+		*/
 	} else {
 		//file existed, make the backup
 		await vscode.workspace.fs.copy(cpFilePath,cpFilePathBkup,{overwrite:true});
