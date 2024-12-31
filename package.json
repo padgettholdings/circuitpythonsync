@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.0.8",
+  "version": "0.0.9-a",
   "publisher": "standsi",
   "license":"MIT",
   "repository": {
@@ -44,6 +44,10 @@
       {
         "command": "circuitpythonsync.opendir",
         "title": "CP Set Drive"
+      },
+      {
+        "command": "circuitpythonsync.mngcpfiles",
+        "title": "CP Manage Lib"
       }
     ],
     "configuration":{     
