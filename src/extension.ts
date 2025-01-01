@@ -945,6 +945,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const txtChg=vscode.workspace.onDidSaveTextDocument(async (event) => {
 		//NOTE ASSUME THAT file change doesn't affect this ext if no workspace????
 		// BUT just return to keep noise level down
+		//NOTE, this fires when any files in workspace are edited OR settings changes
 		//NOTE,  just saving should not change the validity of the file or library copies
 		//  UNLESS it is cpfiles, so do the refresh and then check current file against copy specs
 		// ALSO tracking library changes should be done in filewatcher not here
@@ -1114,7 +1115,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(libWatchCreate);
 		context.subscriptions.push(libWatchDelete);
 		//now the py files, will need to check cpfiles
-		const relFilesPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],'*.py');
+		const relFilesPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],'*.*');
 		const pyFileWatcher=vscode.workspace.createFileSystemWatcher(relFilesPath);
 		const pyWatchCreate=pyFileWatcher.onDidCreate(async (uri) => {
 			vscode.window.showInformationMessage("got py create: "+uri.fsPath);
@@ -1179,6 +1180,59 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(pyFileWatcher);
 		context.subscriptions.push(pyWatchCreate);
 		context.subscriptions.push(pyWatchDelete);
+
+		// **Monitor changes to cpfiles due to mng tool changes not triggering text doc save
+		const relFileLstPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],".vscode/cpfiles.txt");
+		const fileListWatcher=vscode.workspace.createFileSystemWatcher(relFileLstPath);
+		const fileListWatchChg=fileListWatcher.onDidChange(async (uri) => {
+			// ** refresh drive list in case changed
+			await refreshDrives();
+			// ** refresh the spec status
+			let cpFileLines=await parseCpfiles();
+			if(!cpFileLines || cpFileLines.length===0){
+				//just put in default py files to check and no lib
+				cpFileLines=[
+					{
+						src:'code.py', dest:'',	inLib:false
+					},
+					{
+						src: 'main.py',	dest: '', inLib: false
+					}
+				];
+			}
+			//now check sources
+			const fileSources=await checkSources(cpFileLines);
+			if(fileSources) {
+				pyFilesExist=fileSources.pyExists;
+				libFilesExist=fileSources.libExists;
+			}
+			// if either type is not valid, need to turn off lighting
+			if(!pyFilesExist){
+				statusBarItem1.backgroundColor=undefined;
+			}
+			if(!libFilesExist){
+				statusBarItem2.backgroundColor=undefined;
+			}
+			// see if file event was in the specs, libs don't show up here since not edited
+			// note this won't be found if pyFilesExist is false
+			const foundEl=cpFileLines.some(lne => !lne.inLib && uri.fsPath.toLowerCase().endsWith(lne.src.toLowerCase()));
+			if(foundEl){
+				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+			}
+			//now check whether change was in cpfiles itself, if so and flags are on, light up
+			if(uri.fsPath.toLowerCase().endsWith("cpfiles.txt")){
+				if(pyFilesExist){
+					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				}
+				if(libFilesExist){
+					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				}
+			}
+			updateStatusBarItems();
+			statusBarItem1.show();
+			statusBarItem2.show();
+		});
+
 	}
 }
 
