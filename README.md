@@ -46,3 +46,6 @@
 - create release v0.0.9 for testing all platforms because of file management
 - create release v0.0.9a for testing on platforms after fixing cpfiles create bug
 - release number didn't work, try v0.0.9-a
+
+### issue 22, cpfiles issues
+- create release v0.0.10 for testing on all platforms

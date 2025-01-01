@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.0.9-a",
+  "version": "0.0.10",
   "publisher": "standsi",
   "license":"MIT",
   "repository": {
