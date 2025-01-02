@@ -286,7 +286,7 @@ function toBinaryArray(str: string):Uint8Array {
 
 function getCurrentDriveConfig(): string {
 	const curDriveConf=vscode.workspace.getConfiguration('circuitpythonsync');
-	let curDrive=curDriveConf.get('drivepath','');
+	let curDrive=curDriveConf.get(strgs.confDrivepathPKG,'');
 	//still can be null, coalesce to ''
 	curDrive=curDrive ?? '';
 	//if on windows, remove backslashes 
@@ -299,8 +299,8 @@ function getCurrentDriveConfig(): string {
 async function updateStatusBarItems() {
 	if(curDriveSetting===''){
 		//no drive mapped, put error icon in text of both
-		statusBarItem1.text='CPCopy $(error)';
-		statusBarItem2.text='CPLib $(error)';
+		statusBarItem1.text=`${strgs.btnCopyLbl} $(error)`;
+		statusBarItem2.text=`${strgs.btnLibLbl} $(error)`;
 		//and the right tooltip
 		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
 		statusBarItem2.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
@@ -308,11 +308,11 @@ async function updateStatusBarItems() {
 		//NEXT see if have valid files to copy, if not show no sync
 		//NOTE will need to short circuit further actions on these exists flags
 		if(!pyFilesExist) {
-			statusBarItem1.text='CPCopy $(sync-ignored)';
+			statusBarItem1.text=`${strgs.btnCopyLbl} $(sync-ignored)`;
 			statusBarItem1.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
 		}
 		if(!libFilesExist){
-			statusBarItem2.text='CPLib $(sync-ignored)';
+			statusBarItem2.text=`${strgs.btnLibLbl} $(sync-ignored)`;
 			statusBarItem2.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
 		}
 
@@ -329,7 +329,7 @@ async function updateStatusBarItems() {
 			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 			foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 				if(value.length>0){
-					return value[0]==='boot_out.txt';
+					return value[0]===strgs.cpBootFile;
 				} else {
 					return false;
 				}
@@ -342,14 +342,14 @@ async function updateStatusBarItems() {
 		//if(fles.length===0) {
 		if(!foundBootFile){
 			if(pyFilesExist){
-				statusBarItem1.text='CPCopy $(warning)';
+				statusBarItem1.text=`${strgs.btnCopyLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem1.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+				statusBarItem1.tooltip=new vscode.MarkdownString(strgs.cpBootNoFindMKDN);
 			}
 			if(libFilesExist){
-				statusBarItem2.text='CPLib $(warning)';
+				statusBarItem2.text=`${strgs.btnLibLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem2.tooltip=new vscode.MarkdownString('**NOTE that boot_out.txt not found**');
+				statusBarItem2.tooltip=new vscode.MarkdownString(strgs.cpBootNoFindMKDN);
 			}
 		} else {
 			//Try to see if location of boot file matches one of the drives but not usb
@@ -365,20 +365,20 @@ async function updateStatusBarItems() {
 			} 
 			if(gotValidDrive) {
 				if(pyFilesExist){
-					statusBarItem1.text='CPCopy';
+					statusBarItem1.text=strgs.btnCopyLbl;
 					statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
 				}
 				if(libFilesExist){
-					statusBarItem2.text='CPLib';
-					statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+					statusBarItem2.text=strgs.btnLibLbl;
+					statusBarItem2.tooltip='Enabled to copy to '+curDriveSetting;
 				}
 			} else {
 				if(pyFilesExist){
-					statusBarItem1.text='CPCopy $(info)';
+					statusBarItem1.text=`${strgs.btnCopyLbl} $(info)`;
 					statusBarItem1.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
 				}
 				if(libFilesExist){
-					statusBarItem2.text='CPLib $(info)';
+					statusBarItem2.text=`${strgs.btnLibLbl} $(info)`;
 					statusBarItem2.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
 				}
 			}
@@ -401,10 +401,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		console.log('Extension is active BUT NOT IN WORKSPACE, SHOULD RE-ACTIVATE ON WS OPEN');
 	}
 
+	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('circuitpythonsync.helloWorld', () => {
+	const disposable = vscode.commands.registerCommand(helloWorldId, () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		if(haveCurrentWorkspace) {
@@ -415,8 +416,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposable);
 
-	const button1Id:string ='circuitpythonsync.button1';
-	const button2Id:string ='circuitpythonsync.button2';
+	const button1Id:string =strgs.cmdBtn1PKG;
+	const button2Id:string =strgs.cmdBtn2PKG;
 
 	// ** the copy files button
 	const sbItemCmd1=vscode.commands.registerCommand(button1Id,() => {
@@ -491,8 +492,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		dest:string
 	}
 
+	const mngCpFilesId:string=strgs.cmdMngLibPKG;
 	//#15, command to manage cpfiles library settings
-	const cmdMngLibSettings=vscode.commands.registerCommand("circuitpythonsync.mngcpfiles", async () => {
+	const cmdMngLibSettings=vscode.commands.registerCommand(mngCpFilesId, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage('!! Must have open workspace !!');
@@ -686,7 +688,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 				let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 					if(value.length>0){
-						return value[0]==='boot_out.txt';
+						return value[0]===strgs.cpBootFile;
 					} else {
 						return false;
 					}
@@ -701,7 +703,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				if(connectDrvPath!==curDriveSetting) {
 					const pickRes=await vscode.window.showInformationMessage('Found a potential CircuitPython Board on drive: "'+connectDrvPath+'".  Do you want to map it?','Yes','No');
 					if(pickRes==='Yes') {
-						vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',connectDrvPath);
+						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
 						updateStatusBarItems();
 					}
@@ -722,8 +724,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(wkspcChg);
 
+	const openDirId:string=strgs.cmdSetDirPKG;
 	//command to get drive using open file dialog -- NOW it tries to find CP drive first
-	const fileCmd=vscode.commands.registerCommand('circuitpythonsync.opendir', async () => {
+	const fileCmd=vscode.commands.registerCommand(openDirId, async () => {
 		// ** if no workspace this command does nothing but give warning **
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage('!! Must have open workspace !!');
@@ -795,7 +798,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 							if(value.length>0){
-								return value[0]==='boot_out.txt';
+								return value[0]===strgs.cpBootFile;
 							} else {
 								return false;
 							}
@@ -889,7 +892,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//otherwise if selected detected drive, just update config, else open file dialog
 		if(result.path!=='') {
-			vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',result.path);
+			vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,result.path);
 			//set the status bar text to active and save setting locally
 			curDriveSetting=result.path;
 			//statusBarItem1.color=undefined;
@@ -919,7 +922,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						curDriveSetting=curDriveSetting.toUpperCase().replace(/\//g,'');
 					}
 				}
-				vscode.workspace.getConfiguration().update('circuitpythonsync.drivepath',curDriveSetting);
+				vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,curDriveSetting);
 				//set the status bar text to active and save setting locally
 				//statusBarItem1.color=undefined;
 				updateStatusBarItems();
@@ -940,7 +943,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		await refreshDrives();
 		// **
 		//see if the drivepath changed
-		if (event.affectsConfiguration('circuitpythonsync.drivepath')) {
+		if (event.affectsConfiguration(`circuitpythonsync.${strgs.confDrivepathPKG}`)) {
 			const curDrive=getCurrentDriveConfig();
 			if (curDriveSetting!==curDrive) {
 				curDriveSetting=curDrive;
@@ -1001,7 +1004,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// note this won't be found if pyFilesExist is false
 		const foundEl=cpFileLines.some(lne => !lne.inLib && event.fileName.toLowerCase().endsWith(lne.src.toLowerCase()));
 		if(foundEl){
-			statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+			statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 		}
 		//now check whether change was in cpfiles itself, if so and flags are on, light up
 		// ** Will not get here...
@@ -1098,7 +1101,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				//	- cpfiles has no lib listings, in which case whole folder is valid
 				//	- cpfiles has the path created
 				if(!cpFileLines.some(lne => lne.inLib) || cpFileLines.some(lne => uri.path.endsWith(lne.src))){
-					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem2.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 			} else {
 				libFilesExist=false;
@@ -1124,7 +1127,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					//	- cpfiles has no lib listings, in which case whole folder is valid
 					//	- cpfiles has the path deleted so it will be cleaned up on copy
 					if(!cpFileLines.some(lne => lne.inLib) || cpFileLines.some(lne => uri.path.endsWith(lne.src))){
-						statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+						statusBarItem2.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 					}
 				} else {
 					libFilesExist=false;
@@ -1164,11 +1167,11 @@ export async function activate(context: vscode.ExtensionContext) {
 					//cpfiles exists, make sure new file in there to light it up
 					if(cpFileLines.some(entry => !entry.inLib && uri.path.endsWith(entry.src))){
 						// ** since a valid file was created, treat like a change and light it up
-						statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+						statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 					}
 				} else {
 					// ** cp files empty so it's a valid file, treat like a change and light it up
-					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 			} else {
 				pyFilesExist=false;
@@ -1243,16 +1246,16 @@ export async function activate(context: vscode.ExtensionContext) {
 			// note this won't be found if pyFilesExist is false
 			const foundEl=cpFileLines.some(lne => !lne.inLib && uri.fsPath.toLowerCase().endsWith(lne.src.toLowerCase()));
 			if(foundEl){
-				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
 			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
 				if(pyFilesExist){
-					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 				if(libFilesExist){
-					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem2.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 			}
 			updateStatusBarItems();
@@ -1294,16 +1297,16 @@ export async function activate(context: vscode.ExtensionContext) {
 			// note this won't be found if pyFilesExist is false
 			const foundEl=cpFileLines.some(lne => !lne.inLib && uri.fsPath.toLowerCase().endsWith(lne.src.toLowerCase()));
 			if(foundEl){
-				statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+				statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
 			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
 				if(pyFilesExist){
-					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 				if(libFilesExist){
-					statusBarItem2.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
+					statusBarItem2.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
 			}
 			updateStatusBarItems();
