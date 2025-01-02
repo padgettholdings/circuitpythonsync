@@ -3,6 +3,9 @@
 import * as vscode from 'vscode';
 import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
+//#19, get strings
+import * as strgs from './strings.js';
+
 //import { arrayBuffer } from 'stream/consumers';
 //import { error } from 'console';
 //import { fstat } from 'fs';
@@ -57,7 +60,7 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 	let outLines:cpFileLine[]=Array<cpFileLine>(0);
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return outLines;}
-	const relPat=new vscode.RelativePattern(wsRootFolder,'.vscode/cpfiles.txt');
+	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs.cpfiles}`);
 	const fles=await vscode.workspace.findFiles(relPat);
 	if(fles.length>0){
 		//cpfiles exists, read and split into lines
@@ -98,10 +101,10 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	// ** should never call without workspace, this is just to get compiler to work **
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return "";}
-	const relPat=new vscode.RelativePattern(wsRootFolder,'.vscode/cpfiles.txt');
+	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs.cpfiles}`);
 	const fles=await vscode.workspace.findFiles(relPat);
-	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.txt');
-	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.bak');
+	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfiles}`);
+	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfilesbak}`);
 	if(!fles || fles.length===0){
 		// ** NO, don't need to create explicitly, write will create, and .vscode has to exist
 		//	because can't get here without drive mapping
@@ -121,7 +124,7 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	try{
 		await vscode.workspace.fs.writeFile(cpFilePath,bFil);
 	} catch(error) {
-		return "Could not write cpfiles.txt";
+		return strgs.noWriteCpfile;
 	}
 	return "";
 }
@@ -520,11 +523,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		const pickOpt:vscode.QuickPickOptions={
 			canPickMany:true,
-			placeHolder: "Check or uncheck desired files and folders",
-			title: "Choose Libraries for cpfiles.txt"
+			placeHolder: strgs.mngLibChecks,
+			title: strgs.mngLibChooseLibs
 		};
 		const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
-			{title:"Choose Libraries for cpfiles.txt",placeHolder:"Check or uncheck desired files and folders",canPickMany:true}
+			{title:strgs.mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
 		);
 		if(newChoices){
 			//the return is only the new picks, all others in cpfiles should be deleted
@@ -563,11 +566,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			// ** Per #22, if file written was not blank BUT no py files were included then
 			//	give a warning that only code.py or main.py will be copied, and option to edit
 			if(newFileContents && cpLinesPy.length===0){
-				const ans=await vscode.window.showWarningMessage("No code files included in cpfiles.txt mapping, so only code.py or main.py will be copied.  Would you like to edit?","Yes","No");
+				const ans=await vscode.window.showWarningMessage(strgs.noCodeFilesInCp,"Yes","No");
 				if(ans==="Yes"){
 					const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 					if(!wsRootFolder) {return "";}
-					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,'.vscode/cpfiles.txt');
+					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfiles}`);
 					const doc=await vscode.workspace.openTextDocument(cpFilePath);
 					vscode.window.showTextDocument(doc);
 				}
@@ -964,7 +967,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ALSO tracking library changes should be done in filewatcher not here
 		if(!haveCurrentWorkspace){return;}
 		// ** Per #22, put in file watcher on cpfiles.txt, so don't process that here
-		if(event.fileName.toLowerCase().endsWith("cpfiles.txt")){return;}
+		if(event.fileName.toLowerCase().endsWith(strgs.cpfiles)){return;}
 		// ** refresh drive list in case changed
 		await refreshDrives();
 		// ** refresh the spec status
@@ -1203,7 +1206,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(pyWatchDelete);
 
 		// **Monitor changes to cpfiles due to mng tool changes not triggering text doc save
-		const relFileLstPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],".vscode/cpfiles.txt");
+		const relFileLstPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],`.vscode/${strgs.cpfiles}`);
 		const fileListWatcher=vscode.workspace.createFileSystemWatcher(relFileLstPath);
 		//this will pickup create and change
 		const fileListWatchChg=fileListWatcher.onDidChange(async (uri) => {
@@ -1244,7 +1247,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
-			if(uri.fsPath.toLowerCase().endsWith("cpfiles.txt")){
+			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
 				if(pyFilesExist){
 					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 				}
@@ -1295,7 +1298,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
-			if(uri.fsPath.toLowerCase().endsWith("cpfiles.txt")){
+			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
 				if(pyFilesExist){
 					statusBarItem1.backgroundColor=new vscode.ThemeColor('statusBarItem.warningBackground');
 				}
