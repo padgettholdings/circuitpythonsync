@@ -14,6 +14,10 @@ import * as strgs from './strings.js';
 //import { validateHeaderValue } from 'http';
 //import { validateHeaderValue } from 'http';
 
+// ** strings that come from settings - defaults still in strings.ts **
+let cpfilesSetting:string=strgs.cpfiles;
+let cpBootFileSetting:string=strgs.cpBootFile;
+
 //the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
 //and this is lib
@@ -128,7 +132,6 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	}
 	return "";
 }
-
 
 //helper type for return of file states
 interface fileStates {
@@ -273,7 +276,6 @@ async function refreshDrives() {
 	} catch {}
 } 
 
-
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
@@ -387,7 +389,6 @@ async function updateStatusBarItems() {
 	//?? do we do show here??
 }
 
-
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -400,6 +401,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	} else {
 		console.log('Extension is active BUT NOT IN WORKSPACE, SHOULD RE-ACTIVATE ON WS OPEN');
 	}
+
+	// ** try to get config settings that override defaults
+	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+	const cpfilesSettingTry=cpsyncSettings.get('cpfilestxt');
+	if(cpfilesSettingTry){
+		//got setting, put use as active
+		cpfilesSetting=cpfilesSettingTry as string;
+	} else {
+		//did not find so set current into global
+		cpsyncSettings.update('cpfilestxt',cpfilesSetting,true);
+	}
+
+	vscode.window.showInformationMessage(`active cpfiles setting is: ${cpfilesSetting}`);
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
