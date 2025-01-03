@@ -1,0 +1,60 @@
+// **NOTES**
+// messages with markdown suffixed with MKDN, check for validity before change
+// strings that also show up in package.json suffixed with PKG, must change there too!
+
+// workspace config setting for current drive path, fixed to prefix with 'circuitpythonsync.'
+//  CAN CHANGE HERE TO CHANGE AND RECOMPILE IN CODE, BUT package.json will need to be changed also
+export const confDrivepathPKG:string ='drivepath';
+
+//command strings are also in package.json
+export const cmdHelloPKG:string ='circuitpythonsync.helloWorld';
+export const cmdBtn1PKG:string ='circuitpythonsync.button1';
+export const cmdBtn2PKG:string ='circuitpythonsync.button2';
+export const cmdSetDirPKG:string ='circuitpythonsync.opendir';
+export const cmdMngLibPKG:string ='circuitpythonsync.mngcpfiles';
+
+//change to have different name for manifest file
+export const cpfiles:string= 'cpfiles.txt';
+export const cpfilesbak:string= 'cpfiles.bak';
+export const noWriteCpfile:string = `Could not write ${cpfiles}`;
+export const mngLibChooseLibs:string = `Choose Libraries for ${cpfiles}`;
+export const noCodeFilesInCp:string =`No code files included in ${cpfiles} mapping, so only code.py or main.py will be copied.  Would you like to edit?`;
+
+//status bar button label text, keep short, icon usually to right
+export const btnCopyLbl:string ='CPCopy';
+export const btnLibLbl:string ='CPLib';
+export const btnLightBkgd:string ='statusBarItem.warningBackground';
+
+//file to try to determine if path has circuit python boot file, only change if adafruit does
+export const cpBootFile:string ='boot_out.txt';
+export const cpBootNoFindMKDN:string =`**NOTE that ${cpBootFile} not found**`;
+
+//various messages
+export const mngLibChecks:string = 'Check or uncheck desired files and folders';
+export const mustMapMKDN:string='**MUST MAP DRIVE FIRST**';
+export const noFilesMKDN:string='**NO FILES EXIST THAT ARE TO BE COPIED**';
+export const enabledToCopy:string='Enabled to copy to ';  //+curDriveSetting'
+export const canCopyInsCurDrive:string[]=[
+    'Can copy to ', //+curDriveSetting + 
+    ' BUT not USB drive!'
+];
+export const mustHaveWkspce:string='!! Must have open workspace !!';
+export const mustSetDrv:string='!! Must set drive before copy !!';
+export const noFilesSpecd:string='!! No files specified to copy exist !!';
+export const noLibSpecd:string='!! No libraries specified to copy exist !!';
+export const warnEntireLib:string='WARNING! Entire lib folder will be copied, continue?';
+export const noLibDir:string='!! No libraries yet created !';
+export const destMapsDel:string='Destination mappings will be deleted, continue?';
+export const cnfrmEntireLib:string='No lib folders/files selected, entire lib folder will be copied, continue?';
+export const fndCPDrvInsPath:string[]=[
+    'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
+    '".  Do you want to map it?'
+];
+export const pickManual:string='Pick Manually';
+export const autoDetect:string='Auto Detected';
+export const autoDetectNotUSB:string='Auto Detected but NOT USB';
+export const errListingDrv:string='Error listing drives:';
+export const pickDrvOrManual:string='Pick detected drive or select manually';
+export const cpDrvSel:string='CP Drive Select';
+export const pickDrvOrMount:string='Pick drive or mount point for CP';
+

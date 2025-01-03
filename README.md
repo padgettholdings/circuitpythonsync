@@ -49,3 +49,6 @@
 
 ### issue 22, cpfiles issues
 - create release v0.0.10 for testing on all platforms
+
+### issue 19, add extension prefix in commands, extract string constants
+- create release v0.0.11 for all platforms before actual copy actions
