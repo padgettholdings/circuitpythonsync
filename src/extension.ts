@@ -302,18 +302,18 @@ async function updateStatusBarItems() {
 		statusBarItem1.text=`${strgs.btnCopyLbl} $(error)`;
 		statusBarItem2.text=`${strgs.btnLibLbl} $(error)`;
 		//and the right tooltip
-		statusBarItem1.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
-		statusBarItem2.tooltip=new vscode.MarkdownString('**MUST MAP DRIVE FIRST**');
+		statusBarItem1.tooltip=new vscode.MarkdownString(strgs.mustMapMKDN);
+		statusBarItem2.tooltip=new vscode.MarkdownString(strgs.mustMapMKDN);
 	} else {
 		//NEXT see if have valid files to copy, if not show no sync
 		//NOTE will need to short circuit further actions on these exists flags
 		if(!pyFilesExist) {
 			statusBarItem1.text=`${strgs.btnCopyLbl} $(sync-ignored)`;
-			statusBarItem1.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
+			statusBarItem1.tooltip=new vscode.MarkdownString(strgs.noFilesMKDN);
 		}
 		if(!libFilesExist){
 			statusBarItem2.text=`${strgs.btnLibLbl} $(sync-ignored)`;
-			statusBarItem2.tooltip=new vscode.MarkdownString('**NO FILES EXIST THAT ARE TO BE COPIED**');
+			statusBarItem2.tooltip=new vscode.MarkdownString(strgs.noFilesMKDN);
 		}
 
 		//check to see if boot_out.txt is there, warn if not
@@ -366,20 +366,20 @@ async function updateStatusBarItems() {
 			if(gotValidDrive) {
 				if(pyFilesExist){
 					statusBarItem1.text=strgs.btnCopyLbl;
-					statusBarItem1.tooltip='Enabled to copy to '+curDriveSetting;
+					statusBarItem1.tooltip=strgs.enabledToCopy+curDriveSetting;
 				}
 				if(libFilesExist){
 					statusBarItem2.text=strgs.btnLibLbl;
-					statusBarItem2.tooltip='Enabled to copy to '+curDriveSetting;
+					statusBarItem2.tooltip=strgs.enabledToCopy+curDriveSetting;
 				}
 			} else {
 				if(pyFilesExist){
 					statusBarItem1.text=`${strgs.btnCopyLbl} $(info)`;
-					statusBarItem1.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+					statusBarItem1.tooltip=strgs.canCopyInsCurDrive[0]+curDriveSetting + strgs.canCopyInsCurDrive[1];
 				}
 				if(libFilesExist){
 					statusBarItem2.text=`${strgs.btnLibLbl} $(info)`;
-					statusBarItem2.tooltip='Can copy to '+curDriveSetting + ' BUT not USB drive!';
+					statusBarItem2.tooltip=strgs.canCopyInsCurDrive[0]+curDriveSetting + strgs.canCopyInsCurDrive[1];
 				}
 			}
 		}
@@ -423,16 +423,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	const sbItemCmd1=vscode.commands.registerCommand(button1Id,() => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage('!! Must set drive before copy !!');
+			vscode.window.showInformationMessage(strgs.mustSetDrv);
 		} else {
 			//see if no valid files to copy
 			if(!pyFilesExist) {
-				vscode.window.showInformationMessage('!! No files specified to copy exist !!');
+				vscode.window.showInformationMessage(strgs.noFilesSpecd);
 				return;
 			}
 			//###TBD### do copy
@@ -449,16 +449,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	const sbItemCmd2=vscode.commands.registerCommand(button2Id, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage('!! Must set drive before copy !!');
+			vscode.window.showInformationMessage(strgs.mustSetDrv);
 		} else {
 			//see if no valid lib to copy do msg and get out
 			if(!libFilesExist) {
-				vscode.window.showInformationMessage('!! No libraries specified to copy exist !!');
+				vscode.window.showInformationMessage(strgs.noLibSpecd);
 				return;
 			}
 			//#16, add confirmation if entire library is to be copied
@@ -468,7 +468,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				const cpFileLines=await parseCpfiles();
 				if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
 					//yes, whole lib to be copied, confirm
-					const confAns=await vscode.window.showWarningMessage("WARNING! Entire lib folder will be copied, continue?","Yes","No, cancel","No, don't ask again");
+					const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","No, don't ask again");
 					if(!confAns || confAns==="No, cancel"){
 						return;
 					}
@@ -497,11 +497,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	const cmdMngLibSettings=vscode.commands.registerCommand(mngCpFilesId, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
 		if(!libFilesExist) {
-			vscode.window.showInformationMessage('!! No libraries yet created !!');
+			vscode.window.showInformationMessage(strgs.noLibDir);
 			return;
 		}
 		//first read the current cpfile
@@ -540,12 +540,12 @@ export async function activate(context: vscode.ExtensionContext) {
 					return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 				})
 			){
-				let ans=await vscode.window.showWarningMessage("Destination mappings will be deleted, continue?","Yes","No");
+				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes","No");
 				if(ans==="No"){return;}
 			}
 			// **ALSO, if all lib paths are taken out warn that entire library will be copied
 			if(newChoices.length===0){
-				let ans=await vscode.window.showWarningMessage("No lib folders/files selected, entire lib folder will be copied, continue?","Yes","No");
+				let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
 				if(ans==="No"){return;}
 			}
 			//get the files only lines from cpLines
@@ -701,7 +701,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(connectDrvPath){
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
-					const pickRes=await vscode.window.showInformationMessage('Found a potential CircuitPython Board on drive: "'+connectDrvPath+'".  Do you want to map it?','Yes','No');
+					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],'Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
@@ -729,7 +729,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const fileCmd=vscode.commands.registerCommand(openDirId, async () => {
 		// ** if no workspace this command does nothing but give warning **
 		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage('!! Must have open workspace !!');
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		} 
 		// TBD- get drivelist, but for now fake it
@@ -757,7 +757,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let picks: drivePick[] = [
 			{
 				path:'',
-				label: 'Pick Manually',
+				label: strgs.pickManual,
 				description: ''
 			}
 		];
@@ -822,7 +822,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							path:detectedPath,
 							label:detectedPath,
 							description:'',
-							detail: '           $(debug-disconnect) Auto Detected'
+							detail: `           $(debug-disconnect) ${strgs.autoDetect}`
 						};
 						picks.unshift(mappedDrive);				
 					}
@@ -833,7 +833,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							path:detectedPathNotUsb,
 							label:detectedPathNotUsb,
 							description:'',
-							detail: '           $(info) Auto Detected but NOT USB'
+							detail: `           $(info) ${strgs.autoDetectNotUSB}`
 						};
 						picks.unshift(mappedDrive);				
 					}
@@ -841,7 +841,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			  }
 			};
 		} catch (error) {
-			console.error('Error listing drives:', error);
+			console.error(strgs.errListingDrv, error);
 		}		
 		//FAKE this is the "detected" drive
 		// const mappedDrive:drivePick={
@@ -875,8 +875,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		// 	title: 'CP Drive Select'
 		// });
 		const result=await vscode.window.showQuickPick<drivePick>(picks,{
-			placeHolder:'Pick detected drive or select manually',
-			title: 'CP Drive Select'
+			placeHolder:strgs.pickDrvOrManual,
+			title: strgs.cpDrvSel
 		});
 		//if(result) {vscode.window.showInformationMessage(result.label);};
 		//if no choice just get out
@@ -907,7 +907,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				canSelectFolders:true,
 				canSelectMany:false,
 				defaultUri: curDrive==='' ? vscode.Uri.parse('/') : vscode.Uri.parse(baseUri),
-				title: 'Pick drive or mount point for CP'
+				title: strgs.pickDrvOrMount
 				};
 			const dirs=await vscode.window.showOpenDialog(opts);
 			if(dirs){

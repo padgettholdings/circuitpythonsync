@@ -2,7 +2,7 @@
 // messages with markdown suffixed with MKDN, check for validity before change
 // strings that also show up in package.json suffixed with PKG, must change there too!
 
-// workspace setting for current drive path, fixed to prefix with 'circuitpythonsync.'
+// workspace config setting for current drive path, fixed to prefix with 'circuitpythonsync.'
 //  CAN CHANGE HERE TO CHANGE AND RECOMPILE IN CODE, BUT package.json will need to be changed also
 export const confDrivepathPKG:string ='drivepath';
 
@@ -47,8 +47,8 @@ export const noLibDir:string='!! No libraries yet created !';
 export const destMapsDel:string='Destination mappings will be deleted, continue?';
 export const cnfrmEntireLib:string='No lib folders/files selected, entire lib folder will be copied, continue?';
 export const fndCPDrvInsPath:string[]=[
-    'Found a potential CircuitPython Board on drive: ', //+connectDrvPath+'"
-    '.  Do you want to map it?'
+    'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
+    '".  Do you want to map it?'
 ];
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
