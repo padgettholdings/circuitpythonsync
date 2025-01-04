@@ -22,6 +22,7 @@ let strgs_noWriteCpfile:string=strgs.noWriteCpfile;
 let strgs_mngLibChooseLibs:string=strgs.mngLibChooseLibs;
 let strgs_noCodeFilesInCp:string=strgs.noCodeFilesInCp;
 let strgs_noPyCodeFilesInCp:string=strgs.noPyCodeFilesInCp;
+let strgs_fileInCpNoExist:string=strgs.fileInCpNoExist;
 let strgs_cpBootNoFindMKDN:string=strgs.cpBootNoFindMKDN;
 
 //the statusbar buttons - this is CPCopy
@@ -140,28 +141,45 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 }
 
 //helper type for return of file states
+// ** per #26, add flags for no py files and filenames not existing
 interface fileStates {
 	pyExists: boolean,
-	libExists: boolean
+	libExists: boolean,
+	noPyFiles: boolean,
+	filesNoExist: boolean
 }
 
 //determine if files from cpFilesLine[] exist in either root or lib folder
 // ** should only call if have something in arg but will work, just always returns pyExists=false and libExists=true
 // ** assumes libraryFolderExists has been set
+// ** per #26, also looks in cplines to see if none of the non-lib files are .py, and whether any filenames no exist
 async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 	let retVal:fileStates={
 		pyExists: false,
-		libExists: false
+		libExists: false,
+		noPyFiles: false,
+		filesNoExist: false
 	};
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}
 	//first the py (really any source) files in root
 	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
 	if(rootDir.length>0){
-		const filesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
+		const anyValidfilesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
 			return !cpfle.inLib && rootDir.some(dfile => dfile[0]===cpfle.src && dfile[1]===vscode.FileType.File);
 		});
-		if(filesInDir){retVal.pyExists=true;}
+		// if got some non lib files, return flag that is used to say SOME valid files exist
+		if(anyValidfilesInDir){
+			retVal.pyExists=true;
+		}
+		//now check the files independently for #26 conditions
+		const gotPyFile=cpLines.some(cpFileLine => !cpFileLine.inLib && cpFileLine.src.endsWith(".py"));
+		if(!gotPyFile) { retVal.noPyFiles=true; }
+		const allExist=cpLines.filter(lne => !lne.inLib).every((cpFileLine) => {
+			return rootDir.some(dfile =>  dfile[0]===cpFileLine.src && dfile[1]===vscode.FileType.File);
+		});
+		if(!allExist) { retVal.filesNoExist=true; }
+
 	}
 	//now see if any files marked lib are in folder if it exists
 	// BUT first see if any lib files are in lib folder OR if no lib files in cpfiles
@@ -438,7 +456,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
-	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist]=strgs.getCpFilesMsgs(strgs_cpfiles);
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
@@ -610,6 +628,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			// ** Per #22, if file written was not blank BUT no py files were included then
 			//	give a warning that only code.py or main.py will be copied, and option to edit
+			/* NOT NEEDED HERE, FILE WATCHER ON CPFILES WILL PICK UP CHANGES
 			if(newFileContents && cpLinesPy.length===0){
 				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
 				if(ans==="Yes"){
@@ -633,6 +652,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					}	
 				}
 			}
+			*/
 		}
 	});
 	context.subscriptions.push(cmdMngLibSettings);
@@ -1273,10 +1293,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			await refreshDrives();
 			// ** refresh the spec status
 			let cpFileLines=await parseCpfiles();
+			// need to save original copy of file for checking later
+			let origCpLines=[...cpFileLines];
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 				//just put in default py files to check and no lib
-				cpFileLines=[
+				const cpFileLinesAdd=[
 					{
 						src:'code.py', dest:'',	inLib:false
 					},
@@ -1284,6 +1306,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						src: 'main.py',	dest: '', inLib: false
 					}
 				];
+				cpFileLines.push(...cpFileLinesAdd);
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
@@ -1319,32 +1342,56 @@ export async function activate(context: vscode.ExtensionContext) {
 			statusBarItem2.show();
 
 			// ** ALSO warn about potential issues with code files in cpfiles, same as with mng libs cmd
-			//get the files only lines from cpLines
-			const cpLinesPy=cpFileLines.filter(lne => !lne.inLib);
+			//get the files only lines from cpLines, BUT USE THE ORIG, NOT ONE WITH FAKE CP'S.
+			const cpLinesPy=origCpLines.filter(lne => !lne.inLib);
 			// ** Per #22, if file written was not blank BUT no py files were included then
 			//	give a warning that only code.py or main.py will be copied, and option to edit
+			// ** per #26, two new flags from CheckSources that tell more about files listed in cpfiles
+			//first make sure another toast isn't up
+			// **THIS DOES NOT SEEM TO WORK**
+			/*
+			const ctxkeys=await vscode.commands.executeCommand('getContextKeyInfo') as Array<{key:string,value:boolean}>;
+			if(ctxkeys && ctxkeys.find((k) => {
+					return k.key==='notificationToastsVisible' && k.value;
+				})
+			){
+				//just bail
+				return;
+			}
+			*/
+			let triggerEdit=false;
+			let toastShown=false;
 			if(cpLinesPy.length===0){
 				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
+				toastShown=true;
 				if(ans==="Yes"){
-					const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
-					if(!wsRootFolder) {return "";}
-					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
-					const doc=await vscode.workspace.openTextDocument(cpFilePath);
-					vscode.window.showTextDocument(doc);
+					triggerEdit=true;
 				}
 			} else {
-				// ** Per #26, also give warning/edit opp if no python files in files only set
-				const cpLinesPyPy=cpLinesPy.filter(lne => lne.src.endsWith('.py'));
-				if(cpLinesPy.length>0 && cpLinesPyPy.length===0){
+				// ** Per #26, also give warning/edit opp if no python files in files only set, and some no exist
+				//  ALSO these conditions are from checkSources now
+				if(!toastShown && fileSources.noPyFiles){
 					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+					toastShown=true;
 					if(ans==="Yes"){
-						const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
-						if(!wsRootFolder) {return "";}
-						const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
-						const doc=await vscode.workspace.openTextDocument(cpFilePath);
-						vscode.window.showTextDocument(doc);
+						triggerEdit=true;
 					}	
 				}
+				if(!toastShown && fileSources.filesNoExist){
+					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No");
+					toastShown=true;
+					if(ans==="Yes"){
+						triggerEdit=true;
+					}
+				}
+			}
+			//check if want to edit
+			if(triggerEdit){
+				const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+				if(!wsRootFolder) {return "";}
+				const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+				const doc=await vscode.workspace.openTextDocument(cpFilePath);
+				vscode.window.showTextDocument(doc);
 			}
 
 		});
