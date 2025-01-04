@@ -15,8 +15,9 @@ import * as strgs from './strings.js';
 //import { validateHeaderValue } from 'http';
 
 // ** strings that come from settings - defaults still in strings.ts **
-let cpfilesSetting:string=strgs.cpfiles;
-let cpBootFileSetting:string=strgs.cpBootFile;
+let strgs_cpfiles:string=strgs.cpfiles;
+let strgs_cpfilesbak:string=strgs.cpfilesbak;
+let strgs_cpBootFile:string=strgs.cpBootFile;
 
 //the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
@@ -404,16 +405,38 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** try to get config settings that override defaults
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
-	const cpfilesSettingTry=cpsyncSettings.get('cpfilestxt');
-	if(cpfilesSettingTry){
+	const strgs_cpfilesTry=cpsyncSettings.get('cpfilestxt');
+	if(strgs_cpfilesTry){
 		//got setting, put use as active
-		cpfilesSetting=cpfilesSettingTry as string;
-	} else {
-		//did not find so set current into global
-		cpsyncSettings.update('cpfilestxt',cpfilesSetting,true);
+		strgs_cpfiles=strgs_cpfilesTry as string;
 	}
-
-	vscode.window.showInformationMessage(`active cpfiles setting is: ${cpfilesSetting}`);
+	// set current into global
+	cpsyncSettings.update('cpfilestxt',strgs_cpfiles,true);
+	
+	const strgs_cpfilesbakTry=cpsyncSettings.get('cpfilesbak');
+	if(strgs_cpfilesbakTry){
+		//got setting, put use as active
+		strgs_cpfilesbak=strgs_cpfilesbakTry as string;
+	}
+	//set current into global
+	cpsyncSettings.update('cpfilesbak',strgs_cpfilesbak,true);
+	
+	const strgs_cpBootFileTry=cpsyncSettings.get('cpbootfile');
+	if(strgs_cpBootFileTry){
+		//got setting, put use as active
+		strgs_cpBootFile=strgs_cpBootFileTry as string;
+	}
+	//did not find so set current into global
+	cpsyncSettings.update('cpbootfile',strgs_cpBootFile,true);
+	
+	vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
+	vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
+	vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
+	// ** and get revised messages **
+	const [strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
+	const [strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
+	vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
