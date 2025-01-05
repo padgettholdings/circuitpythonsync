@@ -24,6 +24,7 @@ let strgs_noCodeFilesInCp:string=strgs.noCodeFilesInCp;
 let strgs_noPyCodeFilesInCp:string=strgs.noPyCodeFilesInCp;
 let strgs_fileInCpNoExist:string=strgs.fileInCpNoExist;
 let strgs_cpBootNoFindMKDN:string=strgs.cpBootNoFindMKDN;
+let strgs_noPyAndNonExistFilesInCp=strgs.noPyAndNonExistFilesInCp;
 
 //the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
@@ -456,7 +457,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
-	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp]=strgs.getCpFilesMsgs(strgs_cpfiles);
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
@@ -1370,15 +1371,23 @@ export async function activate(context: vscode.ExtensionContext) {
 			} else {
 				// ** Per #26, also give warning/edit opp if no python files in files only set, and some no exist
 				//  ALSO these conditions are from checkSources now
-				if(!toastShown && fileSources.noPyFiles){
+				//  ** try to show just one message, so offer a combined if so
+				if(!toastShown && fileSources.noPyFiles && !fileSources.filesNoExist){
 					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
 					}	
 				}
-				if(!toastShown && fileSources.filesNoExist){
+				if(!toastShown && fileSources.filesNoExist && !fileSources.noPyFiles){
 					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No");
+					toastShown=true;
+					if(ans==="Yes"){
+						triggerEdit=true;
+					}
+				}
+				if(!toastShown && fileSources.filesNoExist && fileSources.noPyFiles){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
