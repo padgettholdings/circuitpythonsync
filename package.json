@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "publisher": "standsi",
   "license":"MIT",
   "repository": {
@@ -66,6 +66,33 @@
             "default": null,
             "description": "Last path saved for the attached board. Intended to be set at the workspace level.",
             "scope": "window"
+          },
+          "circuitpythonsync.cpfilestxt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default":"cpfiles.txt",
+            "description": "Manifest filename used to store copy filenames.",
+            "scope":"window"
+          },
+          "circuitpythonsync.cpfilesbak": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default":"cpfiles.bak",
+            "description": "Manifest backup filename used to store copy filenames.",
+            "scope":"window"
+          },
+          "circuitpythonsync.cpbootfile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default":"boot_out.txt",
+            "description": "CircuitPython default file in root of device.",
+            "scope":"window"
           }
         }
     }

@@ -14,6 +14,19 @@ import * as strgs from './strings.js';
 //import { validateHeaderValue } from 'http';
 //import { validateHeaderValue } from 'http';
 
+// ** strings that come from settings - defaults still in strings.ts **
+let strgs_cpfiles:string=strgs.cpfiles;
+let strgs_cpfilesbak:string=strgs.cpfilesbak;
+let strgs_cpBootFile:string=strgs.cpBootFile;
+let strgs_noWriteCpfile:string=strgs.noWriteCpfile;
+let strgs_mngLibChooseLibs:string=strgs.mngLibChooseLibs;
+let strgs_noCodeFilesInCp:string=strgs.noCodeFilesInCp;
+let strgs_noPyCodeFilesInCp:string=strgs.noPyCodeFilesInCp;
+let strgs_fileInCpNoExist:string=strgs.fileInCpNoExist;
+let strgs_cpBootNoFindMKDN:string=strgs.cpBootNoFindMKDN;
+let strgs_noPyAndNonExistFilesInCp:string=strgs.noPyAndNonExistFilesInCp;
+let strgs_warnNoLibsInCP:string=strgs.warnNoLibsInCP;
+
 //the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
 //and this is lib
@@ -60,7 +73,7 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 	let outLines:cpFileLine[]=Array<cpFileLine>(0);
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return outLines;}
-	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs.cpfiles}`);
+	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs_cpfiles}`);
 	const fles=await vscode.workspace.findFiles(relPat);
 	if(fles.length>0){
 		//cpfiles exists, read and split into lines
@@ -101,10 +114,10 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	// ** should never call without workspace, this is just to get compiler to work **
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return "";}
-	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs.cpfiles}`);
+	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs_cpfiles}`);
 	const fles=await vscode.workspace.findFiles(relPat);
-	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfiles}`);
-	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfilesbak}`);
+	const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+	const cpFilePathBkup:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfilesbak}`);
 	if(!fles || fles.length===0){
 		// ** NO, don't need to create explicitly, write will create, and .vscode has to exist
 		//	because can't get here without drive mapping
@@ -124,35 +137,51 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	try{
 		await vscode.workspace.fs.writeFile(cpFilePath,bFil);
 	} catch(error) {
-		return strgs.noWriteCpfile;
+		return strgs_noWriteCpfile;
 	}
 	return "";
 }
 
-
 //helper type for return of file states
+// ** per #26, add flags for no py files and filenames not existing
 interface fileStates {
 	pyExists: boolean,
-	libExists: boolean
+	libExists: boolean,
+	noPyFiles: boolean,
+	filesNoExist: boolean
 }
 
 //determine if files from cpFilesLine[] exist in either root or lib folder
 // ** should only call if have something in arg but will work, just always returns pyExists=false and libExists=true
 // ** assumes libraryFolderExists has been set
+// ** per #26, also looks in cplines to see if none of the non-lib files are .py, and whether any filenames no exist
 async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 	let retVal:fileStates={
 		pyExists: false,
-		libExists: false
+		libExists: false,
+		noPyFiles: false,
+		filesNoExist: false
 	};
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}
 	//first the py (really any source) files in root
 	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
 	if(rootDir.length>0){
-		const filesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
+		const anyValidfilesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
 			return !cpfle.inLib && rootDir.some(dfile => dfile[0]===cpfle.src && dfile[1]===vscode.FileType.File);
 		});
-		if(filesInDir){retVal.pyExists=true;}
+		// if got some non lib files, return flag that is used to say SOME valid files exist
+		if(anyValidfilesInDir){
+			retVal.pyExists=true;
+		}
+		//now check the files independently for #26 conditions
+		const gotPyFile=cpLines.some(cpFileLine => !cpFileLine.inLib && cpFileLine.src.endsWith(".py"));
+		if(!gotPyFile) { retVal.noPyFiles=true; }
+		const allExist=cpLines.filter(lne => !lne.inLib).every((cpFileLine) => {
+			return rootDir.some(dfile =>  dfile[0]===cpFileLine.src && dfile[1]===vscode.FileType.File);
+		});
+		if(!allExist) { retVal.filesNoExist=true; }
+
 	}
 	//now see if any files marked lib are in folder if it exists
 	// BUT first see if any lib files are in lib folder OR if no lib files in cpfiles
@@ -273,7 +302,6 @@ async function refreshDrives() {
 	} catch {}
 } 
 
-
 function fromBinaryArray(bytes: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
@@ -329,7 +357,7 @@ async function updateStatusBarItems() {
 			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 			foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 				if(value.length>0){
-					return value[0]===strgs.cpBootFile;
+					return value[0]===strgs_cpBootFile;
 				} else {
 					return false;
 				}
@@ -344,12 +372,12 @@ async function updateStatusBarItems() {
 			if(pyFilesExist){
 				statusBarItem1.text=`${strgs.btnCopyLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem1.tooltip=new vscode.MarkdownString(strgs.cpBootNoFindMKDN);
+				statusBarItem1.tooltip=new vscode.MarkdownString(strgs_cpBootNoFindMKDN);
 			}
 			if(libFilesExist){
 				statusBarItem2.text=`${strgs.btnLibLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem2.tooltip=new vscode.MarkdownString(strgs.cpBootNoFindMKDN);
+				statusBarItem2.tooltip=new vscode.MarkdownString(strgs_cpBootNoFindMKDN);
 			}
 		} else {
 			//Try to see if location of boot file matches one of the drives but not usb
@@ -387,7 +415,6 @@ async function updateStatusBarItems() {
 	//?? do we do show here??
 }
 
-
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -400,6 +427,41 @@ export async function activate(context: vscode.ExtensionContext) {
 	} else {
 		console.log('Extension is active BUT NOT IN WORKSPACE, SHOULD RE-ACTIVATE ON WS OPEN');
 	}
+
+	// ** try to get config settings that override defaults
+	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+	const strgs_cpfilesTry=cpsyncSettings.get('cpfilestxt');
+	if(strgs_cpfilesTry){
+		//got setting, put use as active
+		strgs_cpfiles=strgs_cpfilesTry as string;
+	}
+	// set current into global
+	cpsyncSettings.update('cpfilestxt',strgs_cpfiles,true);
+	
+	const strgs_cpfilesbakTry=cpsyncSettings.get('cpfilesbak');
+	if(strgs_cpfilesbakTry){
+		//got setting, put use as active
+		strgs_cpfilesbak=strgs_cpfilesbakTry as string;
+	}
+	//set current into global
+	cpsyncSettings.update('cpfilesbak',strgs_cpfilesbak,true);
+	
+	const strgs_cpBootFileTry=cpsyncSettings.get('cpbootfile');
+	if(strgs_cpBootFileTry){
+		//got setting, put use as active
+		strgs_cpBootFile=strgs_cpBootFileTry as string;
+	}
+	//did not find so set current into global
+	cpsyncSettings.update('cpbootfile',strgs_cpBootFile,true);
+	
+	vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
+	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
+	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
+	// ** and get revised messages **
+	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp,strgs_warnNoLibsInCP]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
+	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
+	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
@@ -526,10 +588,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		const pickOpt:vscode.QuickPickOptions={
 			canPickMany:true,
 			placeHolder: strgs.mngLibChecks,
-			title: strgs.mngLibChooseLibs
+			title: strgs_mngLibChooseLibs
 		};
 		const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
-			{title:strgs.mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
+			{title:strgs_mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
 		);
 		if(newChoices){
 			//the return is only the new picks, all others in cpfiles should be deleted
@@ -564,19 +626,35 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(wrslt){
 				//give error message
 				vscode.window.showErrorMessage(wrslt);
+				return;
 			}
 			// ** Per #22, if file written was not blank BUT no py files were included then
 			//	give a warning that only code.py or main.py will be copied, and option to edit
+			/* NOT NEEDED HERE, FILE WATCHER ON CPFILES WILL PICK UP CHANGES
 			if(newFileContents && cpLinesPy.length===0){
-				const ans=await vscode.window.showWarningMessage(strgs.noCodeFilesInCp,"Yes","No");
+				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
 				if(ans==="Yes"){
 					const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 					if(!wsRootFolder) {return "";}
-					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs.cpfiles}`);
+					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
 					const doc=await vscode.workspace.openTextDocument(cpFilePath);
 					vscode.window.showTextDocument(doc);
 				}
+			} else {
+				// ** Per #26, also give warning/edit opp if no python files in files only set
+				const cpLinesPyPy=cpLinesPy.filter(lne => lne.src.endsWith('.py'));
+				if(newFileContents && cpLinesPy.length>0 && cpLinesPyPy.length===0){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+					if(ans==="Yes"){
+						const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+						if(!wsRootFolder) {return "";}
+						const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+						const doc=await vscode.workspace.openTextDocument(cpFilePath);
+						vscode.window.showTextDocument(doc);
+					}	
+				}
 			}
+			*/
 		}
 	});
 	context.subscriptions.push(cmdMngLibSettings);
@@ -688,7 +766,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 				let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 					if(value.length>0){
-						return value[0]===strgs.cpBootFile;
+						return value[0]===strgs_cpBootFile;
 					} else {
 						return false;
 					}
@@ -798,7 +876,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
 							if(value.length>0){
-								return value[0]===strgs.cpBootFile;
+								return value[0]===strgs_cpBootFile;
 							} else {
 								return false;
 							}
@@ -970,7 +1048,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ALSO tracking library changes should be done in filewatcher not here
 		if(!haveCurrentWorkspace){return;}
 		// ** Per #22, put in file watcher on cpfiles.txt, so don't process that here
-		if(event.fileName.toLowerCase().endsWith(strgs.cpfiles)){return;}
+		if(event.fileName.toLowerCase().endsWith(strgs_cpfiles)){return;}
 		// ** refresh drive list in case changed
 		await refreshDrives();
 		// ** refresh the spec status
@@ -1088,7 +1166,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const libWatcher=vscode.workspace.createFileSystemWatcher(relLibPath);
 		const libWatchCreate=libWatcher.onDidCreate(async (uri) => {
 			libraryFolderExists=true;
-			vscode.window.showInformationMessage("got create: "+uri.fsPath);
+			//vscode.window.showInformationMessage("got create: "+uri.fsPath);
 			//check to see if lib files exist that match specs
 			let cpFileLines=await parseCpfiles();
 			//don't need to pass defaults if cpfilesempty, just checking library
@@ -1133,7 +1211,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					libFilesExist=false;
 				}
 			}
-			vscode.window.showInformationMessage("got delete: "+uri.fsPath);
+			//vscode.window.showInformationMessage("got delete: "+uri.fsPath);
 			updateStatusBarItems();
 		});
 		context.subscriptions.push(libWatcher);
@@ -1143,7 +1221,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const relFilesPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],'*.*');
 		const pyFileWatcher=vscode.workspace.createFileSystemWatcher(relFilesPath);
 		const pyWatchCreate=pyFileWatcher.onDidCreate(async (uri) => {
-			vscode.window.showInformationMessage("got py create: "+uri.fsPath);
+			//vscode.window.showInformationMessage("got py create: "+uri.fsPath);
 			let cpFileLines=await parseCpfiles();
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
@@ -1180,7 +1258,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			await updateStatusBarItems();
 		});
 		const pyWatchDelete=pyFileWatcher.onDidDelete(async (uri) => {
-			vscode.window.showInformationMessage("got py delete: "+uri.fsPath);
+			//vscode.window.showInformationMessage("got py delete: "+uri.fsPath);
 			let cpFileLines=await parseCpfiles();
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
@@ -1209,7 +1287,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(pyWatchDelete);
 
 		// **Monitor changes to cpfiles due to mng tool changes not triggering text doc save
-		const relFileLstPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],`.vscode/${strgs.cpfiles}`);
+		const relFileLstPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],`.vscode/${strgs_cpfiles}`);
 		const fileListWatcher=vscode.workspace.createFileSystemWatcher(relFileLstPath);
 		//this will pickup create and change
 		const fileListWatchChg=fileListWatcher.onDidChange(async (uri) => {
@@ -1217,10 +1295,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			await refreshDrives();
 			// ** refresh the spec status
 			let cpFileLines=await parseCpfiles();
+			// need to save original copy of file for checking later
+			let origCpLines=[...cpFileLines];
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 				//just put in default py files to check and no lib
-				cpFileLines=[
+				const cpFileLinesAdd=[
 					{
 						src:'code.py', dest:'',	inLib:false
 					},
@@ -1228,6 +1308,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						src: 'main.py',	dest: '', inLib: false
 					}
 				];
+				cpFileLines.push(...cpFileLinesAdd);
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
@@ -1250,7 +1331,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
-			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
+			if(uri.fsPath.toLowerCase().endsWith(strgs_cpfiles)){
 				if(pyFilesExist){
 					statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}
@@ -1261,6 +1342,77 @@ export async function activate(context: vscode.ExtensionContext) {
 			updateStatusBarItems();
 			statusBarItem1.show();
 			statusBarItem2.show();
+
+			// ** ALSO warn about potential issues with code files in cpfiles, same as with mng libs cmd
+			//get the files only lines from cpLines, BUT USE THE ORIG, NOT ONE WITH FAKE CP'S.
+			const cpLinesPy=origCpLines.filter(lne => !lne.inLib);
+			// ** Per #22, if file written was not blank BUT no py files were included then
+			//	give a warning that only code.py or main.py will be copied, and option to edit
+			// ** per #26, two new flags from CheckSources that tell more about files listed in cpfiles
+			//first make sure another toast isn't up
+			// **THIS DOES NOT SEEM TO WORK**
+			/*
+			const ctxkeys=await vscode.commands.executeCommand('getContextKeyInfo') as Array<{key:string,value:boolean}>;
+			if(ctxkeys && ctxkeys.find((k) => {
+					return k.key==='notificationToastsVisible' && k.value;
+				})
+			){
+				//just bail
+				return;
+			}
+			*/
+			let triggerEdit=false;
+			let toastShown=false;
+			//first check for no lib files and give warning
+			if(!origCpLines.some(lne => lne.inLib)){
+				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No");
+				toastShown=true;
+				if(ans==="Yes"){
+					triggerEdit=true;
+				}
+			}
+			//then if didn't ask about library (that is, there were some), see if there are no code files
+			if(!toastShown && cpLinesPy.length===0){
+				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
+				toastShown=true;
+				if(ans==="Yes"){
+					triggerEdit=true;
+				}
+			} else {
+				// ** Per #26, also give warning/edit opp if no python files in files only set, and some no exist
+				//  ALSO these conditions are from checkSources now
+				//  ** try to show just one message, so offer a combined if so
+				if(!toastShown && fileSources.noPyFiles && !fileSources.filesNoExist){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+					toastShown=true;
+					if(ans==="Yes"){
+						triggerEdit=true;
+					}	
+				}
+				if(!toastShown && fileSources.filesNoExist && !fileSources.noPyFiles){
+					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No");
+					toastShown=true;
+					if(ans==="Yes"){
+						triggerEdit=true;
+					}
+				}
+				if(!toastShown && fileSources.filesNoExist && fileSources.noPyFiles){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No");
+					toastShown=true;
+					if(ans==="Yes"){
+						triggerEdit=true;
+					}
+				}
+			}
+			//check if want to edit
+			if(triggerEdit){
+				const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+				if(!wsRootFolder) {return "";}
+				const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+				const doc=await vscode.workspace.openTextDocument(cpFilePath);
+				vscode.window.showTextDocument(doc);
+			}
+
 		});
 		//need to do same for delete
 		const fileListWatchDelete=fileListWatcher.onDidDelete(async (uri) => {
@@ -1301,7 +1453,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//now check whether change was in cpfiles itself, if so and flags are on, light up
 			// ** currently will always be only cpfiles but check anyway
-			if(uri.fsPath.toLowerCase().endsWith(strgs.cpfiles)){
+			if(uri.fsPath.toLowerCase().endsWith(strgs_cpfiles)){
 				if(pyFilesExist){
 					statusBarItem1.backgroundColor=new vscode.ThemeColor(strgs.btnLightBkgd);
 				}

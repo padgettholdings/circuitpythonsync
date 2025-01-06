@@ -52,3 +52,7 @@
 
 ### issue 19, add extension prefix in commands, extract string constants
 - create release v0.0.11 for all platforms before actual copy actions
+
+### issues 28 and 26, setup string constants file and do more checks on cpfiles
+- create release v0.0.12 for all platform tests
+
