@@ -55,4 +55,6 @@
 
 ### issues 28 and 26, setup string constants file and do more checks on cpfiles
 - create release v0.0.12 for all platform tests
+- with merge to master create v0.0.13 as baseline for all platforms
+
 
