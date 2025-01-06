@@ -24,7 +24,8 @@ let strgs_noCodeFilesInCp:string=strgs.noCodeFilesInCp;
 let strgs_noPyCodeFilesInCp:string=strgs.noPyCodeFilesInCp;
 let strgs_fileInCpNoExist:string=strgs.fileInCpNoExist;
 let strgs_cpBootNoFindMKDN:string=strgs.cpBootNoFindMKDN;
-let strgs_noPyAndNonExistFilesInCp=strgs.noPyAndNonExistFilesInCp;
+let strgs_noPyAndNonExistFilesInCp:string=strgs.noPyAndNonExistFilesInCp;
+let strgs_warnNoLibsInCP:string=strgs.warnNoLibsInCP;
 
 //the statusbar buttons - this is CPCopy
 let statusBarItem1: vscode.StatusBarItem;
@@ -457,7 +458,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
-	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp,strgs_warnNoLibsInCP]=strgs.getCpFilesMsgs(strgs_cpfiles);
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
@@ -1362,7 +1363,16 @@ export async function activate(context: vscode.ExtensionContext) {
 			*/
 			let triggerEdit=false;
 			let toastShown=false;
-			if(cpLinesPy.length===0){
+			//first check for no lib files and give warning
+			if(!origCpLines.some(lne => lne.inLib)){
+				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No");
+				toastShown=true;
+				if(ans==="Yes"){
+					triggerEdit=true;
+				}
+			}
+			//then if didn't ask about library (that is, there were some), see if there are no code files
+			if(!toastShown && cpLinesPy.length===0){
 				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
 				toastShown=true;
 				if(ans==="Yes"){
