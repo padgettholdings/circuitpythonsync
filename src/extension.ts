@@ -1011,6 +1011,44 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem1.show();
 		statusBarItem2.show();
 	});
+	context.subscriptions.push(fileCmd);
+
+	const dnldCpBoardId:string = strgs.cmdDownloadCPboardPKG;
+	// ** Command to download circuitpython board, uses current mapping
+	const dndBoardCmd=vscode.commands.registerCommand(dnldCpBoardId, async () =>{
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		//if don't have drive can't copy
+		if(curDriveSetting==='') {
+			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			return;
+		}
+		//now try to read the mapped drive directory
+		//need to add file scheme in windows
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		//**replace glob find files with dir read for performance
+		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
+		let gotCpDirectory:boolean=false;
+		let dirContents:[string,vscode.FileType][];
+		try {
+			dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			gotCpDirectory=true;
+		} catch {gotCpDirectory=false;}
+		if(!gotCpDirectory){
+			const errMsg=strgs.couldNotReadCpDnld[0]+curDriveSetting+strgs.couldNotReadCpDnld[1];
+			await vscode.window.showErrorMessage(errMsg);
+			return;
+		}
+		let x=1;
+
+	});
+	context.subscriptions.push(dndBoardCmd);
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {

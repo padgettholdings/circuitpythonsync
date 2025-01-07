@@ -53,6 +53,11 @@
         "command": "circuitpythonsync.mngcpfiles",
         "title": "CP Manage Lib",
         "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.dnldcpboard",
+        "title": "CP Download Board",
+        "category": "CircuitPythonSync"
       }
     ],
     "configuration":{     
