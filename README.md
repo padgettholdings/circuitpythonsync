@@ -57,4 +57,6 @@
 - create release v0.0.12 for all platform tests
 - with merge to master create v0.0.13 as baseline for all platforms
 
+### issue #27, board download
+- create release v0.0.14 for platform tests, particularly windows
 
