@@ -12,6 +12,7 @@ export const cmdBtn1PKG:string ='circuitpythonsync.button1';
 export const cmdBtn2PKG:string ='circuitpythonsync.button2';
 export const cmdSetDirPKG:string ='circuitpythonsync.opendir';
 export const cmdMngLibPKG:string ='circuitpythonsync.mngcpfiles';
+export const cmdDownloadCPboardPKG:string = 'circuitpythonsync.dnldcpboard';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -81,3 +82,14 @@ export const pickDrvOrManual:string='Pick detected drive or select manually';
 export const cpDrvSel:string='CP Drive Select';
 export const pickDrvOrMount:string='Pick drive or mount point for CP';
 
+//download related strings
+export const couldNotReadCpDnld:string[]=[
+    '!! Could not read mapped circuit python drive: "', //+curDriveSetting+
+    '".  Check connection.'
+];
+export const pickAllowOverwrite:string='Allow Overwrite?';
+export const pickSkipDots:string='Skip Dot files and folders?';
+export const dnldCfgQpTitle:string='Choose Download Options';
+export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
+export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
+export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
