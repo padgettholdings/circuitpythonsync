@@ -44,6 +44,9 @@ let pyFilesExist: boolean;
 let libFilesExist: boolean;
 // global to track whether entire lib copy should be confirmed or has been disabled
 let confirmFullLibCopy: boolean;
+// for download, track whether currently allowing overwrite and skipping dot files
+let confirmDnldOverwrite:boolean;
+let confirmDnldSkipDots:boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -1013,6 +1016,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(fileCmd);
 
+	// ** set defaults for remembered download settings
+	confirmDnldOverwrite=true;
+	confirmDnldSkipDots=true;
+	
 	const dnldCpBoardId:string = strgs.cmdDownloadCPboardPKG;
 	// ** Command to download circuitpython board, uses current mapping
 	const dndBoardCmd=vscode.commands.registerCommand(dnldCpBoardId, async () =>{
@@ -1035,7 +1042,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//**replace glob find files with dir read for performance
 		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
 		let gotCpDirectory:boolean=false;
-		let dirContents:[string,vscode.FileType][];
+		let dirContents:[string,vscode.FileType][]=Array<[string,vscode.FileType]>(0);
 		try {
 			dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 			gotCpDirectory=true;
@@ -1045,7 +1052,62 @@ export async function activate(context: vscode.ExtensionContext) {
 			await vscode.window.showErrorMessage(errMsg);
 			return;
 		}
-		let x=1;
+		// ** now give a quick pick to see if want to change current config
+		let skipDotFiles=confirmDnldSkipDots;
+		let allowOverwrite=confirmDnldOverwrite;
+		const dnldConfigPicks:vscode.QuickPickItem[]=[
+			{
+				label: strgs.pickAllowOverwrite,
+				picked: allowOverwrite				
+			},
+			{
+				label: strgs.pickSkipDots,
+				picked: skipDotFiles
+			}
+		];
+		const choices=await vscode.window.showQuickPick(dnldConfigPicks,
+			{title: strgs.dnldCfgQpTitle,placeHolder: strgs.dnldCfgQpPlchld, canPickMany:true}
+		);
+		// ** if no choice that is cancel, get out
+		if(!choices){return;}
+		// process choices, updating tracking too, NOTE that uncheck is not returned, so is false
+		// AND picked prop is not set, so just pick showing in result means selected
+		// SO set both settings to false, let loop set true
+		allowOverwrite=false;
+		skipDotFiles=false;
+		for(const choice of choices){
+			if(choice.label===strgs.pickAllowOverwrite) { 
+				allowOverwrite=true;
+			}
+			if(choice.label===strgs.pickSkipDots){
+				skipDotFiles=true;
+			}
+		}
+		confirmDnldOverwrite=allowOverwrite;
+		confirmDnldSkipDots=skipDotFiles;
+		//now ready to download to workspace (have to check to resolve transpiler)
+		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
+		if(!wsRootFolderUri) {return;}
+		for(const dirEntry of dirContents){
+			if(!skipDotFiles || !dirEntry[0].startsWith('.')){
+				const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
+				const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
+				try {
+					await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:allowOverwrite});
+				} catch(error) {
+					const fse=error as vscode.FileSystemError;
+					if(fse.code==='FileExists'){
+						// ** tell user can't copy over but will skip and continue
+						vscode.window.showWarningMessage(strgs.dnldWarnOverwrite+dirEntry[0]);
+					} else {
+						// ** tell user other error occurred, aborting
+						vscode.window.showErrorMessage(strgs.dnldCopyError+fse.message);
+						return;
+					}
+				}
+			}
+		}
+
 
 	});
 	context.subscriptions.push(dndBoardCmd);
