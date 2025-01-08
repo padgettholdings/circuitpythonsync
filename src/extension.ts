@@ -485,7 +485,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const button2Id:string =strgs.cmdBtn2PKG;
 
 	// ** the copy files button
-	const sbItemCmd1=vscode.commands.registerCommand(button1Id,() => {
+	const sbItemCmd1=vscode.commands.registerCommand(button1Id, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
@@ -500,7 +500,59 @@ export async function activate(context: vscode.ExtensionContext) {
 				vscode.window.showInformationMessage(strgs.noFilesSpecd);
 				return;
 			}
-			//###TBD### do copy
+			//copy rules:
+			//- defaults to non-lib files in cpfiles first
+			//- if not look for code.py first, then main.py
+			// ** always overwrite but no deletes
+			const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+			if(!wsRootFolder){return;}	// will never return since we know we are in workspace
+			const cpFileLines=await parseCpfiles();
+			let cpCodeLines=cpFileLines.filter(lne => !lne.inLib);
+			if(cpCodeLines.length===0){
+				//no cpfile specs, need to look for code.py then main.py, will have one or the other!
+				const srchCodeFiles=new vscode.RelativePattern(wsRootFolder,'{code,main}.py');
+				const fndCodes=await vscode.workspace.findFiles(srchCodeFiles);
+				if(!fndCodes || fndCodes.length===0) { return; } //???? should never????
+				if(fndCodes.some(val => val.path.endsWith('code.py'))){
+					cpCodeLines.push(
+						{
+							src:'code.py',
+							dest:'',
+							inLib:false
+						}
+					);
+				} else if(fndCodes.some(val => val.path.endsWith('main.py')))
+				{
+					cpCodeLines.push(
+						{
+							src:'main.py',
+							dest:'',
+							inLib:false
+						}
+					);
+				} else {return;}	//??????never??????
+			}
+			//now do the copy, possibly with rename
+			let baseUri=curDriveSetting;
+			if (os.platform()==='win32') {
+				baseUri='file:'+baseUri;
+			}
+			let srcUri:vscode.Uri;
+			let destUri:vscode.Uri;
+			const wsRootFolderUri=wsRootFolder.uri;
+			for(const codeFile of cpCodeLines){
+				try {
+					srcUri=vscode.Uri.joinPath(wsRootFolderUri,codeFile.src);
+					destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),
+						(codeFile.dest==='' ? codeFile.src : codeFile.dest)
+					);
+					await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
+				} catch (error) {
+					//******* give the error */
+					let x=1;
+				}
+			}
+
 			vscode.window.showInformationMessage('**** copy done ****');
 			statusBarItem1.backgroundColor=undefined;
 		}

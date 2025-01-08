@@ -4,6 +4,14 @@
 * CP Copy
 * CP Set Drive
 
+## NOTE about mounting usb drives in linux
+* for WSL pass thru drive, assuming it is D:, use:
+`sudo mount -t drvfs D: /mnt/d -o uid=$(id -u $USER),gid=$(id -g $USER)`
+  (or just use your username for the $() expressions)
+* for actual usb block device (use lsblk to see actual dev point)
+`sudo mount /dev/sda1 /media/CIRCUITPY -o uid=$(id -u $USER),gid=$(id -g $USER)`
+  (or just use your username for the $() expressions)
+
 ## ISSUES-TODO
 * if code.py not in root won't activate, but also won't if code.py added???
 
