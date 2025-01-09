@@ -608,19 +608,18 @@ export async function activate(context: vscode.ExtensionContext) {
 		//but only if confirmation turned off
 		const cpFileLines=await parseCpfiles();	//will need this later too
 		let copyFullLibFolder=false;	//for later too
-		if(confirmFullLibCopy){
-			if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
+		if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
 				//yes, whole lib to be copied, confirm
 				copyFullLibFolder=true;
-				const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","No, don't ask again");
+		}
+		if(copyFullLibFolder && confirmFullLibCopy){
+				const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","Yes, don't ask again");
 				if(!confAns || confAns==="No, cancel"){
 					return;
 				}
-				if(confAns==="No, don't ask again") {
+				if(confAns==="Yes, don't ask again") {
 					confirmFullLibCopy=false;
-					return;
 				}
-			}
 		}
 		//now ready to copy... rules:
 		// if flag set above copy whole lib folder
