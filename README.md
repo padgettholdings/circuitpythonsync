@@ -68,3 +68,6 @@
 ### issue #27, board download
 - create release v0.0.14 for platform tests, particularly windows
 
+### issue #21- real copies
+- create release v0.0.15 for platform tests
+
