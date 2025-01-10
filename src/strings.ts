@@ -93,3 +93,11 @@ export const dnldCfgQpTitle:string='Choose Download Options';
 export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
 export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
+
+//file and library related strings
+export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
+export const errorCopyingFile:string='** Error copying file: ';     //+fse.message
+export const abortLibCopyError:string='Aborting lib copy trying to read device with error: ';       //+fse.message
+export const abortWholeLibCopyError:string='** Aborting lib copy with error: ';     //+fse.message
+export const wholeLibCopyDone:string='** Entire library copy done. **';
+export const errorCopyingLibFile:string='** Error copying lib file: ';      //+fse.message

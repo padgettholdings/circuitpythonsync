@@ -557,7 +557,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		} catch(error) {
 			// ***** give error and bail *****
 			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-			vscode.window.showErrorMessage('Aborting file copy trying to read device with error: '+fse.message);
+			vscode.window.showErrorMessage(strgs.abortFileCopyError+fse.message);
 			return;
 		}
 		//
@@ -580,7 +580,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				} catch (error) {
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
 					//******* give the error but continue */
-					vscode.window.showErrorMessage('** Error copying file: '+fse.message);
+					vscode.window.showErrorMessage(strgs.errorCopyingFile+fse.message);
 					//see if it was code py file, if so reset the did copy...
 					if(checkForCodeOrMainPy(codeFile)){ copiedCodeOrMainPy=false;}
 					errorFileCnt+=1;
@@ -660,7 +660,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		} catch(error) {
 			// ***** give error and bail *****
 			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-			vscode.window.showErrorMessage('Aborting lib copy trying to read device with error: '+fse.message);
+			vscode.window.showErrorMessage(strgs.abortLibCopyError+fse.message);
 			return;
 		}
 		//get the source dir list for searching and file existance, and get source lib folder path
@@ -684,11 +684,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				} catch(error) {
 					// ** notify error and bail
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage('** Aborting lib copy with error: '+fse.message);
+					vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
 					return;
 				}
 				// ** give copied notice here of just whole library
-				vscode.window.showInformationMessage('** Entire library copy done. **');
+				vscode.window.showInformationMessage(strgs.wholeLibCopyDone);
 			} else {
 				return;  //should never!!
 			}
@@ -713,7 +713,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					} catch (error) {
 						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
 						// ** give the error ** but continue
-						vscode.window.showErrorMessage('** Error copying lib file: '+fse.message);
+						vscode.window.showErrorMessage(strgs.errorCopyingLibFile+fse.message);
 						errorFileCnt+=1;
 					}
 				} else {
