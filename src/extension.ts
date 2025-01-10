@@ -571,6 +571,34 @@ export async function activate(context: vscode.ExtensionContext) {
 			if((a.src!=='code.py' && a.src!=='main.py') && (b.src==='code.py' || b.src==='main.py')) {return -1;}
 			return 0;
 		});  
+		// ** setup and show progress indicator
+		let progInc=0;
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Copy Progress",
+			cancellable: true
+		}, (progress, token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			progress.report({ increment: 0 });
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					progress.report({increment:progInc,message:'Copying files...',});
+					if(progInc>=100){
+						clearInterval(intvlId);
+						resolve();
+					}
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, 10000);	// ****** TBD ****** how to set max timeout
+			});
+			return p;
+		});
+		//calc progress counts
+		const progStep=100/(cpCodeLines.length===0 ? 1 : cpCodeLines.length);
 		for(const codeFile of cpCodeLines){
 			// do some file checking and tracking
 			if(checkForCodeOrMainPy(codeFile)){
@@ -592,10 +620,14 @@ export async function activate(context: vscode.ExtensionContext) {
 					if(checkForCodeOrMainPy(codeFile)){ copiedCodeOrMainPy=false;}
 					errorFileCnt+=1;
 				}
+				progInc+=progStep;
 			} else {
 				skippedFilesCnt+=1;
+				progInc+=progStep;
 			}
 		}
+		//just make sure progress is gone
+		progInc=101;
 		vscode.window.showInformationMessage(`Copy done: ${copiedCodeOrMainPy ? 'DID' : 'DID NOT'} copy python file.  ${copiedFilesCnt.toString()} files copied. ${skippedFilesCnt.toString()} files skipped. ${errorFileCnt.toString()} files errored.`);
 		statusBarItem1.backgroundColor=undefined;
 		
@@ -678,7 +710,47 @@ export async function activate(context: vscode.ExtensionContext) {
 			srcLibPath=libPaths[0];
 			if(deviceCpLibPath===''){ deviceCpLibPath=srcLibPath;}
 		}
+		// go ahead and setup the lib directories
+		const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
+		const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
+		const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+		// ** setup and show progress indicator
+		let progInc=0;
+		let progStep=10;	//will get reset by which copy is done
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Copy Progress",
+			cancellable: true
+		}, (progress, token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			progress.report({ increment: 0 });
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					progress.report({increment:progInc,message:'Copying libraries...',});
+					if(progInc>=100){
+						clearInterval(intvlId);
+						resolve();
+					}
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, 10000);	// ****** TBD ****** how to set max timeout
+			});
+			return p;
+		});
+		//
 		if(copyFullLibFolder){
+			//calc prog step and setup interval for faking progress on full lib copy, max 10 secs
+			progStep=100/(libDir.length===0 ? 1 : libDir.length);
+			const fakeStepTimer=setInterval(() => {
+				progInc+=progStep;
+				if(progInc>=100){
+					clearInterval(fakeStepTimer);
+				}
+			}, 1000);
 			if(srcLibPath!==''){
 				// ** this should always be true since we know we had library**
 				// ** now do the copy **
@@ -694,6 +766,8 @@ export async function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
 					return;
 				}
+				// ** get rid of the progress bar
+				progInc=101;
 				// ** give copied notice here of just whole library
 				vscode.window.showInformationMessage(strgs.wholeLibCopyDone);
 			} else {
@@ -703,9 +777,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			//iterate through the cplines
 			let srcUri:vscode.Uri;
 			let destUri:vscode.Uri;
-			const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
-			const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
-			const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+			//const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
+			//const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
+			//const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+			//calc progress counts
+			progStep=100/(cpLibLines.length===0 ? 1 : cpLibLines.length);
 			for(const cpLine of cpLibLines){
 				//make sure src file/folder is in dir
 				if(libDir.some(val => val[0]===cpLine.src)) {
@@ -723,14 +799,17 @@ export async function activate(context: vscode.ExtensionContext) {
 						vscode.window.showErrorMessage(strgs.errorCopyingLibFile+fse.message);
 						errorFileCnt+=1;
 					}
+					progInc+=progStep;
 				} else {
 					skippedFilesCnt+=1;
+					progInc+=progStep;
 				}
 			}
 			vscode.window.showInformationMessage(`Lib Copy done with ${copiedFilesCnt.toString()} files copied, ${skippedFilesCnt.toString()} files skipped, ${errorFileCnt.toString()} files errored.`);
 		}
-		statusBarItem2.backgroundColor=undefined;
-		
+		//just make sure progress is gone
+		progInc=101;
+		statusBarItem2.backgroundColor=undefined;		
 	});
 	
 	context.subscriptions.push(sbItemCmd2);
