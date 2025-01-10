@@ -551,6 +551,16 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (os.platform()==='win32') {
 			baseUri='file:'+baseUri;
 		}
+		// ** read the device to see if it is there **
+		try{
+			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+		} catch(error) {
+			// ***** give error and bail *****
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			vscode.window.showErrorMessage('Aborting file copy trying to read device with error: '+fse.message);
+			return;
+		}
+		//
 		let srcUri:vscode.Uri;
 		let destUri:vscode.Uri;
 		const wsRootFolderUri=wsRootFolder.uri;
@@ -568,7 +578,9 @@ export async function activate(context: vscode.ExtensionContext) {
 					await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
 					copiedFilesCnt+=1;
 				} catch (error) {
-					//******* give the error */
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					//******* give the error but continue */
+					vscode.window.showErrorMessage('** Error copying file: '+fse.message);
 					//see if it was code py file, if so reset the did copy...
 					if(checkForCodeOrMainPy(codeFile)){ copiedCodeOrMainPy=false;}
 					errorFileCnt+=1;
@@ -646,7 +658,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				deviceCpLibPath=libPaths[0];
 			}
 		} catch(error) {
-			// ***** give error *****
+			// ***** give error and bail *****
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			vscode.window.showErrorMessage('Aborting lib copy trying to read device with error: '+fse.message);
 			return;
 		}
 		//get the source dir list for searching and file existance, and get source lib folder path
@@ -668,11 +682,13 @@ export async function activate(context: vscode.ExtensionContext) {
 						{overwrite:true}
 					);
 				} catch(error) {
-					let x=1;
-					// ** notify error
+					// ** notify error and bail
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage('** Aborting lib copy with error: '+fse.message);
+					return;
 				}
 				// ** give copied notice here of just whole library
-				vscode.window.showInformationMessage('**** whole library copy done ****');
+				vscode.window.showInformationMessage('** Entire library copy done. **');
 			} else {
 				return;  //should never!!
 			}
@@ -695,14 +711,16 @@ export async function activate(context: vscode.ExtensionContext) {
 						await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
 						copiedFilesCnt+=1;
 					} catch (error) {
-						// ** give the error **
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						// ** give the error ** but continue
+						vscode.window.showErrorMessage('** Error copying lib file: '+fse.message);
 						errorFileCnt+=1;
 					}
 				} else {
 					skippedFilesCnt+=1;
 				}
 			}
-			vscode.window.showInformationMessage('**** copy done with status ****');
+			vscode.window.showInformationMessage(`Lib Copy done with ${copiedFilesCnt.toString()} files copied, ${skippedFilesCnt.toString()} files skipped, ${errorFileCnt.toString()} files errored.`);
 		}
 		statusBarItem2.backgroundColor=undefined;
 		
