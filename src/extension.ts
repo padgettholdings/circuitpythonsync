@@ -567,8 +567,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		/* sort the lines such that code.py or main.py at the end */
 		cpCodeLines.sort((a,b) => {
 			//console.log(a,b);
-			if((a.src==='code.py' || a.src==='main.py') && (b.src!=='code.py' && b.src!=='main.py')){return 1}
-			if((a.src!=='code.py' && a.src!=='main.py') && (b.src==='code.py' || b.src==='main.py')) {return -1}
+			if((a.src==='code.py' || a.src==='main.py') && (b.src!=='code.py' && b.src!=='main.py')){return 1;}
+			if((a.src!=='code.py' && a.src!=='main.py') && (b.src==='code.py' || b.src==='main.py')) {return -1;}
 			return 0;
 		});  
 		for(const codeFile of cpCodeLines){
