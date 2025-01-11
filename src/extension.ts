@@ -484,8 +484,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	const button1Id:string =strgs.cmdBtn1PKG;
 	const button2Id:string =strgs.cmdBtn2PKG;
 
+	function checkForCodeOrMainPy(codeFile:cpFileLine):boolean{
+		return (codeFile.src.toLowerCase()==='code.py' || codeFile.src.toLowerCase()==='main.py'
+			 || codeFile.dest.toLowerCase()==='code.py' || codeFile.dest.toLowerCase()==='main.py');
+	}
+
 	// ** the copy files button
-	const sbItemCmd1=vscode.commands.registerCommand(button1Id,() => {
+	const sbItemCmd1=vscode.commands.registerCommand(button1Id, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
@@ -494,16 +499,138 @@ export async function activate(context: vscode.ExtensionContext) {
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
 			vscode.window.showInformationMessage(strgs.mustSetDrv);
-		} else {
-			//see if no valid files to copy
-			if(!pyFilesExist) {
-				vscode.window.showInformationMessage(strgs.noFilesSpecd);
-				return;
-			}
-			//###TBD### do copy
-			vscode.window.showInformationMessage('**** copy done ****');
-			statusBarItem1.backgroundColor=undefined;
+			return;
 		}
+		//see if no valid files to copy
+		if(!pyFilesExist) {
+			vscode.window.showInformationMessage(strgs.noFilesSpecd);
+			return;
+		}
+		//copy rules:
+		//- defaults to non-lib files in cpfiles first
+		//- if not look for code.py first, then main.py
+		// ** always overwrite but no deletes
+		const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+		if(!wsRootFolder){return;}	// will never return since we know we are in workspace
+		const cpFileLines=await parseCpfiles();
+		let cpCodeLines=cpFileLines.filter(lne => !lne.inLib);
+		//setup some result tracking
+		let copiedFilesCnt:number=0;
+		let skippedFilesCnt:number=0;
+		let errorFileCnt:number=0;
+		let copiedCodeOrMainPy:boolean=false;
+		//now get the source directory list for searching and file existance
+		const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+		//check to see if any code files specified
+		if(cpCodeLines.length===0){
+			//no cpfile specs, need to look for code.py then main.py, will have one or the other!
+			//const srchCodeFiles=new vscode.RelativePattern(wsRootFolder,'{code,main}.py');
+			//const fndCodes=await vscode.workspace.findFiles(srchCodeFiles);
+			//if(!fndCodes || fndCodes.length===0) { return; } //???? should never????
+			if(rootDir.some(val => val[0].toLowerCase()==='code.py')){
+				cpCodeLines.push(
+					{
+						src:'code.py',
+						dest:'',
+						inLib:false
+					}
+				);
+			} else if(rootDir.some(val => val[0].toLowerCase()==='main.py'))
+			{
+				cpCodeLines.push(
+					{
+						src:'main.py',
+						dest:'',
+						inLib:false
+					}
+				);
+			} // ** let an empty array go through, will just do nothing
+		}
+		//now do the copy, possibly with rename
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		// ** read the device to see if it is there **
+		try{
+			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+		} catch(error) {
+			// ***** give error and bail *****
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			vscode.window.showErrorMessage(strgs.abortFileCopyError+fse.message);
+			return;
+		}
+		//
+		let srcUri:vscode.Uri;
+		let destUri:vscode.Uri;
+		const wsRootFolderUri=wsRootFolder.uri;
+		/* sort the lines such that code.py or main.py at the end */
+		cpCodeLines.sort((a,b) => {
+			//console.log(a,b);
+			if((a.src==='code.py' || a.src==='main.py') && (b.src!=='code.py' && b.src!=='main.py')){return 1;}
+			if((a.src!=='code.py' && a.src!=='main.py') && (b.src==='code.py' || b.src==='main.py')) {return -1;}
+			return 0;
+		});  
+		// ** setup and show progress indicator
+		let progInc=0;
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Copy Progress",
+			cancellable: true
+		}, (progress, token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			progress.report({ increment: 0 });
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					progress.report({increment:progInc,message:'Copying files...',});
+					if(progInc>=100){
+						clearInterval(intvlId);
+						resolve();
+					}
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, 10000);	// ****** TBD ****** how to set max timeout
+			});
+			return p;
+		});
+		//calc progress counts
+		const progStep=100/(cpCodeLines.length===0 ? 1 : cpCodeLines.length);
+		for(const codeFile of cpCodeLines){
+			// do some file checking and tracking
+			if(checkForCodeOrMainPy(codeFile)){
+				copiedCodeOrMainPy=true;
+			}
+			if(rootDir.some(val => val[0]===codeFile.src && val[1]===vscode.FileType.File)) {
+				try {
+					srcUri=vscode.Uri.joinPath(wsRootFolderUri,codeFile.src);
+					destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),
+						(codeFile.dest==='' ? codeFile.src : codeFile.dest)
+					);
+					await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
+					copiedFilesCnt+=1;
+				} catch (error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					//******* give the error but continue */
+					vscode.window.showErrorMessage(strgs.errorCopyingFile+fse.message);
+					//see if it was code py file, if so reset the did copy...
+					if(checkForCodeOrMainPy(codeFile)){ copiedCodeOrMainPy=false;}
+					errorFileCnt+=1;
+				}
+				progInc+=progStep;
+			} else {
+				skippedFilesCnt+=1;
+				progInc+=progStep;
+			}
+		}
+		//just make sure progress is gone
+		progInc=101;
+		vscode.window.showInformationMessage(`Copy done: ${copiedCodeOrMainPy ? 'DID' : 'DID NOT'} copy python file.  ${copiedFilesCnt.toString()} files copied. ${skippedFilesCnt.toString()} files skipped. ${errorFileCnt.toString()} files errored.`);
+		statusBarItem1.backgroundColor=undefined;
+		
 	});
 	
 	context.subscriptions.push(sbItemCmd1);
@@ -520,33 +647,169 @@ export async function activate(context: vscode.ExtensionContext) {
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
 			vscode.window.showInformationMessage(strgs.mustSetDrv);
-		} else {
-			//see if no valid lib to copy do msg and get out
-			if(!libFilesExist) {
-				vscode.window.showInformationMessage(strgs.noLibSpecd);
-				return;
+			return;
+		} 
+		//see if no valid lib to copy do msg and get out
+		if(!libFilesExist) {
+			vscode.window.showInformationMessage(strgs.noLibSpecd);
+			return;
+		}
+		//#16, add confirmation if entire library is to be copied
+		//read the cpfiles to see if no specs so whole library is the source...
+		//but only if confirmation turned off
+		const cpFileLines=await parseCpfiles();	//will need this later too
+		let copyFullLibFolder=false;	//for later too
+		if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
+				//yes, whole lib to be copied, confirm
+				copyFullLibFolder=true;
+		}
+		if(copyFullLibFolder && confirmFullLibCopy){
+				const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","Yes, don't ask again");
+				if(!confAns || confAns==="No, cancel"){
+					return;
+				}
+				if(confAns==="Yes, don't ask again") {
+					confirmFullLibCopy=false;
+				}
+		}
+		//now ready to copy... rules:
+		// if flag set above copy whole lib folder
+		// if not iterate through and copy, but need to use existing lib/Lib folder in cp drive if there
+		// ** always overwrite but no deletes
+		const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+		if(!wsRootFolder){return;}	// will never return since we know we are in workspace
+		let cpLibLines=cpFileLines.filter(lne => lne.inLib);
+		//setup some result tracking
+		let copiedFilesCnt:number=0;
+		let skippedFilesCnt:number=0;
+		let errorFileCnt:number=0;
+		//prep for accessing the device
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		// need to find the actual path to the lib/Lib folder on the device
+		let deviceCpLibPath:string='';
+		try{
+			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			const libPaths=dirContents.find(val => val[0]==='lib' || val[0]==='Lib');
+			if(libPaths && libPaths.length>0){
+				deviceCpLibPath=libPaths[0];
 			}
-			//#16, add confirmation if entire library is to be copied
-			//read the cpfiles to see if no specs so whole library is the source...
-			//but only if confirmation turned off
-			if(confirmFullLibCopy){
-				const cpFileLines=await parseCpfiles();
-				if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
-					//yes, whole lib to be copied, confirm
-					const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","No, don't ask again");
-					if(!confAns || confAns==="No, cancel"){
-						return;
+		} catch(error) {
+			// ***** give error and bail *****
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			vscode.window.showErrorMessage(strgs.abortLibCopyError+fse.message);
+			return;
+		}
+		//get the source dir list for searching and file existance, and get source lib folder path
+		const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+		const libPaths=rootDir.find(val => val[0]==='lib' || val[0]==='Lib');
+		let srcLibPath:string='';
+		if(libPaths && libPaths.length>0){
+			srcLibPath=libPaths[0];
+			if(deviceCpLibPath===''){ deviceCpLibPath=srcLibPath;}
+		}
+		// go ahead and setup the lib directories
+		const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
+		const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
+		const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+		// ** setup and show progress indicator
+		let progInc=0;
+		let progStep=10;	//will get reset by which copy is done
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Copy Progress",
+			cancellable: true
+		}, (progress, token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			progress.report({ increment: 0 });
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					progress.report({increment:progInc,message:'Copying libraries...',});
+					if(progInc>=100){
+						clearInterval(intvlId);
+						resolve();
 					}
-					if(confAns==="No, don't ask again") {
-						confirmFullLibCopy=false;
-						return;
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, 10000);	// ****** TBD ****** how to set max timeout
+			});
+			return p;
+		});
+		//
+		if(copyFullLibFolder){
+			//calc prog step and setup interval for faking progress on full lib copy, max 10 secs
+			progStep=100/(libDir.length===0 ? 1 : libDir.length);
+			const fakeStepTimer=setInterval(() => {
+				progInc+=progStep;
+				if(progInc>=100){
+					clearInterval(fakeStepTimer);
+				}
+			}, 1000);
+			if(srcLibPath!==''){
+				// ** this should always be true since we know we had library**
+				// ** now do the copy **
+				try {
+					await vscode.workspace.fs.copy(
+						vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath),
+						vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath),
+						{overwrite:true}
+					);
+				} catch(error) {
+					// ** notify error and bail
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
+					return;
+				}
+				// ** get rid of the progress bar
+				progInc=101;
+				// ** give copied notice here of just whole library
+				vscode.window.showInformationMessage(strgs.wholeLibCopyDone);
+			} else {
+				return;  //should never!!
+			}
+		} else {
+			//iterate through the cplines
+			let srcUri:vscode.Uri;
+			let destUri:vscode.Uri;
+			//const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
+			//const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
+			//const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+			//calc progress counts
+			progStep=100/(cpLibLines.length===0 ? 1 : cpLibLines.length);
+			for(const cpLine of cpLibLines){
+				//make sure src file/folder is in dir
+				if(libDir.some(val => val[0]===cpLine.src)) {
+					// ** copy **
+					try {
+						srcUri=vscode.Uri.joinPath(srcLibUri,cpLine.src);
+						destUri=vscode.Uri.joinPath(destLibUri,
+							(cpLine.dest==='' ? cpLine.src : cpLine.dest)
+						);
+						await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
+						copiedFilesCnt+=1;
+					} catch (error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						// ** give the error ** but continue
+						vscode.window.showErrorMessage(strgs.errorCopyingLibFile+fse.message);
+						errorFileCnt+=1;
 					}
+					progInc+=progStep;
+				} else {
+					skippedFilesCnt+=1;
+					progInc+=progStep;
 				}
 			}
-			//###TBD### do copy
-			vscode.window.showInformationMessage('**** copy done ****');
-			statusBarItem2.backgroundColor=undefined;
+			vscode.window.showInformationMessage(`Lib Copy done with ${copiedFilesCnt.toString()} files copied, ${skippedFilesCnt.toString()} files skipped, ${errorFileCnt.toString()} files errored.`);
 		}
+		//just make sure progress is gone
+		progInc=101;
+		statusBarItem2.backgroundColor=undefined;		
 	});
 	
 	context.subscriptions.push(sbItemCmd2);
