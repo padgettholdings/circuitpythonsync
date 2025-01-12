@@ -5,6 +5,7 @@ import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
+import path from 'path';
 
 //import { arrayBuffer } from 'stream/consumers';
 //import { error } from 'console';
@@ -326,6 +327,62 @@ function getCurrentDriveConfig(): string {
 	}
 	return curDrive;
 }
+
+// **interface and parsing of circuitpython project template file**
+interface cpProjTemplateItem {
+	folderName:string,
+	fileName:string,
+	fileContent:string
+}
+
+let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
+
+function parseCpProjTemplate(templateFileContents:string){
+	// first break into lines
+	const tlines:string[]=templateFileContents.split(/\n/);
+	if(tlines.length===0){return;}	//no data
+	//now go through the lines
+	let cpItem:cpProjTemplateItem | undefined=undefined;
+	for(let line of tlines){
+		// if not in an item must get >>> start segment first, cycle through if not
+		if(!line.startsWith('>>>') && cpItem){
+			//add the line to content
+			cpItem.fileContent+=line+'\n';
+		} else {
+			if(line.startsWith('>>>')){
+				// if already have an item, end it and add to array
+				if(cpItem){
+					cpProjTemplate.push(cpItem);
+				}
+				//start a new cpitem
+				cpItem={
+					folderName:'/',
+					fileName:'',
+					fileContent:''
+				};
+				line=line.substring(3);
+				const fldrPath=line.split('/');
+				if(fldrPath.length===1){
+					cpItem.fileName=fldrPath[0];
+				}
+				if(fldrPath.length>1){
+					cpItem.folderName=fldrPath[0];
+					if(fldrPath[1]){
+						cpItem.fileName=fldrPath[1];
+					}
+				}
+			} else {
+				//just flywheel through until start header
+				continue;
+			}
+		}
+	}
+	//if active item, add to array 
+	if(cpItem){
+		cpProjTemplate.push(cpItem);
+	}
+}
+
 // ** update both status bar buttons
 async function updateStatusBarItems() {
 	if(curDriveSetting===''){
@@ -465,6 +522,20 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
+
+	// ** try to get template file and parse it
+	const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+	let templateContent:string='';
+	try{
+		const templateContentBytes=await vscode.workspace.fs.readFile(vscode.Uri.parse(fullTemplPath));
+		templateContent=fromBinaryArray(templateContentBytes);
+	} catch {
+		console.log("** ERROR - could not load cp project template.");
+	}
+	if(templateContent){
+		parseCpProjTemplate(templateContent);
+	}
+
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
