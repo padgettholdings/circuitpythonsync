@@ -6,6 +6,7 @@ import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
 import path from 'path';
+//import { Dirent } from 'fs';
 
 //import { arrayBuffer } from 'stream/consumers';
 //import { error } from 'console';
@@ -46,8 +47,10 @@ let libFilesExist: boolean;
 // global to track whether entire lib copy should be confirmed or has been disabled
 let confirmFullLibCopy: boolean;
 // for download, track whether currently allowing overwrite and skipping dot files
+// AND only do standard folders
 let confirmDnldOverwrite:boolean;
 let confirmDnldSkipDots:boolean;
+let confirmDnldStdFoldersOnly:boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -1351,8 +1354,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(fileCmd);
 
 	// ** set defaults for remembered download settings
+	// ** #34, by default only copy "standard" project folders
 	confirmDnldOverwrite=true;
 	confirmDnldSkipDots=true;
+	confirmDnldStdFoldersOnly=true;
 	
 	const dnldCpBoardId:string = strgs.cmdDownloadCPboardPKG;
 	// ** Command to download circuitpython board, uses current mapping
@@ -1387,8 +1392,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		// ** now give a quick pick to see if want to change current config
+		// #34 also non-standard folder skip
 		let skipDotFiles=confirmDnldSkipDots;
 		let allowOverwrite=confirmDnldOverwrite;
+		let onlyStdFolders=confirmDnldStdFoldersOnly;
+
 		const dnldConfigPicks:vscode.QuickPickItem[]=[
 			{
 				label: strgs.pickAllowOverwrite,
@@ -1397,6 +1405,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			{
 				label: strgs.pickSkipDots,
 				picked: skipDotFiles
+			},
+			{
+				label: strgs.pickStdFoldersOnly,
+				picked: onlyStdFolders
 			}
 		];
 		const choices=await vscode.window.showQuickPick(dnldConfigPicks,
@@ -1406,9 +1418,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(!choices){return;}
 		// process choices, updating tracking too, NOTE that uncheck is not returned, so is false
 		// AND picked prop is not set, so just pick showing in result means selected
-		// SO set both settings to false, let loop set true
+		// SO set all settings to false, let loop set true
 		allowOverwrite=false;
 		skipDotFiles=false;
+		onlyStdFolders=false;
 		for(const choice of choices){
 			if(choice.label===strgs.pickAllowOverwrite) { 
 				allowOverwrite=true;
@@ -1416,14 +1429,19 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(choice.label===strgs.pickSkipDots){
 				skipDotFiles=true;
 			}
+			if(choice.label===strgs.pickStdFoldersOnly){
+				onlyStdFolders=true;
+			}
 		}
 		confirmDnldOverwrite=allowOverwrite;
 		confirmDnldSkipDots=skipDotFiles;
+		confirmDnldStdFoldersOnly=onlyStdFolders;
 		//now ready to download to workspace (have to check to resolve transpiler)
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
-		if(!wsRootFolderUri) {return;}
+		if(!wsRootFolderUri) {return;}	//should never
 		for(const dirEntry of dirContents){
-			if(!skipDotFiles || !dirEntry[0].startsWith('.')){
+			if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
+					&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplate.some(tmpl => tmpl.folderName===dirEntry[0])))) {
 				const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
 				const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
 				try {

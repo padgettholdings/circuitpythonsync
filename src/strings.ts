@@ -89,6 +89,7 @@ export const couldNotReadCpDnld:string[]=[
 ];
 export const pickAllowOverwrite:string='Allow Overwrite?';
 export const pickSkipDots:string='Skip Dot files and folders?';
+export const pickStdFoldersOnly:string='Download only standard folders?';
 export const dnldCfgQpTitle:string='Choose Download Options';
 export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
 export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
