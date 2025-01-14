@@ -1464,6 +1464,37 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(dndBoardCmd);
 
+	// **command to scaffold new project **
+	const makeNewProjectId=strgs.cmdScaffoldProjectPKG;
+	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async () =>{
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
+		if(curDriveSetting!=='') {
+			const ans=await vscode.window.showInformationMessage('Would you rather download from the mapped drive?','Yes','No, continue');
+			if(ans==='Yes'){
+				vscode.commands.executeCommand(dnldCpBoardId);
+				return;
+			}
+		}
+		//read the workspace and determine if any files exist other than the .vscode folder, ask
+		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
+		if(!wsRootFolderUri) {return;}	//should never
+		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
+		if(wsContents.some(entry => entry[0]!=='.vscode')){
+			//got something other than settings dir, ask if overwrite
+			const ans=await vscode.window.showWarningMessage('Workspace already has files, overwrite?','Yes','No, cancel');
+			if(ans==='No, cancel'){return;}
+		}
+
+
+
+	});
+	context.subscriptions.push(makeProjCmd);
+
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
 		//NOTE can't affect this ext config if no workspace, not global

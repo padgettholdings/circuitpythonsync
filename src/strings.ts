@@ -13,6 +13,7 @@ export const cmdBtn2PKG:string ='circuitpythonsync.button2';
 export const cmdSetDirPKG:string ='circuitpythonsync.opendir';
 export const cmdMngLibPKG:string ='circuitpythonsync.mngcpfiles';
 export const cmdDownloadCPboardPKG:string = 'circuitpythonsync.dnldcpboard';
+export const cmdScaffoldProjectPKG:string= 'circuitpythonsync.newproject';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **

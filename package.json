@@ -58,6 +58,11 @@
         "command": "circuitpythonsync.dnldcpboard",
         "title": "CP Download Board",
         "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.newproject",
+        "title": "Make New CP Project",
+        "category": "CircuitPythonSync"
       }
     ],
     "configuration":{     
