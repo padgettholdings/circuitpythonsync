@@ -73,3 +73,4 @@
 
 ### issues #32 and #32 - scaffolding and download helper
 - create release v0.0.16 for platform tests
+- create release v0.0.16-a to debug issue on windows

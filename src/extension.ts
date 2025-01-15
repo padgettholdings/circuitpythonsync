@@ -529,12 +529,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** try to get template file and parse it
 	const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+	vscode.window.showInformationMessage("cp proj template path: "+fullTemplPath);
 	let templateContent:string='';
 	try{
 		const templateContentBytes=await vscode.workspace.fs.readFile(vscode.Uri.parse(fullTemplPath));
 		templateContent=fromBinaryArray(templateContentBytes);
 	} catch {
 		console.log("** ERROR - could not load cp project template.");
+		vscode.window.showErrorMessage("** ERROR - could not load cp project template.");
 	}
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
