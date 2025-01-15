@@ -71,3 +71,5 @@
 ### issue #21- real copies
 - create release v0.0.15 for platform tests
 
+### issues #32 and #32 - scaffolding and download helper
+- create release v0.0.16 for platform tests
