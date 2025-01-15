@@ -6,6 +6,7 @@ import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
 import path from 'path';
+import { writeFile } from 'fs';
 //import { Dirent } from 'fs';
 
 //import { arrayBuffer } from 'stream/consumers';
@@ -1489,9 +1490,39 @@ export async function activate(context: vscode.ExtensionContext) {
 			const ans=await vscode.window.showWarningMessage('Workspace already has files, overwrite?','Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
 		}
-
-
-
+		//now go thru template either making directory or writing file
+		let fpathUri:vscode.Uri;
+		let bFContent:Uint8Array;
+		for(const tEntry of cpProjTemplate){
+			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName===''){
+				//this is just a folder, make it even if it exists??????
+				fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
+				try{
+					await vscode.workspace.fs.createDirectory(fpathUri);
+				} catch(error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage('** ERROR in writing new project folder: '+fse.message);
+				}
+			} else {
+				//have file and possibly folder, set a composite path if folder, else just root
+				fpathUri=wsRootFolderUri;
+				if(tEntry.folderName!=='/' && tEntry.folderName!==''){
+					fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
+				}
+				//now add the filename, will be one 
+				fpathUri=vscode.Uri.joinPath(fpathUri,tEntry.fileName);
+			}
+			//write the file in the calc path if filename
+			if(tEntry.fileName!==''){	
+				bFContent=toBinaryArray(tEntry.fileContent);
+				try{
+					await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+				} catch(error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage('** ERROR in writing new project file: '+fse.message);
+				}
+			}
+		}
 	});
 	context.subscriptions.push(makeProjCmd);
 
