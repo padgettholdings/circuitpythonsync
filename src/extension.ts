@@ -528,11 +528,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
 
 	// ** try to get template file and parse it
-	const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-	vscode.window.showInformationMessage("cp proj template path: "+fullTemplPath);
+	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+	vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	let templateContent:string='';
 	try{
-		const templateContentBytes=await vscode.workspace.fs.readFile(vscode.Uri.parse(fullTemplPath));
+		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
 		templateContent=fromBinaryArray(templateContentBytes);
 	} catch {
 		console.log("** ERROR - could not load cp project template.");
