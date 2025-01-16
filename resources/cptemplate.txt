@@ -1,0 +1,23 @@
+>>>code.py
+#sample circuitpython main code file
+import time
+
+while True:
+    print('hello circuitpython!')
+    time.sleep(2)
+
+>>>lib/
+
+>>>pyrightconfig.json
+{
+    "reportShadowedImports":false,
+    "reportMissingImports":"information"
+}
+
+>>>settings.toml
+# To auto-connect to Wi-Fi on enabled boards uncomment and enter correct info
+#CIRCUITPY_WIFI_SSID="mywifissd"
+#CIRCUITPY_WIFI_PASSWORD="mysecretpassword"
+
+>>>.gitignore
+*.uf2

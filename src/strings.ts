@@ -13,6 +13,7 @@ export const cmdBtn2PKG:string ='circuitpythonsync.button2';
 export const cmdSetDirPKG:string ='circuitpythonsync.opendir';
 export const cmdMngLibPKG:string ='circuitpythonsync.mngcpfiles';
 export const cmdDownloadCPboardPKG:string = 'circuitpythonsync.dnldcpboard';
+export const cmdScaffoldProjectPKG:string= 'circuitpythonsync.newproject';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -89,10 +90,18 @@ export const couldNotReadCpDnld:string[]=[
 ];
 export const pickAllowOverwrite:string='Allow Overwrite?';
 export const pickSkipDots:string='Skip Dot files and folders?';
+export const pickStdFoldersOnly:string='Download only standard folders?';
 export const dnldCfgQpTitle:string='Choose Download Options';
 export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
 export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
+
+// project template related
+export const projTemplateNoLoad:string='** ERROR - could not load cp project template.';
+export const projTemplateAskDnld:string='Would you rather download from the mapped drive?';
+export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
+export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
+export const projTemplateErrWriteFile:string='** ERROR in writing new project file: ';  //+fse.message
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message

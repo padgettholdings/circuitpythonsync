@@ -5,6 +5,9 @@ import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
+import path from 'path';
+import { writeFile } from 'fs';
+//import { Dirent } from 'fs';
 
 //import { arrayBuffer } from 'stream/consumers';
 //import { error } from 'console';
@@ -45,8 +48,10 @@ let libFilesExist: boolean;
 // global to track whether entire lib copy should be confirmed or has been disabled
 let confirmFullLibCopy: boolean;
 // for download, track whether currently allowing overwrite and skipping dot files
+// AND only do standard folders
 let confirmDnldOverwrite:boolean;
 let confirmDnldSkipDots:boolean;
+let confirmDnldStdFoldersOnly:boolean;
 
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
@@ -82,7 +87,8 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 		//cpfiles exists, read and split into lines
 		let fil=await vscode.workspace.fs.readFile(fles[0]);
 		let sfil=fromBinaryArray(fil);
-		const lines:string[]= sfil.split(/\n/);
+		// ** use a platform agnostic line split 
+		const lines:string[]= sfil.split(/\r?\n|\r/);
 		let fromFile:string='';
 		let toFile:string='';
 		let inLib:boolean=false;
@@ -326,6 +332,64 @@ function getCurrentDriveConfig(): string {
 	}
 	return curDrive;
 }
+
+// **interface and parsing of circuitpython project template file**
+interface cpProjTemplateItem {
+	folderName:string,
+	fileName:string,
+	fileContent:string
+}
+
+let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
+
+function parseCpProjTemplate(templateFileContents:string){
+	// first break into lines
+	// ** this needs to be platform agnostic, so use better RE
+	//const tlines:string[]=templateFileContents.split(/\n/);
+	const tlines:string[]=templateFileContents.split(/\r?\n|\r/);
+	if(tlines.length===0){return;}	//no data
+	//now go through the lines
+	let cpItem:cpProjTemplateItem | undefined=undefined;
+	for(let line of tlines){
+		// if not in an item must get >>> start segment first, cycle through if not
+		if(!line.startsWith('>>>') && cpItem){
+			//add the line to content
+			cpItem.fileContent+=line+'\n';
+		} else {
+			if(line.startsWith('>>>')){
+				// if already have an item, end it and add to array
+				if(cpItem){
+					cpProjTemplate.push(cpItem);
+				}
+				//start a new cpitem
+				cpItem={
+					folderName:'/',
+					fileName:'',
+					fileContent:''
+				};
+				line=line.substring(3);
+				const fldrPath=line.split('/');
+				if(fldrPath.length===1){
+					cpItem.fileName=fldrPath[0];
+				}
+				if(fldrPath.length>1){
+					cpItem.folderName=fldrPath[0];
+					if(fldrPath[1]){
+						cpItem.fileName=fldrPath[1];
+					}
+				}
+			} else {
+				//just flywheel through until start header
+				continue;
+			}
+		}
+	}
+	//if active item, add to array 
+	if(cpItem){
+		cpProjTemplate.push(cpItem);
+	}
+}
+
 // ** update both status bar buttons
 async function updateStatusBarItems() {
 	if(curDriveSetting===''){
@@ -457,7 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//did not find so set current into global
 	cpsyncSettings.update('cpbootfile',strgs_cpBootFile,true);
 	
-	vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
+	//vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
@@ -465,6 +529,23 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
+
+	// ** try to get template file and parse it
+	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+	let templateContent:string='';
+	try{
+		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+		templateContent=fromBinaryArray(templateContentBytes);
+	} catch {
+		console.log(strgs.projTemplateNoLoad);
+		vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+	}
+	if(templateContent){
+		parseCpProjTemplate(templateContent);
+	}
+
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
@@ -1280,8 +1361,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(fileCmd);
 
 	// ** set defaults for remembered download settings
+	// ** #34, by default only copy "standard" project folders
 	confirmDnldOverwrite=true;
 	confirmDnldSkipDots=true;
+	confirmDnldStdFoldersOnly=true;
 	
 	const dnldCpBoardId:string = strgs.cmdDownloadCPboardPKG;
 	// ** Command to download circuitpython board, uses current mapping
@@ -1316,8 +1399,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		// ** now give a quick pick to see if want to change current config
+		// #34 also non-standard folder skip
 		let skipDotFiles=confirmDnldSkipDots;
 		let allowOverwrite=confirmDnldOverwrite;
+		let onlyStdFolders=confirmDnldStdFoldersOnly;
+
 		const dnldConfigPicks:vscode.QuickPickItem[]=[
 			{
 				label: strgs.pickAllowOverwrite,
@@ -1326,6 +1412,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			{
 				label: strgs.pickSkipDots,
 				picked: skipDotFiles
+			},
+			{
+				label: strgs.pickStdFoldersOnly,
+				picked: onlyStdFolders
 			}
 		];
 		const choices=await vscode.window.showQuickPick(dnldConfigPicks,
@@ -1335,9 +1425,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(!choices){return;}
 		// process choices, updating tracking too, NOTE that uncheck is not returned, so is false
 		// AND picked prop is not set, so just pick showing in result means selected
-		// SO set both settings to false, let loop set true
+		// SO set all settings to false, let loop set true
 		allowOverwrite=false;
 		skipDotFiles=false;
+		onlyStdFolders=false;
 		for(const choice of choices){
 			if(choice.label===strgs.pickAllowOverwrite) { 
 				allowOverwrite=true;
@@ -1345,14 +1436,19 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(choice.label===strgs.pickSkipDots){
 				skipDotFiles=true;
 			}
+			if(choice.label===strgs.pickStdFoldersOnly){
+				onlyStdFolders=true;
+			}
 		}
 		confirmDnldOverwrite=allowOverwrite;
 		confirmDnldSkipDots=skipDotFiles;
+		confirmDnldStdFoldersOnly=onlyStdFolders;
 		//now ready to download to workspace (have to check to resolve transpiler)
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
-		if(!wsRootFolderUri) {return;}
+		if(!wsRootFolderUri) {return;}	//should never
 		for(const dirEntry of dirContents){
-			if(!skipDotFiles || !dirEntry[0].startsWith('.')){
+			if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
+					&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplate.some(tmpl => tmpl.folderName===dirEntry[0])))) {
 				const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
 				const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
 				try {
@@ -1374,6 +1470,67 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	});
 	context.subscriptions.push(dndBoardCmd);
+
+	// **command to scaffold new project **
+	const makeNewProjectId=strgs.cmdScaffoldProjectPKG;
+	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async () =>{
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
+		if(curDriveSetting!=='') {
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
+			if(ans==='Yes'){
+				vscode.commands.executeCommand(dnldCpBoardId);
+				return;
+			}
+		}
+		//read the workspace and determine if any files exist other than the .vscode folder, ask
+		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
+		if(!wsRootFolderUri) {return;}	//should never
+		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
+		if(wsContents.some(entry => entry[0]!=='.vscode')){
+			//got something other than settings dir, ask if overwrite
+			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
+			if(ans==='No, cancel'){return;}
+		}
+		//now go thru template either making directory or writing file
+		let fpathUri:vscode.Uri;
+		let bFContent:Uint8Array;
+		for(const tEntry of cpProjTemplate){
+			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName===''){
+				//this is just a folder, make it even if it exists??????
+				fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
+				try{
+					await vscode.workspace.fs.createDirectory(fpathUri);
+				} catch(error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFolder+fse.message);
+				}
+			} else {
+				//have file and possibly folder, set a composite path if folder, else just root
+				fpathUri=wsRootFolderUri;
+				if(tEntry.folderName!=='/' && tEntry.folderName!==''){
+					fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
+				}
+				//now add the filename, will be one 
+				fpathUri=vscode.Uri.joinPath(fpathUri,tEntry.fileName);
+			}
+			//write the file in the calc path if filename
+			if(tEntry.fileName!==''){	
+				bFContent=toBinaryArray(tEntry.fileContent);
+				try{
+					await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+				} catch(error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+				}
+			}
+		}
+	});
+	context.subscriptions.push(makeProjCmd);
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
