@@ -343,7 +343,9 @@ let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
 
 function parseCpProjTemplate(templateFileContents:string){
 	// first break into lines
-	const tlines:string[]=templateFileContents.split(/\n/);
+	// ** this needs to be platform agnostic, so use better RE
+	//const tlines:string[]=templateFileContents.split(/\n/);
+	const tlines:string[]=templateFileContents.split(/\r?\n|\r/);
 	if(tlines.length===0){return;}	//no data
 	//now go through the lines
 	let cpItem:cpProjTemplateItem | undefined=undefined;
