@@ -76,3 +76,4 @@
 - create release v0.0.16-a to debug issue on windows
 - create release v0.0.16-b to try different method to access cptemplate
 - create release v0.0.16-c to split cptemplate lines without CRs
+- create release v0.0.16-d to clean up another split and remove diag info msgs
