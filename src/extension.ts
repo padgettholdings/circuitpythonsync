@@ -87,7 +87,8 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 		//cpfiles exists, read and split into lines
 		let fil=await vscode.workspace.fs.readFile(fles[0]);
 		let sfil=fromBinaryArray(fil);
-		const lines:string[]= sfil.split(/\n/);
+		// ** use a platform agnostic line split 
+		const lines:string[]= sfil.split(/\r?\n|\r/);
 		let fromFile:string='';
 		let toFile:string='';
 		let inLib:boolean=false;
@@ -520,7 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//did not find so set current into global
 	cpsyncSettings.update('cpbootfile',strgs_cpBootFile,true);
 	
-	vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
+	//vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
@@ -532,7 +533,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// ** try to get template file and parse it
 	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
 	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
-	vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	let templateContent:string='';
 	try{
 		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
