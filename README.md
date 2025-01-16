@@ -77,3 +77,6 @@
 - create release v0.0.16-b to try different method to access cptemplate
 - create release v0.0.16-c to split cptemplate lines without CRs
 - create release v0.0.16-d to clean up another split and remove diag info msgs
+
+## Release 0.1.0
+- create release v0.1.0 with all major functions
