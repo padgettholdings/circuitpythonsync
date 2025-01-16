@@ -539,8 +539,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
 		templateContent=fromBinaryArray(templateContentBytes);
 	} catch {
-		console.log("** ERROR - could not load cp project template.");
-		vscode.window.showErrorMessage("** ERROR - could not load cp project template.");
+		console.log(strgs.projTemplateNoLoad);
+		vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
 	}
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
@@ -1481,7 +1481,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
 		if(curDriveSetting!=='') {
-			const ans=await vscode.window.showInformationMessage('Would you rather download from the mapped drive?','Yes','No, continue');
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
 			if(ans==='Yes'){
 				vscode.commands.executeCommand(dnldCpBoardId);
 				return;
@@ -1493,7 +1493,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
 		if(wsContents.some(entry => entry[0]!=='.vscode')){
 			//got something other than settings dir, ask if overwrite
-			const ans=await vscode.window.showWarningMessage('Workspace already has files, overwrite?','Yes','No, cancel');
+			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
 		}
 		//now go thru template either making directory or writing file
@@ -1507,7 +1507,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					await vscode.workspace.fs.createDirectory(fpathUri);
 				} catch(error) {
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage('** ERROR in writing new project folder: '+fse.message);
+					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFolder+fse.message);
 				}
 			} else {
 				//have file and possibly folder, set a composite path if folder, else just root
@@ -1525,7 +1525,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					await vscode.workspace.fs.writeFile(fpathUri,bFContent);
 				} catch(error) {
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage('** ERROR in writing new project file: '+fse.message);
+					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
 				}
 			}
 		}

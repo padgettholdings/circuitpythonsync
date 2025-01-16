@@ -1,6 +1,3 @@
->>>test/test.py
-#this is a python test
-
 >>>code.py
 #sample circuitpython main code file
 import time

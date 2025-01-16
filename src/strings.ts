@@ -96,6 +96,13 @@ export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
 export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
 
+// project template related
+export const projTemplateNoLoad:string='** ERROR - could not load cp project template.';
+export const projTemplateAskDnld:string='Would you rather download from the mapped drive?';
+export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
+export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
+export const projTemplateErrWriteFile:string='** ERROR in writing new project file: ';  //+fse.message
+
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
 export const errorCopyingFile:string='** Error copying file: ';     //+fse.message
