@@ -5,7 +5,7 @@ import * as drivelist from 'drivelist';
 import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
-import path from 'path';
+import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 //import { Dirent } from 'fs';
 
@@ -1531,6 +1531,63 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(makeProjCmd);
+
+	// ** diff file **
+	const cmdFileDiffId ='circuitpythonsync.filediff';
+	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		//also have to have drive mapping to try to compare to
+		if(curDriveSetting==='') {
+			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			return;
+		}
+		// ** the arg array should have a length >=1 if context driven, else can look at active editor
+		let fileUri:vscode.Uri;
+		if(args.length>0){
+			//[0]should be uri
+			fileUri=args[0] as vscode.Uri;
+		} else if(vscode.window.activeTextEditor){
+			fileUri=vscode.window.activeTextEditor.document.uri;
+		} else {
+			//just bail
+			vscode.window.showWarningMessage('Must have active file in editor, or use context menu in explorer.');
+			return;
+		}
+		//now try to find file on board mapping
+		//need to add file scheme in windows
+		let baseUri=curDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
+		}
+		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
+		let gotCpDirectory:boolean=false;
+		let dirContents:[string,vscode.FileType][]=Array<[string,vscode.FileType]>(0);
+		try {
+			dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			gotCpDirectory=true;
+		} catch {gotCpDirectory=false;}
+		if(!gotCpDirectory){
+			const errMsg=strgs.couldNotReadCpDnld[0]+curDriveSetting+strgs.couldNotReadCpDnld[1];
+			await vscode.window.showErrorMessage(errMsg);
+			return;
+		}
+		//so now see if board contents has the file
+		if(!dirContents.some(entry => fileUri.path.endsWith('/'+entry[0]) || 
+			fileUri.path.endsWith('\\'+entry[0])
+		)){
+			vscode.window.showErrorMessage("Selected file does not exist on board.");
+			return;
+		}
+		//got the files to compare, by uri, need the base filename
+		const filename=dirContents.find(entry => fileUri.path.endsWith('/'+entry[0]) || 
+		fileUri.path.endsWith('\\'+entry[0]));
+		if(!filename){return;}	//we know it is there
+		vscode.commands.executeCommand('vscode.diff',fileUri,vscode.Uri.joinPath(vscode.Uri.parse(baseUri),filename[0]),'Workspace to Board compare file: '+filename[0]);
+	});
+	context.subscriptions.push(fileDiffCmd);
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {

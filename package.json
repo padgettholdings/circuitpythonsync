@@ -63,8 +63,21 @@
         "command": "circuitpythonsync.newproject",
         "title": "Make New CP Project",
         "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.filediff",
+        "title": "Compare file to board",
+        "category": "CircuitPythonSync"
       }
     ],
+    "menus": {
+      "explorer/context":[
+        {
+          "command": "circuitpythonsync.filediff",
+          "group": "3_compare"
+        }
+      ]
+    },
     "configuration":{     
         "title": "CircuitPython Sync",
         "properties": {
