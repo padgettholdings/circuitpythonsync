@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import os from 'os';
+import { toNamespacedPath } from 'path';
 
 interface Entry {
 	uri: vscode.Uri;
@@ -12,27 +14,42 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
         this._CurDriveSetting=curDriveSetting;
     }
     // tree data provider
+	private _onDidChangeTreeData: vscode.EventEmitter<Entry | undefined | void> = new vscode.EventEmitter<Entry | undefined | void>();
+	readonly onDidChangeTreeData: vscode.Event<Entry | undefined | void> = this._onDidChangeTreeData.event;
+
+	refresh(): void {
+		this._onDidChangeTreeData.fire();
+	}
+
 
 	async getChildren(element?: Entry): Promise<Entry[]> {
 		if (element) {
             // #######TBD####### point at board mapping
 			const children = await vscode.workspace.fs.readDirectory(element.uri);
-			return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
+			//return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
+			return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(element.uri,name),type}));
 		}
-
-		const workspaceFolder = (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file')[0];
-		if (workspaceFolder) {
-			const children = await vscode.workspace.fs.readDirectory(workspaceFolder.uri);
-			children.sort((a, b) => {
-				if (a[1] === b[1]) {
-					return a[0].localeCompare(b[0]);
-				}
-				return a[1] === vscode.FileType.Directory ? -1 : 1;
-			});
-			return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(workspaceFolder.uri.fsPath, name)), type }));
+		//const workspaceFolder = (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file')[0];
+		let baseUri=this._CurDriveSetting;
+		if (os.platform()==='win32') {
+			baseUri='file:'+baseUri;
 		}
-
-		return [];
+		let gotCpDirectory:boolean=false;
+		let children:[string,vscode.FileType][]=Array<[string,vscode.FileType]>(0);
+		try {
+			children=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			gotCpDirectory=true;
+		} catch {gotCpDirectory=false;}
+		if(!gotCpDirectory){
+			return Array<Entry>(0);
+		}
+		children.sort((a, b) => {
+			if (a[1] === b[1]) {
+				return a[0].localeCompare(b[0]);
+			}
+			return a[1] === vscode.FileType.Directory ? -1 : 1;
+		});
+		return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(vscode.Uri.parse(baseUri),name),type}));
 	}
 
 	getTreeItem(element: Entry): vscode.TreeItem {
@@ -47,8 +64,15 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 }
 
 export class BoardFileExplorer {
+	boardFileProvider:BoardFileProvider;
     constructor(context: vscode.ExtensionContext,curDriveSetting:string) {
-        const boardFileProvider=new BoardFileProvider(curDriveSetting);
-        context.subscriptions.push(vscode.window.createTreeView('boardExplorer',{boardFileProvider}));
+        this.boardFileProvider=new BoardFileProvider(curDriveSetting);
+		const tvo:vscode.TreeViewOptions<Entry>={
+			treeDataProvider:this.boardFileProvider,
+			showCollapseAll:true
+		};
+        context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
+		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh());
+		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
     }
 }

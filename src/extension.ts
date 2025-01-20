@@ -7,6 +7,8 @@ import os, { devNull } from 'os';
 import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
+import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
+
 //import { Dirent } from 'fs';
 
 //import { arrayBuffer } from 'stream/consumers';
@@ -309,6 +311,7 @@ async function refreshDrives() {
 		//since no error replace the global cache with tmp
 		lastDrives=tmpLastDrives;
 	} catch {}
+
 } 
 
 function fromBinaryArray(bytes: Uint8Array): string {
@@ -1137,6 +1140,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	// ** attach the board file view
+	const bfe=new BoardFileExplorer(context,curDriveSetting);
+
 	// listen to the workspace change event to see if button should be shown 
 	//	** this is probably not needed since "normal" workspace changes will re-trigger activate
 	const wkspcChg=vscode.workspace.onDidChangeWorkspaceFolders( (event) => {
@@ -1357,6 +1363,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		statusBarItem1.show();
 		statusBarItem2.show();
+		//
+		//bfe.boardFileProvider=new BoardFileProvider(curDriveSetting);
+		bfe.boardFileProvider.refresh();
 	});
 	context.subscriptions.push(fileCmd);
 

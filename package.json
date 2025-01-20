@@ -28,6 +28,14 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "boardExplorer",
+          "name": "Board Explorer"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "circuitpythonsync.helloWorld",
