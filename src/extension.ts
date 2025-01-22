@@ -324,7 +324,8 @@ function toBinaryArray(str: string):Uint8Array {
 	return encoder.encode(str);
 }
 
-function getCurrentDriveConfig(): string {
+// **#36- need access to cur drive setting from views
+export function getCurrentDriveConfig(): string {
 	const curDriveConf=vscode.workspace.getConfiguration('circuitpythonsync');
 	let curDrive=curDriveConf.get(strgs.confDrivepathPKG,'');
 	//still can be null, coalesce to ''
@@ -1571,12 +1572,37 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.window.showWarningMessage('Must have active file in editor, or use context menu in explorer.');
 			return;
 		}
+		// ** switch to using glob pattern to search board
+		// first remove root from fileUri to just get path
+		if(!vscode.workspace.workspaceFolders){return;}	//won't happen
+		let leftFile:string=fileUri.fsPath.replace(vscode.workspace.workspaceFolders[0].uri.fsPath,'');
+		if(leftFile.startsWith('/') || leftFile.startsWith('\\')){
+			leftFile=leftFile.slice(1);
+		}
 		//now try to find file on board mapping
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
 		if (os.platform()==='win32') {
 			baseUri='file:'+baseUri;
 		}
+		//now do rel pattern against the board
+		const relPat=new vscode.RelativePattern(vscode.Uri.parse(baseUri),leftFile);
+		let fles;
+		try{
+		fles=await vscode.workspace.findFiles(relPat);
+		} catch(error){
+			const errMsg=strgs.couldNotReadCpDnld[0]+curDriveSetting+strgs.couldNotReadCpDnld[1];
+			await vscode.window.showErrorMessage(errMsg);
+			return;
+		}
+		if(!fles || fles.length===0){
+			vscode.window.showErrorMessage("Selected file does not exist on board.");
+			return;
+		}
+		// now compare files
+		vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],'Workspace to Board compare file: '+leftFile);
+		return;
+		/*
 		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
 		let gotCpDirectory:boolean=false;
 		let dirContents:[string,vscode.FileType][]=Array<[string,vscode.FileType]>(0);
@@ -1601,6 +1627,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		fileUri.path.endsWith('\\'+entry[0]));
 		if(!filename){return;}	//we know it is there
 		vscode.commands.executeCommand('vscode.diff',fileUri,vscode.Uri.joinPath(vscode.Uri.parse(baseUri),filename[0]),'Workspace to Board compare file: '+filename[0]);
+		*/
 	});
 	context.subscriptions.push(fileDiffCmd);
 
@@ -1625,6 +1652,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				// }
 				statusBarItem1.show();
 				statusBarItem2.show();
+				// ** #36, refresh the board explorer
+				bfe.boardFileProvider.refresh(curDriveSetting);
 			}
 		}
 	});

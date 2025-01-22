@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import os from 'os';
+import { getCurrentDriveConfig } from './extension';
 import { toNamespacedPath } from 'path';
 
 /*
@@ -57,7 +58,7 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 			children=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 			gotCpDirectory=true;
 		} catch {gotCpDirectory=false;}
-		if(!gotCpDirectory){
+		if(!gotCpDirectory || this._CurDriveSetting===''){
 			return Array<Entry>(0);
 		}
 		children.sort((a, b) => {
@@ -93,7 +94,10 @@ export class BoardFileExplorer {
 			showCollapseAll:true
 		};
         context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
-		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh(curDriveSetting));
+		vscode.commands.registerCommand('boardExplorer.refresh', () => {
+			const _curDrive=getCurrentDriveConfig();
+			this.boardFileProvider.refresh(_curDrive);
+		});
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
 		vscode.commands.registerCommand('boardExplorer.delete', async (resource:Entry) => { 
 			// ** #36, make sure uri exists and confirm every delete
@@ -148,7 +152,8 @@ export class BoardFileExplorer {
 				cmdName="remote-wsl.revealInExplorer";
 			}
 			// ** now get the board path
-			let baseUri=this.boardFileProvider._CurDriveSetting;
+			const _curDrive=getCurrentDriveConfig();
+			let baseUri=_curDrive;	//  this.boardFileProvider._CurDriveSetting;
 			if (os.platform()==='win32') {
 				baseUri='file:'+baseUri;
 			}
