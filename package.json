@@ -87,8 +87,23 @@
       {
         "command": "boardExplorer.delete",
         "title": "Delete"
+      },
+      {
+        "command": "boardExplorer.openOS",
+        "title": "Open In OS"
+      },
+      {
+        "command": "boardExplorer.openOS-wsl",
+        "title": "Open in OS"
+      },
+      {
+        "command": "boardExplorer.openBoardOS",
+        "title": "Open Board in OS",
+        "category": "CircuitPythonSync",
+        "enablement": "config.circuitpythonsync.drivepath",
+        "icon":"$(explorer-view-icon)"
       }
-    ],
+  ],
     "menus": {
       "commandPalette": [
         {
@@ -97,6 +112,14 @@
         },
         {
           "command": "boardExplorer.delete",
+          "when": "false"
+        },
+        {
+          "command": "boardExplorer.openOS",
+          "when": "false"
+        },
+        {
+          "command": "boardExplorer.openOS-wsl",
           "when": "false"
         }
       ],
@@ -111,12 +134,25 @@
           "command": "boardExplorer.refresh",
           "when": "view == boardExplorer",
           "group": "navigation"
+        },
+        {
+          "command": "boardExplorer.openBoardOS",
+          "when": "view ==boardExplorer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "boardExplorer.delete",
-          "when": "view == boardExplorer && (viewItem == file || viewItem == folder)"
+          "when": "view == boardExplorer && (viewItem == file)"
+        },
+        {
+          "command": "boardExplorer.openOS",
+          "when": "view == boardExplorer && (viewItem == folder) && remoteName!=='wsl'"
+        },
+        {
+          "command": "boardExplorer.openOS-wsl",
+          "when": "view == boardExplorer && (viewItem == folder) && remoteName==='wsl'"
         }
       ]
     },

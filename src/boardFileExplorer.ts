@@ -95,8 +95,65 @@ export class BoardFileExplorer {
         context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
 		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh(curDriveSetting));
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
-		vscode.commands.registerCommand('boardExplorer.delete',(resource:Entry) => { 
-			let x=resource;
+		vscode.commands.registerCommand('boardExplorer.delete', async (resource:Entry) => { 
+			// ** #36, make sure uri exists and confirm every delete
+			let ftype:vscode.FileType;
+			try {
+				const fstat=await vscode.workspace.fs.stat(resource.uri);
+				ftype=fstat.type;
+			} catch(error) {
+				const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+				vscode.window.showErrorMessage("** Error with file delete: "+fse.message);
+				return;
+			}
+			const ans=await vscode.window.showWarningMessage("Are you sure you want to permanently delete from board?","Yes","No, cancel");
+			if(ans==="No, cancel") {return;}
+			// check the node type, need to do differently
+			if(ftype===vscode.FileType.File){
+				try{
+					await vscode.workspace.fs.delete(resource.uri);
+					this.boardFileProvider.refresh(curDriveSetting);
+				} catch(error) {
+					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+					vscode.window.showErrorMessage("** Error with file delete: "+fse.message);	
+				}
+			} else if(ftype===vscode.FileType.Directory){
+				// ** should not get here
+				//await vscode.commands.executeCommand("remote-wsl.revealInExplorer",resource.uri);
+			} else {
+				vscode.window.showErrorMessage("** Unknown type of file/folder, cannot be deleted.");
+			}
+		});
+		vscode.commands.registerCommand('boardExplorer.openOS', async (resource:Entry) => {
+			let rname=vscode.env.remoteName;
+			let cmdName:string='revealFileInOS';
+			if(rname && rname==='ssh-remote'){
+				// use the terminal
+				cmdName="openInIntegratedTerminal";			
+			}
+			await vscode.commands.executeCommand(cmdName,resource.uri);
+		});
+		vscode.commands.registerCommand('boardExplorer.openOS-wsl', async (resource:Entry) => {
+			let rname=vscode.env.remoteName;
+			await vscode.commands.executeCommand("remote-wsl.revealInExplorer",resource.uri);
+		});
+		vscode.commands.registerCommand('boardExplorer.openBoardOS', async (bfe=this.boardFileProvider) => {
+			const rname=vscode.env.remoteName;
+			let cmdName:string='revealFileInOS';
+			if(rname && rname==='ssh-remote'){
+				// use the terminal
+				cmdName="openInIntegratedTerminal";			
+			}
+			if(rname && rname==='wsl'){
+				cmdName="remote-wsl.revealInExplorer";
+			}
+			// ** now get the board path
+			let baseUri=bfe._CurDriveSetting;
+			if (os.platform()==='win32') {
+				baseUri='file:'+baseUri;
+			}
+			const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
+			await vscode.commands.executeCommand(cmdName,boardUri);
 		});
     }
 }
