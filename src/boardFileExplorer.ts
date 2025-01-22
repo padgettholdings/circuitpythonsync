@@ -95,8 +95,8 @@ export class BoardFileExplorer {
         context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
 		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh(curDriveSetting));
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
-		vscode.commands.registerCommand('boardExplorer.delete',(resource) => { 
-			let x=1;
+		vscode.commands.registerCommand('boardExplorer.delete',(resource:Entry) => { 
+			let x=resource;
 		});
     }
 }

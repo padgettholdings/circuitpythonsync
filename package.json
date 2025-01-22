@@ -90,6 +90,16 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "boardExplorer.refresh",
+          "when": "false"
+        },
+        {
+          "command": "boardExplorer.delete",
+          "when": "false"
+        }
+      ],
       "explorer/context":[
         {
           "command": "circuitpythonsync.filediff",

@@ -1323,6 +1323,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		//NO, issue #2, update button anyway in case contents changed
 		if(result.path!=='' && result.path===curDrive) {
 			updateStatusBarItems();	
+			// ** #36 go ahead and refresh view in case board was reconnected
+			bfe.boardFileProvider.refresh(curDriveSetting);
 			return;
 		}
 		//otherwise if selected detected drive, just update config, else open file dialog
