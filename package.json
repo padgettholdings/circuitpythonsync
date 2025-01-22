@@ -83,6 +83,10 @@
         "command": "boardExplorer.refresh",
         "title": "Refresh",
         "icon":"$(refresh)"
+      },
+      {
+        "command": "boardExplorer.delete",
+        "title": "Delete"
       }
     ],
     "menus": {
@@ -97,6 +101,12 @@
           "command": "boardExplorer.refresh",
           "when": "view == boardExplorer",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "boardExplorer.delete",
+          "when": "view == boardExplorer && (viewItem == file || viewItem == folder)"
         }
       ]
     },

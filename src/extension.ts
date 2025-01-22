@@ -714,7 +714,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		progInc=101;
 		vscode.window.showInformationMessage(`Copy done: ${copiedCodeOrMainPy ? 'DID' : 'DID NOT'} copy python file.  ${copiedFilesCnt.toString()} files copied. ${skippedFilesCnt.toString()} files skipped. ${errorFileCnt.toString()} files errored.`);
 		statusBarItem1.backgroundColor=undefined;
-		
+		// ** #36, refresh the board explorer
+		bfe.boardFileProvider.refresh(curDriveSetting);
 	});
 	
 	context.subscriptions.push(sbItemCmd1);
@@ -893,7 +894,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//just make sure progress is gone
 		progInc=101;
-		statusBarItem2.backgroundColor=undefined;		
+		statusBarItem2.backgroundColor=undefined;
+		// ** #36, refresh the board explorer
+		bfe.boardFileProvider.refresh(curDriveSetting);
+
 	});
 	
 	context.subscriptions.push(sbItemCmd2);

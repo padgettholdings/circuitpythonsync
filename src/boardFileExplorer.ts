@@ -19,6 +19,7 @@ export class Entry extends vscode.TreeItem{
 		this.uri=uri;
 		this.type=type;
 	}
+	contextValue = 'entry';
 }
 
 export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
@@ -42,7 +43,8 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
             // #######TBD####### point at board mapping
 			const children = await vscode.workspace.fs.readDirectory(element.uri);
 			//return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
-			return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(element.uri,name),type,label:'',collapsibleState:vscode.TreeItemCollapsibleState.None}));
+			return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(element.uri,name),type,label:'',
+				collapsibleState:vscode.TreeItemCollapsibleState.None, contextValue:'entry'}));
 		}
 		//const workspaceFolder = (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file')[0];
 		let baseUri=this._CurDriveSetting;
@@ -64,14 +66,18 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 			}
 			return a[1] === vscode.FileType.Directory ? -1 : 1;
 		});
-		return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(vscode.Uri.parse(baseUri),name),type,label:'',collapsibleState:vscode.TreeItemCollapsibleState.None}));
+		return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(vscode.Uri.parse(baseUri),name),type,label:'',
+			collapsibleState:vscode.TreeItemCollapsibleState.None, contextValue:'entry'}));
 	}
 
 	getTreeItem(element: Entry): vscode.TreeItem {
-		const treeItem = new vscode.TreeItem(element.uri, element.type === vscode.FileType.Directory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+		const treeItem = new vscode.TreeItem(element.uri,
+			 element.type === vscode.FileType.Directory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		if (element.type === vscode.FileType.File) {
 			treeItem.command = { command: 'fileExplorer.openFile', title: "Open File", arguments: [element.uri], };
 			treeItem.contextValue = 'file';
+		} else {
+			treeItem.contextValue = 'folder';
 		}
 		return treeItem;
 	}
@@ -89,5 +95,8 @@ export class BoardFileExplorer {
         context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
 		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh(curDriveSetting));
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
+		vscode.commands.registerCommand('boardExplorer.delete',(resource) => { 
+			let x=1;
+		});
     }
 }
