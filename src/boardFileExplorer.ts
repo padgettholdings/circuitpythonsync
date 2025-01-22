@@ -137,7 +137,7 @@ export class BoardFileExplorer {
 			let rname=vscode.env.remoteName;
 			await vscode.commands.executeCommand("remote-wsl.revealInExplorer",resource.uri);
 		});
-		vscode.commands.registerCommand('boardExplorer.openBoardOS', async (bfe=this.boardFileProvider) => {
+		vscode.commands.registerCommand('boardExplorer.openBoardOS', async () => {
 			const rname=vscode.env.remoteName;
 			let cmdName:string='revealFileInOS';
 			if(rname && rname==='ssh-remote'){
@@ -148,7 +148,7 @@ export class BoardFileExplorer {
 				cmdName="remote-wsl.revealInExplorer";
 			}
 			// ** now get the board path
-			let baseUri=bfe._CurDriveSetting;
+			let baseUri=this.boardFileProvider._CurDriveSetting;
 			if (os.platform()==='win32') {
 				baseUri='file:'+baseUri;
 			}
