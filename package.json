@@ -32,7 +32,9 @@
       "explorer": [
         {
           "id": "boardExplorer",
-          "name": "Board Explorer"
+          "name": "Board Explorer",
+          "contextualTitle": "Board Explorer",
+          "icon": "$(circuit-board)"
         }
       ]
     },
@@ -76,6 +78,11 @@
         "command": "circuitpythonsync.filediff",
         "title": "Compare file to board",
         "category": "CircuitPythonSync"
+      },
+      {
+        "command": "boardExplorer.refresh",
+        "title": "Refresh",
+        "icon":"$(refresh)"
       }
     ],
     "menus": {
@@ -83,6 +90,13 @@
         {
           "command": "circuitpythonsync.filediff",
           "group": "3_compare"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "boardExplorer.refresh",
+          "when": "view == boardExplorer",
+          "group": "navigation"
         }
       ]
     },

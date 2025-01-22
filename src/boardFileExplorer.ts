@@ -2,9 +2,23 @@ import * as vscode from 'vscode';
 import os from 'os';
 import { toNamespacedPath } from 'path';
 
+/*
 interface Entry {
 	uri: vscode.Uri;
 	type: vscode.FileType;
+}
+*/
+export class Entry extends vscode.TreeItem{
+	constructor(
+		public readonly uri:vscode.Uri,
+		public readonly type:vscode.FileType,
+		public readonly label: string,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState
+	) {
+		super(label,collapsibleState);
+		this.uri=uri;
+		this.type=type;
+	}
 }
 
 export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
@@ -17,7 +31,8 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 	private _onDidChangeTreeData: vscode.EventEmitter<Entry | undefined | void> = new vscode.EventEmitter<Entry | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<Entry | undefined | void> = this._onDidChangeTreeData.event;
 
-	refresh(): void {
+	refresh(curDriveSetting:string): void {
+		this._CurDriveSetting=curDriveSetting;
 		this._onDidChangeTreeData.fire();
 	}
 
@@ -27,7 +42,7 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
             // #######TBD####### point at board mapping
 			const children = await vscode.workspace.fs.readDirectory(element.uri);
 			//return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
-			return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(element.uri,name),type}));
+			return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(element.uri,name),type,label:'',collapsibleState:vscode.TreeItemCollapsibleState.None}));
 		}
 		//const workspaceFolder = (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file')[0];
 		let baseUri=this._CurDriveSetting;
@@ -49,7 +64,7 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 			}
 			return a[1] === vscode.FileType.Directory ? -1 : 1;
 		});
-		return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(vscode.Uri.parse(baseUri),name),type}));
+		return children.map(([name,type]) => ({uri:vscode.Uri.joinPath(vscode.Uri.parse(baseUri),name),type,label:'',collapsibleState:vscode.TreeItemCollapsibleState.None}));
 	}
 
 	getTreeItem(element: Entry): vscode.TreeItem {
@@ -72,7 +87,7 @@ export class BoardFileExplorer {
 			showCollapseAll:true
 		};
         context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
-		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh());
+		vscode.commands.registerCommand('boardExplorer.refresh', () => this.boardFileProvider.refresh(curDriveSetting));
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
     }
 }

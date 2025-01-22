@@ -1365,7 +1365,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem2.show();
 		//
 		//bfe.boardFileProvider=new BoardFileProvider(curDriveSetting);
-		bfe.boardFileProvider.refresh();
+		bfe.boardFileProvider.refresh(curDriveSetting);
 	});
 	context.subscriptions.push(fileCmd);
 
