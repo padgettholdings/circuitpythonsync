@@ -80,3 +80,6 @@
 
 ## Release 0.1.0
 - create release v0.1.0 with all major functions
+
+## issue #36, diffs and board explorer
+- create release v0.1.0-a for platform testing
