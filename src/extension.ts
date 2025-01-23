@@ -1634,7 +1634,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			fileUri=vscode.window.activeTextEditor.document.uri;
 		} else {
 			//just bail
-			vscode.window.showWarningMessage('Must have active file in editor, or use context menu in explorer.');
+			vscode.window.showWarningMessage(strgs.diffContextWarning);
 			return;
 		}
 		// ** switch to using glob pattern to search board
@@ -1661,11 +1661,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		if(!fles || fles.length===0){
-			vscode.window.showErrorMessage("Selected file does not exist on board.");
+			vscode.window.showErrorMessage(strgs.diffBoardFileNoExist);
 			return;
 		}
 		// now compare files
-		vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],'Workspace to Board compare file: '+leftFile);
+		vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],strgs.diffScreenHeader+leftFile);
 		return;
 		/*
 		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle

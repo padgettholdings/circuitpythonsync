@@ -110,3 +110,11 @@ export const abortLibCopyError:string='Aborting lib copy trying to read device w
 export const abortWholeLibCopyError:string='** Aborting lib copy with error: ';     //+fse.message
 export const wholeLibCopyDone:string='** Entire library copy done. **';
 export const errorCopyingLibFile:string='** Error copying lib file: ';      //+fse.message
+
+//board explorer and diff related
+export const boardFileDeleteError:string="** Error with file delete: ";   //+fse.message
+export const boardFileConfDelete:string="Are you sure you want to permanently delete from board?";
+export const boardUnkTypeFileFolder:string="** Unknown type of file/folder, cannot be deleted.";
+export const diffContextWarning:string='Must have active file in editor, or use context menu in explorer.';
+export const diffBoardFileNoExist:string="Selected file does not exist on board.";
+export const diffScreenHeader:string='Workspace to Board compare file: ';   //+leftFile
