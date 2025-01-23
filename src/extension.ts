@@ -963,13 +963,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		const fileIcon:vscode.ThemeIcon=new vscode.ThemeIcon("file");
 		const folderIcon:vscode.ThemeIcon=new vscode.ThemeIcon("folder");
 		let picks:libSelPick[]=Array<libSelPick>(0);
+		// ** #37, make list of comments and use to annotate matches and add back in later
+		const cpLinesComments=cpLines.filter(lne => lne.origLine && lne.origLine!=='');
 		for(const libSel of libListSelects) {
+			const cpLineMatch=cpLinesComments.find((cmt) => {
+				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
+				return (cmtSrcOnly && cmtSrcOnly===libSel.fullPath);
+			});
+			let cpLineMatchDest='';
+			if(cpLineMatch && cpLineMatch.origLine && cpLineMatch.origLine.includes('->')){
+				cpLineMatchDest=cpLineMatch.origLine.slice(1).trim().split('->')[1].trim();
+			}
 			const pick:libSelPick={
 				label: libSel.fullPath + (libSel.dest ? " -> "+libSel.dest : ""),
 				picked:libSel.selected,
 				iconPath:(libSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
 				src:libSel.src,
-				dest:libSel.dest
+				dest:libSel.dest,
+				description: 
+					cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) Commented' : ''
 			};
 			picks.push(pick);
 		}
@@ -1010,10 +1022,24 @@ export async function activate(context: vscode.ExtensionContext) {
 			for(const nc of newChoices){
 				newFileContents+=nc.label+"\n";
 			}
-			// ** #37, add back the comment lines
-			const cpLinesComments=cpLines.filter(lne => lne.origLine && lne.origLine!=='');
+			// ** #37, add back the comment lines EXCEPT the ones matching new choices
+			let removingDestMapComment:boolean=false;
 			for(const cmt of cpLinesComments){
-				newFileContents+=cmt.origLine+'\n';
+				// take off any dest mapping that is in comment, just match src
+				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
+				if(!newChoices.some(nc => cmtSrcOnly && nc.label===cmtSrcOnly)){
+					newFileContents+=cmt.origLine+'\n';
+				} else {
+					//if comment is being removed that has dest, flag to ask later
+					if(cmt.origLine && cmt.origLine.includes('->')){
+						removingDestMapComment=true;
+					}
+				}
+			}
+			//if removed comment with dest map, ask
+			if(removingDestMapComment){
+				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes","No");
+				if(ans==="No"){return;}
 			}
 			//write cpfiles, creating if needed and making backup if orig not empty
 			const wrslt=await writeCpfiles(newFileContents);
