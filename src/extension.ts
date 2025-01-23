@@ -8,6 +8,7 @@ import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
+import { loadEnvFile } from 'process';
 
 //import { Dirent } from 'fs';
 
@@ -70,16 +71,18 @@ interface drvlstDrive {
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
 
 //interface for cpfiles parsed line
+// ** #37, add field to preserve orig line
 interface cpFileLine {
 	src: string,
 	dest: string,
-	inLib: boolean
+	inLib: boolean,
+	origLine?:string | undefined
 }
 
 // parse cpfiles.txt into lines
 // schema is:
 //	src | src->dest | lib/src | lib/src -> dest (dest in lib implied) | lib/src -> lib/dest
-async function parseCpfiles(): Promise<cpFileLine[]>  {
+async function parseCpfiles(preserveComments:boolean=false): Promise<cpFileLine[]>  {
 	let outLines:cpFileLine[]=Array<cpFileLine>(0);
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return outLines;}
@@ -94,9 +97,35 @@ async function parseCpfiles(): Promise<cpFileLine[]>  {
 		let fromFile:string='';
 		let toFile:string='';
 		let inLib:boolean=false;
+		let origLine:string='';
 		if(lines) {
 			for(const lineOrig of lines) {
-				const fromTo:string[]=lineOrig.split('->');
+				// ** #37, don't process comments which start with #, 
+				//	BUT save in the output if preserve arg is set.
+				//  Only used by manage cpfiles routine to re-write originals
+				//	if you need to have file starting with # use \#
+				//	the leading backslash will be removed
+				origLine=lineOrig;
+				if(lineOrig.startsWith('#')){
+					if(preserveComments!==undefined && preserveComments){
+						outLines.push(
+							{
+								src:'',
+								dest:'',
+								inLib: false,
+								origLine:origLine
+							}
+						);
+					}
+					continue;
+				}
+				let _lineOrig=lineOrig;
+				/*
+				if(_lineOrig.startsWith('\\#')){
+					_lineOrig=_lineOrig.slice(1);
+				}
+				*/
+				const fromTo:string[]=_lineOrig.split('->');
 				fromFile=fromTo[0].trim();
 				toFile=fromTo.length>1 ? fromTo[1].trim() : '';
 				inLib=fromFile.toLowerCase().startsWith('lib/');
@@ -246,6 +275,7 @@ interface libListSelect {
 
 // support #15, for library only, merge  parsed cpfiles with actual directory, returning checked list
 async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> {
+	// ** #37, cpLines has comment only lines to filter out
 	// **Only works if workspace, but should not ever call this if not one **
 	let retVal:libListSelect[]=Array<libListSelect>(0);
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
@@ -598,6 +628,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 		if(!wsRootFolder){return;}	// will never return since we know we are in workspace
 		const cpFileLines=await parseCpfiles();
+		// ** #37, DON'T need to filter out the comment lines that have just comment because did not preserve
 		let cpCodeLines=cpFileLines.filter(lne => !lne.inLib);
 		//setup some result tracking
 		let copiedFilesCnt:number=0;
@@ -744,6 +775,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//read the cpfiles to see if no specs so whole library is the source...
 		//but only if confirmation turned off
 		const cpFileLines=await parseCpfiles();	//will need this later too
+		// ** note that #37 comment lines don't affect lib lines, and didn't ask to preserve
 		let copyFullLibFolder=false;	//for later too
 		if(cpFileLines.length===0 || !cpFileLines.some(lne => lne.inLib)){
 				//yes, whole lib to be copied, confirm
@@ -922,7 +954,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		//first read the current cpfile
-		const cpLines=await parseCpfiles();
+		// ** #37, preserve the comments
+		const cpLines=await parseCpfiles(true);
 		//then get the current merged list
 		let libListSelects=await getlibListSelect(cpLines);
 		//now create a list of quickpicks
@@ -966,7 +999,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				if(ans==="No"){return;}
 			}
 			//get the files only lines from cpLines
-			const cpLinesPy=cpLines.filter(lne => !lne.inLib);
+			//  ** #37, ignore the comment lines which have no src
+			const cpLinesPy=cpLines.filter(lne => !lne.inLib && lne.src);
 			//now start constructing the new file
 			let newFileContents:string="";
 			for(const lne of cpLinesPy){
@@ -975,6 +1009,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			//now add the selections from choices 
 			for(const nc of newChoices){
 				newFileContents+=nc.label+"\n";
+			}
+			// ** #37, add back the comment lines
+			const cpLinesComments=cpLines.filter(lne => lne.origLine && lne.origLine!=='');
+			for(const cmt of cpLinesComments){
+				newFileContents+=cmt.origLine+'\n';
 			}
 			//write cpfiles, creating if needed and making backup if orig not empty
 			const wrslt=await writeCpfiles(newFileContents);
