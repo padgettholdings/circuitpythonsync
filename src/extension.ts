@@ -316,6 +316,50 @@ async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> 
 	return retVal;
 }
 
+// ** #37 select list for files to go to board, similar to libraries
+//checked list interface for lib
+interface fileListSelect {
+	src: string,
+	dest: string,
+	fullPath: string,
+	selected: boolean,
+	fType: vscode.FileType
+}
+
+async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]>{
+	// ** #37, cpLines has comment only lines to filter out
+	// **Only works if workspace, but should not ever call this if not one **
+	let retVal:fileListSelect[]=Array<fileListSelect>(0);
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return retVal;}
+	// filter to just actual files, comments will be checked/merged by caller
+	const cpLinesFiles=cpLines.filter(lne => !lne.inLib && lne.src);
+	//read the root to be able to match files
+	const fileDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+	//create the output array and match
+	for(const entry of fileDir){
+		let curEntry:fileListSelect={
+			src:entry[0],
+			dest:"",
+			fullPath:entry[0],
+			selected:false,
+			fType:entry[1]
+		};
+		const matchedCp=cpLinesFiles.find((value) => {
+			return value.src===curEntry.src;
+		});
+		if(matchedCp){
+			curEntry.dest=matchedCp.dest;
+			curEntry.selected=true;
+		}
+		retVal.push(curEntry);
+	}
+
+
+	return retVal;
+}
+
+
 //refresh the drive list
 async function refreshDrives() {
 	//use a temp array in case of error
