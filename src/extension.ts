@@ -316,6 +316,22 @@ async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> 
 	return retVal;
 }
 
+// ** #37, add utility to return real path to library
+async function getLibPath(): Promise<string>{
+	let retVal:string="";
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return retVal;}
+	// ** also should not call if lib folder doesn't exist, but this is for safety
+	if(!libraryFolderExists) { return retVal;}
+	//the rootDir array should have lib folder name, find it
+	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
+	const libName=rootDir.find((value:[string,vscode.FileType],index,ary) => {
+		return value[1]===vscode.FileType.Directory && value[0].toLowerCase()==='lib';
+	});
+	retVal=libName ? libName[0] : "";
+	return retVal;
+}
+
 // ** #37 select list for files to go to board, similar to libraries
 //checked list interface for lib
 interface fileListSelect {
@@ -1025,7 +1041,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				src:libSel.src,
 				dest:libSel.dest,
 				description: 
-					cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) Commented' : ''
+					cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) '+strgs.pickCommentFlag : ''
 			};
 			picks.push(pick);
 		}
@@ -1072,7 +1088,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			//	- ** lines that were commented and are now selected...
 			//	-	WHICH can be either mapped or not, if mapped defer to question...
 			for(const nc of newChoices){
-				if(nc.description && nc.description.endsWith('Commented') && nc.description.includes('->')){
+				if(nc.description && nc.description.endsWith(strgs.pickCommentFlag) && nc.description.includes('->')){
 					//??? let below handle????
 				} else {
 					newFileContents+=nc.label+"\n";
@@ -1083,9 +1099,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 				if(prsvList){
 					//just add cpline back with comment
+					// ** need the actual lib folder path
+					const libDir=await getLibPath();
 					for(const plne of prsvList){
-//########### TBD - get real lib folder name ###########
-						newFileContents+="# "+"lib/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
+						newFileContents+="# "+libDir+"/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
 					}
 				}
 			}
