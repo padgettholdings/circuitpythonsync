@@ -1066,11 +1066,17 @@ export async function activate(context: vscode.ExtensionContext) {
 			for(const lne of cpLinesPy){
 				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
 			}
-			//now add the selections from choices - these are either;
+			//now add the selections from choices, ALL lib - these are either;
 			//	- new non-mapped selections
 			//	- previously selected mapped that pass through
+			//	- ** lines that were commented and are now selected...
+			//	-	WHICH can be either mapped or not, if mapped defer to question...
 			for(const nc of newChoices){
-				newFileContents+=nc.label+"\n";
+				if(nc.description && nc.description.endsWith('Commented') && nc.description.includes('->')){
+					//??? let below handle????
+				} else {
+					newFileContents+=nc.label+"\n";
+				}
 			}
 			// **look at cplines having mappings that may be flagged to preserve with comments
 			if(prsvDestWCmts){
@@ -1085,6 +1091,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			// ** #37, add back the comment lines EXCEPT the ones matching new choices
 			let removingDestMapComment:boolean=false;
+			let uncomMappedLines=Array<cpFileLine>(0);
 			for(const cmt of cpLinesComments){
 				// take off any dest mapping that is in comment, just match src
 				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
@@ -1094,13 +1101,29 @@ export async function activate(context: vscode.ExtensionContext) {
 					//if comment is being removed that has dest, flag to ask later
 					if(cmt.origLine && cmt.origLine.includes('->')){
 						removingDestMapComment=true;
+						uncomMappedLines.push(cmt);
 					}
 				}
 			}
 			//if removed comment with dest map, ask
 			if(removingDestMapComment){
-				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes","No");
+				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes,remove","Preserve","No");
 				if(ans==="No"){return;}
+				if(ans==="Preserve"){
+					//just add the orig line without comment back in
+					for(const cmt of uncomMappedLines){
+						if(cmt.origLine){
+							newFileContents+=cmt.origLine.slice(1).trim()+'\n';
+						}
+					}
+				} else {
+					//just do the source without the map from orig
+					for(const cmt of uncomMappedLines){
+						if(cmt.origLine){
+							newFileContents+=cmt.origLine.slice(1).trim().split('->')[0].trim()+'\n';
+						}
+					}
+				}
 			}
 			//write cpfiles, creating if needed and making backup if orig not empty
 			const wrslt=await writeCpfiles(newFileContents);
