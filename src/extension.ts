@@ -1038,6 +1038,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			{title:strgs_mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
 		);
 		if(newChoices){
+			let prsvDestWCmts:boolean=false;	//if true, use/remove comments to keep destinations
 			//the return is only the new picks, all others in cpfiles should be deleted
 			//just format the file again from cpLines and newChoices
 			// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
@@ -1046,8 +1047,11 @@ export async function activate(context: vscode.ExtensionContext) {
 					return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 				})
 			){
-				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes","No");
+				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes,remove","Preserve","No");
 				if(ans==="No"){return;}
+				if(ans==="Preserve"){
+					prsvDestWCmts=true;
+				}
 			}
 			// **ALSO, if all lib paths are taken out warn that entire library will be copied
 			if(newChoices.length===0){
@@ -1062,9 +1066,22 @@ export async function activate(context: vscode.ExtensionContext) {
 			for(const lne of cpLinesPy){
 				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
 			}
-			//now add the selections from choices 
+			//now add the selections from choices - these are either;
+			//	- new non-mapped selections
+			//	- previously selected mapped that pass through
 			for(const nc of newChoices){
 				newFileContents+=nc.label+"\n";
+			}
+			// **look at cplines having mappings that may be flagged to preserve with comments
+			if(prsvDestWCmts){
+				const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+				if(prsvList){
+					//just add cpline back with comment
+					for(const plne of prsvList){
+//########### TBD - get real lib folder name ###########
+						newFileContents+="# "+"lib/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
+					}
+				}
 			}
 			// ** #37, add back the comment lines EXCEPT the ones matching new choices
 			let removingDestMapComment:boolean=false;
