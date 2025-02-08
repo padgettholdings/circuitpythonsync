@@ -69,7 +69,7 @@ export const noFilesSpecd:string='!! No files specified to copy exist !!';
 export const noLibSpecd:string='!! No libraries specified to copy exist !!';
 export const warnEntireLib:string='WARNING! Entire lib folder will be copied, continue?';
 export const noLibDir:string='!! No libraries yet created !';
-export const destMapsDel:string='Destination mappings will be deleted, continue?';
+export const destMapsDel:string='Destination mappings can be preserved or deleted, or cancel all?';
 export const cnfrmEntireLib:string='No lib folders/files selected, entire lib folder will be copied, continue?';
 export const fndCPDrvInsPath:string[]=[
     'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"

@@ -1063,8 +1063,8 @@ export async function activate(context: vscode.ExtensionContext) {
 					return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 				})
 			){
-				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes,remove","Preserve","No");
-				if(ans==="No"){return;}
+				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+				if(ans==="No, cancel"){return;}
 				if(ans==="Preserve"){
 					prsvDestWCmts=true;
 				}
@@ -1124,8 +1124,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//if removed comment with dest map, ask
 			if(removingDestMapComment){
-				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Yes,remove","Preserve","No");
-				if(ans==="No"){return;}
+				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+				if(ans==="No, cancel"){return;}
 				if(ans==="Preserve"){
 					//just add the orig line without comment back in
 					for(const cmt of uncomMappedLines){
