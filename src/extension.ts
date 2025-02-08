@@ -8,7 +8,7 @@ import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
-import { loadEnvFile } from 'process';
+//import { loadEnvFile } from 'process';
 
 //import { Dirent } from 'fs';
 
@@ -26,6 +26,7 @@ let strgs_cpfilesbak:string=strgs.cpfilesbak;
 let strgs_cpBootFile:string=strgs.cpBootFile;
 let strgs_noWriteCpfile:string=strgs.noWriteCpfile;
 let strgs_mngLibChooseLibs:string=strgs.mngLibChooseLibs;
+let strgs_mngFileChooseFiles:string=strgs.mngFileChooseFiles;
 let strgs_noCodeFilesInCp:string=strgs.noCodeFilesInCp;
 let strgs_noPyCodeFilesInCp:string=strgs.noPyCodeFilesInCp;
 let strgs_fileInCpNoExist:string=strgs.fileInCpNoExist;
@@ -354,21 +355,25 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 	const fileDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
 	//create the output array and match
 	for(const entry of fileDir){
-		let curEntry:fileListSelect={
-			src:entry[0],
-			dest:"",
-			fullPath:entry[0],
-			selected:false,
-			fType:entry[1]
-		};
-		const matchedCp=cpLinesFiles.find((value) => {
-			return value.src===curEntry.src;
-		});
-		if(matchedCp){
-			curEntry.dest=matchedCp.dest;
-			curEntry.selected=true;
+		// **NO folders ??????
+		const entryType:vscode.FileType=entry[1] as vscode.FileType;
+		if(entryType===vscode.FileType.File){
+			let curEntry:fileListSelect={
+				src:entry[0],
+				dest:"",
+				fullPath:entry[0],
+				selected:false,
+				fType:entry[1]
+			};
+			const matchedCp=cpLinesFiles.find((value) => {
+				return value.src===curEntry.src;
+			});
+			if(matchedCp){
+				curEntry.dest=matchedCp.dest;
+				curEntry.selected=true;
+			}
+			retVal.push(curEntry);
 		}
-		retVal.push(curEntry);
 	}
 
 
@@ -619,7 +624,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
 	//vscode.window.showInformationMessage(`active cpbootfile setting is: ${strgs_cpBootFile}`);
 	// ** and get revised messages **
-	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp,strgs_warnNoLibsInCP]=strgs.getCpFilesMsgs(strgs_cpfiles);
+	[strgs_noWriteCpfile,strgs_mngLibChooseLibs,strgs_mngFileChooseFiles,strgs_noCodeFilesInCp,strgs_noPyCodeFilesInCp,strgs_fileInCpNoExist,strgs_noPyAndNonExistFilesInCp,strgs_warnNoLibsInCP]=strgs.getCpFilesMsgs(strgs_cpfiles);
 	//vscode.window.showInformationMessage('one of revised cpfiles messages: '+strgs_noCodeFilesInCp);
 	[strgs_cpBootNoFindMKDN]=strgs.getCpBootMsgs(strgs_cpBootFile);
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
@@ -1001,9 +1006,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		dest:string
 	}
 
-	const mngCpFilesId:string=strgs.cmdMngLibPKG;
+	const mngCpLibsId:string=strgs.cmdMngLibPKG;
 	//#15, command to manage cpfiles library settings
-	const cmdMngLibSettings=vscode.commands.registerCommand(mngCpFilesId, async () => {
+	const cmdMngLibSettings=vscode.commands.registerCommand(mngCpLibsId, async () => {
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
@@ -1180,6 +1185,193 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(cmdMngLibSettings);
 	
+	//custom object for pick to save src only
+	interface fileSelPick extends vscode.QuickPickItem {
+		src:string,
+		dest:string
+	}
+	
+	const mngCpFilesId:string=strgs.cmdMngFilesPKG;
+	//#37, command to manage cpfiles  settings
+	const cmdMngFilesSettings=vscode.commands.registerCommand(mngCpFilesId, async () => {
+		//if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		// if(!libFilesExist) {
+		// 	vscode.window.showInformationMessage(strgs.noLibDir);
+		// 	return;
+		// }
+		//first read the current cpfile
+		// ** #37, preserve the comments
+		const cpLines=await parseCpfiles(true);
+		//then get the current merged list
+		let fileListSelects=await getFileListSelect(cpLines);
+		//now create a list of quickpicks
+		// construct themeicons to use in pick instead of literals
+		// **ONLY files???
+		const fileIcon:vscode.ThemeIcon=new vscode.ThemeIcon("file");
+		const folderIcon:vscode.ThemeIcon=new vscode.ThemeIcon("folder");
+		let picks:fileSelPick[]=Array<fileSelPick>(0);
+		// ** #37, make list of comments and use to annotate matches and add back in later
+		const cpLinesComments=cpLines.filter(lne => lne.origLine && lne.origLine!=='');
+		for(const fileSel of fileListSelects) {
+			const cpLineMatch=cpLinesComments.find((cmt) => {
+				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
+				return (cmtSrcOnly && cmtSrcOnly===fileSel.fullPath);
+			});
+			let cpLineMatchDest='';
+			if(cpLineMatch && cpLineMatch.origLine && cpLineMatch.origLine.includes('->')){
+				cpLineMatchDest=cpLineMatch.origLine.slice(1).trim().split('->')[1].trim();
+			}
+			const pick:fileSelPick={
+				label: fileSel.fullPath + (fileSel.dest ? " -> "+fileSel.dest : ""),
+				picked:fileSel.selected,
+				iconPath:(fileSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
+				src:fileSel.src,
+				dest:fileSel.dest,
+				description: 
+					cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) '+strgs.pickCommentFlag : ''
+			};
+			picks.push(pick);
+		}
+		const pickOpt:vscode.QuickPickOptions={
+			canPickMany:true,
+			placeHolder: strgs.mngFileChecks,
+			title: strgs_mngFileChooseFiles
+		};
+		const newChoices=await vscode.window.showQuickPick<fileSelPick>(picks,
+			{title:strgs_mngFileChooseFiles, placeHolder:strgs.mngFileChecks, canPickMany:true}
+		);
+		if(newChoices){
+			let prsvDestWCmts:boolean=false;	//if true, use/remove comments to keep destinations
+			//the return is only the new picks, all others in cpfiles should be deleted OR commented
+			//just format the file again from cpLines and newChoices
+			// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
+			if(
+				cpLines.some((cpl) => {
+					return (!cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+				})
+			){
+				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+				if(ans==="No, cancel"){return;}
+				if(ans==="Preserve"){
+					prsvDestWCmts=true;
+				}
+			}
+			// **ALSO, if all lib paths are taken out warn that entire library will be copied
+			if(newChoices.length===0){
+				let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
+				if(ans==="No"){return;}
+			}
+			//get the files only lines from cpLines
+			//  ** #37, ignore the comment lines which have no src
+			const cpLinesPy=cpLines.filter(lne => !lne.inLib && lne.src);
+			//now start constructing the new file
+			let newFileContents:string="";
+			for(const lne of cpLinesPy){
+				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
+			}
+			//now add the selections from choices, ALL lib - these are either;
+			//	- new non-mapped selections
+			//	- previously selected mapped that pass through
+			//	- ** lines that were commented and are now selected...
+			//	-	WHICH can be either mapped or not, if mapped defer to question...
+			for(const nc of newChoices){
+				if(nc.description && nc.description.endsWith(strgs.pickCommentFlag) && nc.description.includes('->')){
+					//??? let below handle????
+				} else {
+					newFileContents+=nc.label+"\n";
+				}
+			}
+			// **look at cplines having mappings that may be flagged to preserve with comments
+			if(prsvDestWCmts){
+				const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+				if(prsvList){
+					//just add cpline back with comment
+					// ** need the actual lib folder path
+					const libDir=await getLibPath();
+					for(const plne of prsvList){
+						newFileContents+="# "+libDir+"/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
+					}
+				}
+			}
+			// ** #37, add back the comment lines EXCEPT the ones matching new choices
+			let removingDestMapComment:boolean=false;
+			let uncomMappedLines=Array<cpFileLine>(0);
+			for(const cmt of cpLinesComments){
+				// take off any dest mapping that is in comment, just match src
+				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
+				if(!newChoices.some(nc => cmtSrcOnly && nc.label===cmtSrcOnly)){
+					newFileContents+=cmt.origLine+'\n';
+				} else {
+					//if comment is being removed that has dest, flag to ask later
+					if(cmt.origLine && cmt.origLine.includes('->')){
+						removingDestMapComment=true;
+						uncomMappedLines.push(cmt);
+					}
+				}
+			}
+			//if removed comment with dest map, ask
+			if(removingDestMapComment){
+				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+				if(ans==="No, cancel"){return;}
+				if(ans==="Preserve"){
+					//just add the orig line without comment back in
+					for(const cmt of uncomMappedLines){
+						if(cmt.origLine){
+							newFileContents+=cmt.origLine.slice(1).trim()+'\n';
+						}
+					}
+				} else {
+					//just do the source without the map from orig
+					for(const cmt of uncomMappedLines){
+						if(cmt.origLine){
+							newFileContents+=cmt.origLine.slice(1).trim().split('->')[0].trim()+'\n';
+						}
+					}
+				}
+			}
+			//write cpfiles, creating if needed and making backup if orig not empty
+			const wrslt=await writeCpfiles(newFileContents);
+			if(wrslt){
+				//give error message
+				vscode.window.showErrorMessage(wrslt);
+				return;
+			}
+			// ** Per #22, if file written was not blank BUT no py files were included then
+			//	give a warning that only code.py or main.py will be copied, and option to edit
+			/* NOT NEEDED HERE, FILE WATCHER ON CPFILES WILL PICK UP CHANGES
+			if(newFileContents && cpLinesPy.length===0){
+				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
+				if(ans==="Yes"){
+					const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+					if(!wsRootFolder) {return "";}
+					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+					const doc=await vscode.workspace.openTextDocument(cpFilePath);
+					vscode.window.showTextDocument(doc);
+				}
+			} else {
+				// ** Per #26, also give warning/edit opp if no python files in files only set
+				const cpLinesPyPy=cpLinesPy.filter(lne => lne.src.endsWith('.py'));
+				if(newFileContents && cpLinesPy.length>0 && cpLinesPyPy.length===0){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+					if(ans==="Yes"){
+						const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+						if(!wsRootFolder) {return "";}
+						const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+						const doc=await vscode.workspace.openTextDocument(cpFilePath);
+						vscode.window.showTextDocument(doc);
+					}	
+				}
+			}
+			*/
+		}
+	});
+	context.subscriptions.push(cmdMngFilesSettings);
+
+
 	// ** query attached drives for the initial cache
 	await refreshDrives();
 

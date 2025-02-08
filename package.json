@@ -60,8 +60,13 @@
         "category": "CircuitPythonSync"
       },
       {
-        "command": "circuitpythonsync.mngcpfiles",
+        "command": "circuitpythonsync.mngcplibs",
         "title": "CP Manage Lib",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.mngcpfiles",
+        "title": "CP Manage Files",
         "category": "CircuitPythonSync"
       },
       {
