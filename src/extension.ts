@@ -8,6 +8,7 @@ import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
+//import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
 
 //import { Dirent } from 'fs';
@@ -1260,20 +1261,15 @@ export async function activate(context: vscode.ExtensionContext) {
 					prsvDestWCmts=true;
 				}
 			}
-			// **ALSO, if all lib paths are taken out warn that entire library will be copied
-			if(newChoices.length===0){
-				let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
+			// **ALSO, if no .py files are selected, warn that only code.py/main.py will be copied
+			if(newChoices.length===0 || (!newChoices.some(chc => chc.src.endsWith('.py')))){
+				let ans=await vscode.window.showWarningMessage(strgs.cnfrmNoPyFiles,"Yes","No");
 				if(ans==="No"){return;}
 			}
-			//get the files only lines from cpLines
-			//  ** #37, ignore the comment lines which have no src
-			const cpLinesPy=cpLines.filter(lne => !lne.inLib && lne.src);
 			//now start constructing the new file
 			let newFileContents:string="";
-			for(const lne of cpLinesPy){
-				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
-			}
-			//now add the selections from choices, ALL lib - these are either;
+			// process the selected files first (may include prev commented)
+			//now add the selections from choices, ALL files - these are either;
 			//	- new non-mapped selections
 			//	- previously selected mapped that pass through
 			//	- ** lines that were commented and are now selected...
@@ -1285,15 +1281,23 @@ export async function activate(context: vscode.ExtensionContext) {
 					newFileContents+=nc.label+"\n";
 				}
 			}
+			//get the lib only lines from cpLines
+			//  ** #37, ignore the comment lines which have no src
+			const cpLinesLib=cpLines.filter(lne => lne.inLib && lne.src);
+			if(cpLinesLib){
+				// ** need the actual lib folder path
+				const libDir=await getLibPath();
+				for(const lne of cpLinesLib){
+					newFileContents+=libDir+"/"+lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
+				}
+			}
 			// **look at cplines having mappings that may be flagged to preserve with comments
 			if(prsvDestWCmts){
-				const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+				const prsvList=cpLines.filter(cpl => !cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 				if(prsvList){
 					//just add cpline back with comment
-					// ** need the actual lib folder path
-					const libDir=await getLibPath();
 					for(const plne of prsvList){
-						newFileContents+="# "+libDir+"/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
+						newFileContents+="# "+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
 					}
 				}
 			}
