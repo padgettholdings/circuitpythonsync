@@ -83,3 +83,6 @@
 
 ## issue #36, diffs and board explorer
 - create release v0.1.0-a for platform testing
+
+## issue #37, cp files and lib manager enhancments
+- create release v0.1.1 for platform testing prior to PR

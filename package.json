@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.0-a",
+  "version": "0.1.1",
   "publisher": "standsi",
   "license":"MIT",
   "repository": {
@@ -60,8 +60,13 @@
         "category": "CircuitPythonSync"
       },
       {
-        "command": "circuitpythonsync.mngcpfiles",
+        "command": "circuitpythonsync.mngcplibs",
         "title": "CP Manage Lib",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.mngcpfiles",
+        "title": "CP Manage Files",
         "category": "CircuitPythonSync"
       },
       {

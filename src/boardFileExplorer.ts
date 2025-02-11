@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import { getCurrentDriveConfig } from './extension';
 import { toNamespacedPath } from 'path';
+import * as strgs from './strings.js';
 
 /*
 interface Entry {
@@ -107,10 +108,10 @@ export class BoardFileExplorer {
 				ftype=fstat.type;
 			} catch(error) {
 				const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-				vscode.window.showErrorMessage("** Error with file delete: "+fse.message);
+				vscode.window.showErrorMessage(strgs.boardFileDeleteError+fse.message);
 				return;
 			}
-			const ans=await vscode.window.showWarningMessage("Are you sure you want to permanently delete from board?","Yes","No, cancel");
+			const ans=await vscode.window.showWarningMessage(strgs.boardFileConfDelete,"Yes","No, cancel");
 			if(ans==="No, cancel") {return;}
 			// check the node type, need to do differently
 			if(ftype===vscode.FileType.File){
@@ -119,13 +120,13 @@ export class BoardFileExplorer {
 					this.boardFileProvider.refresh(curDriveSetting);
 				} catch(error) {
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage("** Error with file delete: "+fse.message);	
+					vscode.window.showErrorMessage(strgs.boardFileDeleteError+fse.message);	
 				}
 			} else if(ftype===vscode.FileType.Directory){
 				// ** should not get here
 				//await vscode.commands.executeCommand("remote-wsl.revealInExplorer",resource.uri);
 			} else {
-				vscode.window.showErrorMessage("** Unknown type of file/folder, cannot be deleted.");
+				vscode.window.showErrorMessage(strgs.boardUnkTypeFileFolder);
 			}
 		});
 		vscode.commands.registerCommand('boardExplorer.openOS', async (resource:Entry) => {
