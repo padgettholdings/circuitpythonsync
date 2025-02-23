@@ -13,23 +13,52 @@ export class LibraryMgmt {
         });
         context.subscriptions.push(openLibCmd);
 
+        // get the libtag and cp version settings
+        const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+        const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+        //if configs are not defined, ###TBD###
+        if(libTag === '' || cpVersion === '') {
+            vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
+            return;
+        }
+        // refresh all files based on the libtag and cpversion
+        const cpVersionFmt = `${cpVersion}.x-mpy`;
+        // need temp space to download the zips
+        const tempUriBase=context.globalStorageUri; //NOTE this may not initially exist
+        this._tempBundlesDir = path.join(tempUriBase.fsPath, 'tempOrigBundles');
+        // create the temp dir if it doesn't exist
+        if (!fs.existsSync(this._tempBundlesDir)) {
+            fs.mkdirSync(this._tempBundlesDir, { recursive: true });
+        }
+        // download the orig bundle zip files
+        // ####TBD##### check for lib only zips before getting full bundles
+        const pyLibFmts = ['py', cpVersionFmt];
+        pyLibFmts.forEach(async (pyLibFmt) => {
+            await this.getOrigBundle(libTag, pyLibFmt);
+        });
 
 
+
+        /*
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this._statusBarItem.command = 'extension.openLibraryMgmt';
         this._statusBarItem.show();
-        
+        */
     }
 
+    /*
     public updateLibraryStatus() {
         this._statusBarItem.text = 'xxxxx';  //strgs.LIBRARY_STATUS;
     }
 
     private _statusBarItem: vscode.StatusBarItem;
+    */
 
     // ** public methods **
 
 
+    // ** private properties **
+    private _tempBundlesDir: string = '';
 
     // ** private methods **
 
@@ -40,8 +69,8 @@ export class LibraryMgmt {
                 url: `https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download/${libTag}/adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`,
                 responseType: 'stream'
             });
-    
-            response.data.pipe(fs.createWriteStream(`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`));
+            const tmpZipPath=path.join(this._tempBundlesDir, `adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`);
+            response.data.pipe(fs.createWriteStream(tmpZipPath));
     
             return new Promise((resolve, reject) => {
                 response.data.on('end', () => {

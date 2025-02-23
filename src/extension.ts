@@ -8,6 +8,8 @@ import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
+import { LibraryMgmt } from './libraryMgmt.js';
+
 //import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
 
@@ -645,6 +647,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
 	}
+
+	// ** spin up the library management
+	const libMgmtSys=new LibraryMgmt(context);
 
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
