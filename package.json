@@ -201,6 +201,24 @@
           "default": "boot_out.txt",
           "description": "CircuitPython default file in root of device.",
           "scope": "window"
+        },
+        "circuitpythonsync.curlibtag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "20241221",
+          "description": "CircuitPython library bundle tag.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpbaseversion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "9",
+          "description": "CircuitPython version.",
+          "scope": "window"
         }
       }
     }
