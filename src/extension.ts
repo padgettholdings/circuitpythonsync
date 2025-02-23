@@ -650,6 +650,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** spin up the library management
 	const libMgmtSys=new LibraryMgmt(context);
+	// now call the constructor if have workspace
+	if(haveCurrentWorkspace){
+		libMgmtSys.setup();	//don't need to wait
+	}
 
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
