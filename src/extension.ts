@@ -321,7 +321,7 @@ async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> 
 }
 
 // ** #37, add utility to return real path to library
-async function getLibPath(): Promise<string>{
+export async function getLibPath(): Promise<string>{
 	let retVal:string="";
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}

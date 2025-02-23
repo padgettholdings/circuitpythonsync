@@ -5,10 +5,14 @@ import * as zl from 'zip-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import {getLibPath} from './extension.js';
 
 export class LibraryMgmt {
     constructor(context: vscode.ExtensionContext)  {
         this._context = context;
+
+        const workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : vscode.Uri.file(os.homedir());
+        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
 
         const openLibCmd=vscode.commands.registerCommand('extension.openLibraryMgmt', () => {
             vscode.window.showInformationMessage('Library Management');
@@ -94,7 +98,7 @@ export class LibraryMgmt {
     // ** public methods **
     // **** the setup that is called after the constructor ****
     public async setup() {
-                // ** this may be called by activate even if don't have workspace,
+        // ** this may be called by activate even if don't have workspace,
         // so need to check for workspace before doing anything
         if (!vscode.workspace.workspaceFolders) {
             vscode.window.showErrorMessage('No workspace is open, cannot init library management');
@@ -103,7 +107,9 @@ export class LibraryMgmt {
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
         const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+        this._libTag = libTag;
         const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+        this._cpVersion = cpVersion;
         //if configs are not defined, ###TBD###
         if(libTag === '' || cpVersion === '') {
             vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
@@ -119,9 +125,9 @@ export class LibraryMgmt {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
         }
         // first check for lib only zips in /libArchive
-        const libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
-        const libOnlyZipPyUri=vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
-        const libOnlyZipMpyUri=vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${libTag}-lib.zip`);
+        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
+        const libOnlyZipPyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
+        const libOnlyZipMpyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${libTag}-lib.zip`);
         if(!fs.existsSync(libOnlyZipPyUri.fsPath) || !fs.existsSync(libOnlyZipMpyUri.fsPath)) {
             // get the full bundles and extract the lib folders if not there
             const pyLibFmts = ['py', cpVersionFmt];
@@ -140,7 +146,7 @@ export class LibraryMgmt {
                 fs.mkdirSync(libOnlyZipTempDir, { recursive: true });
             }
             for(const pyLibFmt of pyLibFmts){
-                const libOnlyZipFile: string = vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}-lib.zip`).fsPath;
+                const libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}-lib.zip`).fsPath;
                 const libExtractTarget: string = "/home/stan/my-typescript-project/lib/";  // ####TBD#### need actual lib folder name first
                 const libOnlyZipSource: string = path.join(this._tempBundlesDir,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`);
                 const libOnlyZipArchiveName: string = `adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}`;
@@ -154,15 +160,40 @@ export class LibraryMgmt {
                 }
                 //clean up the temp dir
                 fs.rmSync(libOnlyZipTempDir, { recursive: true });
+                //see if we need to download the lib metadata- download checks if already downloaded
+                await this.downloadLibMetadata(libTag);
             }
-
+            // ** ready for any lib updates
         }
+        // ** if any libs in the lib directory update them with dependencies and create stubs
 
     }
+
+    // this can be called from main extension ####TBD#### should it only be called from command in this class????
+    public async updateLibraries() {
+        //get the actual lib path
+        const libPath=await getLibPath();
+        if(libPath==='') {
+            //nothing to do yet until libs are picked
+            return;
+        }
+        let libNeeds: string[] = [];
+        const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+        if(!wsRootFolder) {return;}
+        const libContents=await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(wsRootFolder.uri,libPath));
+        for(const [libName, libType] of libContents) {
+            libNeeds.push(libName.replace('.mpy',''));
+        }
+        
+    }
+
 
     // ** private properties **
     private _tempBundlesDir: string = '';
     private _context: vscode.ExtensionContext;
+    private _libArchiveUri:vscode.Uri;
+    private _libTag: string = '';
+    private _cpVersion: string = '';
 
     // ** private methods **
 
@@ -198,13 +229,19 @@ export class LibraryMgmt {
     }
     
     private async downloadLibMetadata(libTag: string): Promise<string> {
+        const dest = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${libTag}.json`);
+        //check first if already downloaded
+        if
+        (fs.existsSync(dest)) {
+            console.log('File already exists:', dest);
+            return 'file already exists';
+        }
         try {
             const response = await axios.default({
                 method: 'get',
                 url: `https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download/${libTag}/adafruit-circuitpython-bundle-${libTag}.json`,
                 responseType: 'json'
             }).then((response) => {
-                const dest = `/home/stan/my-typescript-project/ziplibextract/adafruit-circuitpython-bundle-${libTag}.json`;
                 fs.writeFileSync(dest, JSON.stringify(response.data), {
                     encoding: "utf8",
                 });
