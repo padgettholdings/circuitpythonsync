@@ -205,7 +205,7 @@ export class LibraryMgmt {
         let libStubsNeeds = libNeeds.concat(libMetaDeps);
         libStubsNeeds=[...new Set(libStubsNeeds)]; //remove duplicates
         const libExtractTarget: string = vscode.Uri.joinPath(this._libArchiveUri,"libstubs").fsPath;
-        const libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${this._libTag}-lib.zip`).fsPath;
+        let libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${this._libTag}-lib.zip`).fsPath;
         try {
             await this.ziplibextractneeds(libStubsNeeds, libOnlyZipFile, libExtractTarget);
         } catch (error) {
@@ -214,6 +214,16 @@ export class LibraryMgmt {
         }
         //now the actual lib files- only add/update the dependencies
         const libExtractTargetLib: string = vscode.Uri.joinPath(wsRootFolder.uri,libPath).fsPath;
+        const libExtractLibTemp:string = path.join(this._tempBundlesDir,"libDepsCopy");
+        const cpVersionFmt = `${this._cpVersion}.x-mpy`;
+        libOnlyZipFile = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${this._libTag}-lib.zip`).fsPath;
+        try {
+            await this.ziplibextractneeds(libMetaDeps, libOnlyZipFile, libExtractLibTemp);
+        } catch (error) {
+            vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
+            return;
+        }
+        //now copy all from the temp dir to the target lib dir
         
 
 
