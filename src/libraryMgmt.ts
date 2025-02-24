@@ -223,11 +223,24 @@ export class LibraryMgmt {
             vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
             return;
         }
-        //now copy all from the temp dir to the target lib dir
-        
-
-
-
+        //now copy all from the temp dir to the target lib dir, one folder or file at a time
+        const libExtractLibTempContents=await vscode.workspace.fs.readDirectory(vscode.Uri.file(libExtractLibTemp));
+        for(const [libName, libType] of libExtractLibTempContents) {
+            const libExtractLibTempFile=vscode.Uri.joinPath(vscode.Uri.file(libExtractLibTemp),libName);
+            const libExtractTargetLibFile=vscode.Uri.joinPath(vscode.Uri.file(libExtractTargetLib),libName);
+            if(libType===vscode.FileType.Directory) {
+                await vscode.workspace.fs.copy(libExtractLibTempFile,libExtractTargetLibFile,{overwrite:true});
+            } else {
+                await vscode.workspace.fs.copy(libExtractLibTempFile,libExtractTargetLibFile,{overwrite:true});
+            }
+        }
+        //clean up the temp dir
+        fs.rmSync(libExtractLibTemp, { recursive: true });
+        // set the libstubs in the settings for pylance
+        // ######TBD##### need to check if already set and add to array
+        await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', [libExtractTarget], vscode.ConfigurationTarget.Workspace);
+        // ** done with updating the libraries
+        vscode.window.showInformationMessage('Libraries updated for tag: ' + this._libTag);
     }
 
 
