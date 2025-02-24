@@ -128,9 +128,9 @@ export class LibraryMgmt {
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
         const libOnlyZipPyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
         const libOnlyZipMpyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${libTag}-lib.zip`);
+        const pyLibFmts = ['py', cpVersionFmt];
         if(!fs.existsSync(libOnlyZipPyUri.fsPath) || !fs.existsSync(libOnlyZipMpyUri.fsPath)) {
             // get the full bundles and extract the lib folders if not there
-            const pyLibFmts = ['py', cpVersionFmt];
             try {
                 for(const pyLibFmt of pyLibFmts) {
                     //this will check to see if already downloaded
@@ -147,7 +147,6 @@ export class LibraryMgmt {
             }
             for(const pyLibFmt of pyLibFmts){
                 const libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}-lib.zip`).fsPath;
-                const libExtractTarget: string = "/home/stan/my-typescript-project/lib/";  // ####TBD#### need actual lib folder name first
                 const libOnlyZipSource: string = path.join(this._tempBundlesDir,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`);
                 const libOnlyZipArchiveName: string = `adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}`;
                 try {
@@ -161,12 +160,12 @@ export class LibraryMgmt {
                 //clean up the temp dir
                 fs.rmSync(libOnlyZipTempDir, { recursive: true });
                 //see if we need to download the lib metadata- download checks if already downloaded
-                await this.downloadLibMetadata(libTag);
             }
             // ** ready for any lib updates
         }
+        await this.downloadLibMetadata(libTag);
         // ** if any libs in the lib directory update them with dependencies and create stubs
-
+        await this.updateLibraries();
     }
 
     // this can be called from main extension ####TBD#### should it only be called from command in this class????
@@ -184,7 +183,41 @@ export class LibraryMgmt {
         for(const [libName, libType] of libContents) {
             libNeeds.push(libName.replace('.mpy',''));
         }
+        if(libNeeds.length===0) {
+            vscode.window.showInformationMessage('No libraries to update');
+            return;
+        }
+        // read the metadata file to pick up the dependencies
+        const libMetadataPath = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${this._libTag}.json`);
+        if(!fs.existsSync(libMetadataPath)) {
+            vscode.window.showErrorMessage('Library metadata file not found');
+            return;
+        }
+        const libMetadata = JSON.parse(fs.readFileSync(libMetadataPath, 'utf8'));
+        let libMetaDeps: string[] = [];
+        for (const lib of libNeeds) {
+            if (libMetadata[lib] && libMetadata[lib].dependencies) {
+                libMetaDeps = libMetaDeps.concat(libMetadata[lib].dependencies);
+            }
+        }
+        libMetaDeps=[...new Set(libMetaDeps)]; //remove duplicates
+        //first the stubs, can replace the whole libstuds folder
+        let libStubsNeeds = libNeeds.concat(libMetaDeps);
+        libStubsNeeds=[...new Set(libStubsNeeds)]; //remove duplicates
+        const libExtractTarget: string = vscode.Uri.joinPath(this._libArchiveUri,"libstubs").fsPath;
+        const libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${this._libTag}-lib.zip`).fsPath;
+        try {
+            await this.ziplibextractneeds(libStubsNeeds, libOnlyZipFile, libExtractTarget);
+        } catch (error) {
+            vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
+            return;
+        }
+        //now the actual lib files- only add/update the dependencies
+        const libExtractTargetLib: string = vscode.Uri.joinPath(wsRootFolder.uri,libPath).fsPath;
         
+
+
+
     }
 
 
