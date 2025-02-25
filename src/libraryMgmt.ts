@@ -40,12 +40,6 @@ export class LibraryMgmt {
                 { label: 'Library Tag', description: this._libTag, commandName: 'libtag' },
                 { label: 'CircuitPython Version', description: this._cpVersion, commandName: 'cpversion' }
             ];
-            // quickPick.buttons = [
-            //     {
-            //         iconPath: iconCommand1,
-            //         tooltip: 'Change the library tag and CircuitPython version'
-            //     }
-            // ];
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'libtag') {
@@ -70,8 +64,22 @@ export class LibraryMgmt {
             quickPick.onDidChangeSelection(async (items) => {
                 if(items[0].commandName==='update') {
                     quickPick.hide();
-                    // ####TBD#### if changed from prior settings, do setup
-                    //this.updateLibraries();
+                    quickPick.dispose();
+                    // if changed from prior settings, do setup
+                    const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+                    const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+                    if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
+                        const ans=await vscode.window.showInformationMessage('Library tag or CP version changed, do you want to update to tag '+this._libTag+', CP '+this._cpVersion, 'Yes','No');
+                        if(ans==='Yes') {
+                            //save the new settings
+                            await vscode.workspace.getConfiguration().update('circuitpythonsync.curlibtag',this._libTag,vscode.ConfigurationTarget.Workspace);
+                            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpbaseversion',this._cpVersion,vscode.ConfigurationTarget.Workspace);
+                            //do the setup
+                            await this.setup(); //will do the update
+                        }
+                    } else {
+                        await this.updateLibraries();
+                    }
                 }
                 if (items[0].commandName === 'libtag') {
                     vscode.window.showInputBox({ prompt: 'Enter the library tag' }).then(async (value) =>  {
@@ -80,14 +88,16 @@ export class LibraryMgmt {
                             if(ans==='Yes') {
                                 this._libTag = value;
                                 //quickPick.items[0].description = value;
+                                quickPick.placeholder="Accept to save changed settings and update libraries";
                                 quickPick.items = [
-                                    { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
+                                    { label: 'Enter or click here to update with NEW settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
                                     { label: 'Library Tag', description: value, commandName: 'libtag' },
                                     { label: 'CircuitPython Version', description: this._cpVersion, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
                                 quickPick.hide();
+                                quickPick.dispose();
                             }
                             //quickPick.show();   //refresh the quickpick
                         }
@@ -100,14 +110,16 @@ export class LibraryMgmt {
                             if(ans==='Yes') {
                                 this._cpVersion = value;
                                 //quickPick.items[0].description = value;
+                                quickPick.placeholder="Accept to save changed settings and update libraries";
                                 quickPick.items = [
-                                    { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
+                                    { label: 'Enter or click here to update with NEW settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
                                     { label: 'Library Tag', description: this._libTag, commandName: 'libtag' },
                                     { label: 'CircuitPython Version', description: value, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
                                 quickPick.hide();
+                                quickPick.dispose();
                             }
 
                             //quickPick.show();   //refresh the quickpick
@@ -149,6 +161,8 @@ export class LibraryMgmt {
     // ** public methods **
     // **** the setup that is called after the constructor or when tag changed ****
     public async setup() {
+        // ** set context key so update command is not available until setup is done
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
         // ** this may be called by activate even if don't have workspace,
         // so need to check for workspace before doing anything
         if (!vscode.workspace.workspaceFolders) {
@@ -164,6 +178,7 @@ export class LibraryMgmt {
         //if configs are not defined, ###TBD###
         if(libTag === '' || cpVersion === '') {
             vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         // refresh all files based on the libtag and cpversion
@@ -189,6 +204,7 @@ export class LibraryMgmt {
                 }
             } catch (error) {
                 vscode.window.showErrorMessage('Error downloading the original lib bundle zip files');
+                vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
                 return;
             }
             //now extract the lib folders from the full bundles and create the lib only zips
@@ -206,6 +222,7 @@ export class LibraryMgmt {
                     //await this.ziplibextractneeds(['adafruit_bus_device', 'adafruit_register'], libOnlyZipFile, libExtractTarget);
                 } catch (error) {
                     vscode.window.showErrorMessage('Error extracting the lib folders from the original bundle zip files');
+                    vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
                     return;
                 }
                 //clean up the temp dir
@@ -217,14 +234,17 @@ export class LibraryMgmt {
         await this.downloadLibMetadata(libTag);
         // ** if any libs in the lib directory update them with dependencies and create stubs
         await this.updateLibraries();
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
 
     // this can be called from main extension ####TBD#### should it only be called from command in this class????
     public async updateLibraries() {
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
         //get the actual lib path
         const libPath=await getLibPath();
         if(libPath==='') {
             //nothing to do yet until libs are picked
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         let libNeeds: string[] = [];
@@ -236,12 +256,14 @@ export class LibraryMgmt {
         }
         if(libNeeds.length===0) {
             vscode.window.showInformationMessage('No libraries to update');
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         // read the metadata file to pick up the dependencies
         const libMetadataPath = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${this._libTag}.json`);
         if(!fs.existsSync(libMetadataPath)) {
             vscode.window.showErrorMessage('Library metadata file not found');
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         const libMetadata = JSON.parse(fs.readFileSync(libMetadataPath, 'utf8'));
@@ -261,6 +283,7 @@ export class LibraryMgmt {
             await this.ziplibextractneeds(libStubsNeeds, libOnlyZipFile, libExtractTarget);
         } catch (error) {
             vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         //now the actual lib files- only add/update the dependencies
@@ -272,6 +295,7 @@ export class LibraryMgmt {
             await this.ziplibextractneeds(libMetaDeps, libOnlyZipFile, libExtractLibTemp);
         } catch (error) {
             vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             return;
         }
         //now copy all from the temp dir to the target lib dir, one folder or file at a time
@@ -292,6 +316,7 @@ export class LibraryMgmt {
         await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', [libExtractTarget], vscode.ConfigurationTarget.Workspace);
         // ** done with updating the libraries
         vscode.window.showInformationMessage('Libraries updated for tag: ' + this._libTag + ' and CP version: ' + this._cpVersion);
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
 
 

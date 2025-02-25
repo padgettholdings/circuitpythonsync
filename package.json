@@ -67,6 +67,7 @@
       {
         "command": "circuitpythonsync.libupdate",
         "title": "CP Update Lib",
+        "enablement": "!circuitpythonsync.updatinglibs",
         "category": "CircuitPythonSync"
       },
       {
