@@ -65,6 +65,11 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.libupdate",
+        "title": "CP Update Lib",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.mngcpfiles",
         "title": "CP Manage Files",
         "category": "CircuitPythonSync"

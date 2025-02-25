@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { QuickInputButton, ThemeIcon } from 'vscode';
 import * as strgs from './strings.js';
 import * as axios from 'axios';
 import * as zl from 'zip-lib';
@@ -14,71 +15,121 @@ export class LibraryMgmt {
         const workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : vscode.Uri.file(os.homedir());
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
 
-        const openLibCmd=vscode.commands.registerCommand('extension.openLibraryMgmt', () => {
-            vscode.window.showInformationMessage('Library Management');
-        });
-        context.subscriptions.push(openLibCmd);
+        interface cmdQuickInputButton extends QuickInputButton {
+			commandName: string;
+		}
+		const iconCommand1:ThemeIcon=new ThemeIcon('gear');
 
-        /*
-        // get the libtag and cp version settings
-        const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
-        const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
-        //if configs are not defined, ###TBD###
-        if(libTag === '' || cpVersion === '') {
-            vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
-            return;
+        interface cmdQuickItem extends vscode.QuickPickItem {
+            commandName: string;
         }
-        // refresh all files based on the libtag and cpversion
-        const cpVersionFmt = `${cpVersion}.x-mpy`;
-        // need temp space to download the zips
-        const tempUriBase=context.globalStorageUri; //NOTE this may not initially exist
-        this._tempBundlesDir = path.join(tempUriBase.fsPath, 'tempOrigBundles');
-        // create the temp dir if it doesn't exist
-        if (!fs.existsSync(this._tempBundlesDir)) {
-            fs.mkdirSync(this._tempBundlesDir, { recursive: true });
-        }
-        // download the orig bundle zip files
-        // ####TBD##### check for lib only zips before getting full bundles
-        // first check for lib only zips in /libArchive
-        const libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
-        const libOnlyZipPyUri=vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
-        const libOnlyZipMpyUri=vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${libTag}-lib.zip`);
-        if(!fs.existsSync(libOnlyZipPyUri.fsPath) || !fs.existsSync(libOnlyZipMpyUri.fsPath)) {
-            // get the full bundles and extract the lib folders
-            const pyLibFmts = ['py', cpVersionFmt];
-            try {
-            for(const pyLibFMt of pyLibFmts) {
-                await this.getOrigBundle(libTag, pyLibFmt);
-            }
-            } catch (error) {
-                vscode.window.showErrorMessage('Error downloading the original lib bundle zip files');
-                return;
-            }
-            //now extract the lib folders from the full bundles and create the lib only zips
-            const libOnlyZipTempDir = path.join(this._tempBundlesDir, 'libOnlyTemp');
-            if (!fs.existsSync(libOnlyZipTempDir)) {
-                fs.mkdirSync(libOnlyZipTempDir, { recursive: true });
-            }
-            pyLibFmts.forEach(async (pyLibFmt) => {
-                const libOnlyZipFile: string = vscode.Uri.joinPath(libArchiveUri,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}-lib.zip`).fsPath;
-                const libExtractTarget: string = "/home/stan/my-typescript-project/lib/";  // ####TBD#### need actual lib folder name first
-                const libOnlyZipSource: string = path.join(this._tempBundlesDir,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`);
-                const libOnlyZipArchiveName: string = `adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}`;
-                try {
-                    await this.ziplibextract(libOnlyZipSource, libOnlyZipTempDir);
-                    await this.ziplibzip(libOnlyZipTempDir, libOnlyZipArchiveName, libOnlyZipFile);
-                    //await this.ziplibextractneeds(['adafruit_bus_device', 'adafruit_register'], libOnlyZipFile, libExtractTarget);
-                } catch (error) {
-                    vscode.window.showErrorMessage('Error extracting the lib folders from the original bundle zip files');
-                    return;
+
+        const updateLibCmd=vscode.commands.registerCommand('circuitpythonsync.libupdate', async () => {
+            //do quick input to show the libtag and cpversion and allow to change
+            const pickButton:cmdQuickInputButton={
+                iconPath:iconCommand1,
+                tooltip:"testtest",
+                commandName:"command1"
+            };    
+            const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
+            quickPick.title = 'Update Libraries';
+            quickPick.buttons = [pickButton];
+            quickPick.placeholder = 'Accept or change the library tag and CircuitPython version';
+            quickPick.items = [
+                { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
+                { label: 'Library Tag', description: this._libTag, commandName: 'libtag' },
+                { label: 'CircuitPython Version', description: this._cpVersion, commandName: 'cpversion' }
+            ];
+            // quickPick.buttons = [
+            //     {
+            //         iconPath: iconCommand1,
+            //         tooltip: 'Change the library tag and CircuitPython version'
+            //     }
+            // ];
+            quickPick.onDidTriggerButton((button) => {  
+                const btn=button as cmdQuickInputButton;
+                if (btn.commandName === 'libtag') {
+                    vscode.window.showInputBox({ prompt: 'Enter the library tag' }).then((value) => {
+                        if (value) {
+                            this._libTag = value;
+                            quickPick.items[0].description = value;
+                            
+                            //quickPick.show();   //refresh the quickpick
+                        }
+                    });
+                } else if (btn.commandName === 'cpversion') {
+                    vscode.window.showInputBox({ prompt: 'Enter the CircuitPython version' }).then((value) => {
+                        if (value) {
+                            this._cpVersion = value;
+                            quickPick.items[1].description = value;
+                            //quickPick.show();   //refresh the quickpick
+                        }
+                    });
                 }
             });
-        */
+            quickPick.onDidChangeSelection(async (items) => {
+                if(items[0].commandName==='update') {
+                    quickPick.hide();
+                    // ####TBD#### if changed from prior settings, do setup
+                    //this.updateLibraries();
+                }
+                if (items[0].commandName === 'libtag') {
+                    vscode.window.showInputBox({ prompt: 'Enter the library tag' }).then(async (value) =>  {
+                        if (value) {
+                            const ans=await vscode.window.showInformationMessage('Are you sure you want Library tag changed to: ' + value, 'Yes','No');
+                            if(ans==='Yes') {
+                                this._libTag = value;
+                                //quickPick.items[0].description = value;
+                                quickPick.items = [
+                                    { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
+                                    { label: 'Library Tag', description: value, commandName: 'libtag' },
+                                    { label: 'CircuitPython Version', description: this._cpVersion, commandName: 'cpversion' }
+                                ];                    
+                                quickPick.show();
+                            } else {
+                                quickPick.hide();
+                            }
+                            //quickPick.show();   //refresh the quickpick
+                        }
+                    });
+                } else if (items[0].commandName === 'cpversion') {
+                    vscode.window.showInputBox({ prompt: 'Enter the CircuitPython version' }).then(async (value) => {
+                        if (value) {    //need to check if valid version
+                            quickPick.items[1].description = value;
+                            const ans=await vscode.window.showInformationMessage('Are you sure you want CP version  changed to: ' + value, 'Yes','No');
+                            if(ans==='Yes') {
+                                this._cpVersion = value;
+                                //quickPick.items[0].description = value;
+                                quickPick.items = [
+                                    { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
+                                    { label: 'Library Tag', description: this._libTag, commandName: 'libtag' },
+                                    { label: 'CircuitPython Version', description: value, commandName: 'cpversion' }
+                                ];                    
+                                quickPick.show();
+                            } else {
+                                quickPick.hide();
+                            }
+
+                            //quickPick.show();   //refresh the quickpick
+                        }
+                    });
+                }
+            });
+            quickPick.onDidAccept(async () => { //need to check if valid version    //need to check if valid version
+                //quickPick.hide();   //refresh the quickpick and hide  
+                
+                
 
 
-        
+            });
+            quickPick.onDidHide(() => { 
+                //quickPick.dispose();
+            });
+            quickPick.show();
 
-
+            //await this.updateLibraries();
+        });
+        context.subscriptions.push(updateLibCmd);
 
         /*
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -96,7 +147,7 @@ export class LibraryMgmt {
     */
 
     // ** public methods **
-    // **** the setup that is called after the constructor ****
+    // **** the setup that is called after the constructor or when tag changed ****
     public async setup() {
         // ** this may be called by activate even if don't have workspace,
         // so need to check for workspace before doing anything
@@ -240,7 +291,7 @@ export class LibraryMgmt {
         // ######TBD##### need to check if already set and add to array
         await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', [libExtractTarget], vscode.ConfigurationTarget.Workspace);
         // ** done with updating the libraries
-        vscode.window.showInformationMessage('Libraries updated for tag: ' + this._libTag);
+        vscode.window.showInformationMessage('Libraries updated for tag: ' + this._libTag + ' and CP version: ' + this._cpVersion);
     }
 
 
