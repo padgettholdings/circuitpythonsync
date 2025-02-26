@@ -19,7 +19,7 @@ export class LibraryMgmt {
         interface cmdQuickInputButton extends QuickInputButton {
 			commandName: string;
 		}
-		const iconCommand1:ThemeIcon=new ThemeIcon('gear');
+		const iconCommand1:ThemeIcon=new ThemeIcon('library');
 
         interface cmdQuickItem extends vscode.QuickPickItem {
             commandName: string;
@@ -30,8 +30,8 @@ export class LibraryMgmt {
             //do quick input to show the libtag and cpversion and allow to change
             const pickButton:cmdQuickInputButton={
                 iconPath:iconCommand1,
-                tooltip:"testtest",
-                commandName:"command1"
+                tooltip:"Select Libraries for Board",
+                commandName:"selectLibs"
             };    
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
             quickPick.title = 'Update Libraries';
@@ -44,23 +44,10 @@ export class LibraryMgmt {
             ];
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
-                if (btn.commandName === 'libtag') {
-                    vscode.window.showInputBox({ prompt: 'Enter the library tag' }).then((value) => {
-                        if (value) {
-                            this._libTag = value;
-                            quickPick.items[0].description = value;
-                            
-                            //quickPick.show();   //refresh the quickpick
-                        }
-                    });
-                } else if (btn.commandName === 'cpversion') {
-                    vscode.window.showInputBox({ prompt: 'Enter the CircuitPython version' }).then((value) => {
-                        if (value) {
-                            this._cpVersion = value;
-                            quickPick.items[1].description = value;
-                            //quickPick.show();   //refresh the quickpick
-                        }
-                    });
+                if (btn.commandName === 'selectLibs') {
+                    quickPick.hide();
+                    quickPick.dispose();
+                    vscode.commands.executeCommand('circuitpythonsync.selectlibs');
                 }
             });
             quickPick.onDidChangeSelection(async (items) => {
