@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import {getLibPath} from './extension.js';
+//import { timeStamp } from 'console';
 
 export class LibraryMgmt {
     constructor(context: vscode.ExtensionContext)  {
@@ -23,6 +24,7 @@ export class LibraryMgmt {
         interface cmdQuickItem extends vscode.QuickPickItem {
             commandName: string;
         }
+        this._progInc=0;    //set to greater than 100 to stop progress
 
         const updateLibCmd=vscode.commands.registerCommand('circuitpythonsync.libupdate', async () => {
             //do quick input to show the libtag and cpversion and allow to change
@@ -75,10 +77,11 @@ export class LibraryMgmt {
                             await vscode.workspace.getConfiguration().update('circuitpythonsync.curlibtag',this._libTag,vscode.ConfigurationTarget.Workspace);
                             await vscode.workspace.getConfiguration().update('circuitpythonsync.cpbaseversion',this._cpVersion,vscode.ConfigurationTarget.Workspace);
                             //do the setup
-                            await this.setup(); //will do the update
+                            await this.setupLibSources(); //will do the update
                         }
                     } else {
-                        await this.updateLibraries();
+                        //await this.updateLibraries();   // **NO** will need to do full setup and update
+                        await this.setupLibSources(); //will do the update
                     }
                 }
                 if (items[0].commandName === 'libtag') {
@@ -151,7 +154,6 @@ export class LibraryMgmt {
             });
             quickPick.show();
 
-            //await this.updateLibraries();
         });
         context.subscriptions.push(updateLibCmd);
 
@@ -172,15 +174,19 @@ export class LibraryMgmt {
 
     // ** public methods **
     // **** the setup that is called after the constructor or when tag changed ****
-    public async setup() {
+    public async setupLibSources() {
         // ** set context key so update command is not available until setup is done
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        // and start progress indicator
+        //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        this.showLibUpdateProgress('Check and load lib files...');
         // ** this may be called by activate even if don't have workspace,
         // so need to check for workspace before doing anything
         if (!vscode.workspace.workspaceFolders) {
             vscode.window.showErrorMessage('No workspace is open, cannot init library management');
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=5;
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
         const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
@@ -190,9 +196,11 @@ export class LibraryMgmt {
         //if configs are not defined, ###TBD###
         if(libTag === '' || cpVersion === '') {
             vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=10;
         // refresh all files based on the libtag and cpversion
         const cpVersionFmt = `${cpVersion}.x-mpy`;
         // need temp space to download the zips
@@ -202,6 +210,7 @@ export class LibraryMgmt {
         if (!fs.existsSync(this._tempBundlesDir)) {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
         }
+        this._progInc=15;
         // first check for lib only zips in /libArchive
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
         const libOnlyZipPyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
@@ -209,6 +218,7 @@ export class LibraryMgmt {
         const pyLibFmts = ['py', cpVersionFmt];
         if(!fs.existsSync(libOnlyZipPyUri.fsPath) || !fs.existsSync(libOnlyZipMpyUri.fsPath)) {
             // get the full bundles and extract the lib folders if not there
+            this._progInc+=5;
             try {
                 for(const pyLibFmt of pyLibFmts) {
                     //this will check to see if already downloaded
@@ -216,7 +226,8 @@ export class LibraryMgmt {
                 }
             } catch (error) {
                 vscode.window.showErrorMessage('Error downloading the original lib bundle zip files');
-                vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+                //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+                this.stopLibUpdateProgress();
                 return;
             }
             //now extract the lib folders from the full bundles and create the lib only zips
@@ -225,6 +236,7 @@ export class LibraryMgmt {
                 fs.mkdirSync(libOnlyZipTempDir, { recursive: true });
             }
             for(const pyLibFmt of pyLibFmts){
+                this._progInc+=5;
                 const libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}-lib.zip`).fsPath;
                 const libOnlyZipSource: string = path.join(this._tempBundlesDir,`adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}.zip`);
                 const libOnlyZipArchiveName: string = `adafruit-circuitpython-bundle-${pyLibFmt}-${libTag}`;
@@ -234,7 +246,8 @@ export class LibraryMgmt {
                     //await this.ziplibextractneeds(['adafruit_bus_device', 'adafruit_register'], libOnlyZipFile, libExtractTarget);
                 } catch (error) {
                     vscode.window.showErrorMessage('Error extracting the lib folders from the original bundle zip files');
-                    vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+                    //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+                    this.stopLibUpdateProgress();
                     return;
                 }
                 //clean up the temp dir
@@ -243,22 +256,27 @@ export class LibraryMgmt {
             }
             // ** ready for any lib updates
         }
+        this._progInc=85;
         await this.downloadLibMetadata(libTag);
         // ** if any libs in the lib directory update them with dependencies and create stubs
+        this.stopLibUpdateProgress();   // let update start another progress
         await this.updateLibraries();
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+        //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
 
     // this can be called from main extension ####TBD#### should it only be called from command in this class????
     public async updateLibraries() {
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        this.showLibUpdateProgress("Updating Libraries...");   //this also sets the context
         //get the actual lib path
         const libPath=await getLibPath();
         if(libPath==='') {
             //nothing to do yet until libs are picked
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=5;
         let libNeeds: string[] = [];
         const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
         if(!wsRootFolder) {return;}
@@ -268,14 +286,17 @@ export class LibraryMgmt {
         }
         if(libNeeds.length===0) {
             vscode.window.showInformationMessage('No libraries to update');
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=10;
         // read the metadata file to pick up the dependencies
         const libMetadataPath = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${this._libTag}.json`);
         if(!fs.existsSync(libMetadataPath)) {
             vscode.window.showErrorMessage('Library metadata file not found');
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
         const libMetadata = JSON.parse(fs.readFileSync(libMetadataPath, 'utf8'));
@@ -285,6 +306,7 @@ export class LibraryMgmt {
                 libMetaDeps = libMetaDeps.concat(libMetadata[lib].dependencies);
             }
         }
+        this._progInc=15;
         libMetaDeps=[...new Set(libMetaDeps)]; //remove duplicates
         //first the stubs, can replace the whole libstuds folder
         let libStubsNeeds = libNeeds.concat(libMetaDeps);
@@ -295,9 +317,11 @@ export class LibraryMgmt {
             await this.ziplibextractneeds(libStubsNeeds, libOnlyZipFile, libExtractTarget);
         } catch (error) {
             vscode.window.showErrorMessage('Error extracting the lib stubs from the original bundle zip files');
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=30;
         //now the actual lib files- only add/update the dependencies- **NO**, have to do all libs
         const libExtractTargetLib: string = vscode.Uri.joinPath(wsRootFolder.uri,libPath).fsPath;
         const libExtractLibTemp:string = path.join(this._tempBundlesDir,"libDepsCopy");
@@ -310,9 +334,11 @@ export class LibraryMgmt {
             await this.ziplibextractneeds(libAllNeeds, libOnlyZipFile, libExtractLibTemp);
         } catch (error) {
             vscode.window.showErrorMessage('Error extracting the lib files from the original bundle zip files');
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+            this.stopLibUpdateProgress();
             return;
         }
+        this._progInc=45;
         //now copy all from the temp dir to the target lib dir, one folder or file at a time
         const libExtractLibTempContents=await vscode.workspace.fs.readDirectory(vscode.Uri.file(libExtractLibTemp));
         for(const [libName, libType] of libExtractLibTempContents) {
@@ -324,14 +350,16 @@ export class LibraryMgmt {
                 await vscode.workspace.fs.copy(libExtractLibTempFile,libExtractTargetLibFile,{overwrite:true});
             }
         }
+        this._progInc=75;
         //clean up the temp dir
         fs.rmSync(libExtractLibTemp, { recursive: true });
         // set the libstubs in the settings for pylance
         // ######TBD##### need to check if already set and add to array
         await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', [libExtractTarget], vscode.ConfigurationTarget.Workspace);
         // ** done with updating the libraries
+        //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+        this.stopLibUpdateProgress();
         vscode.window.showInformationMessage('Libraries updated for tag: ' + this._libTag + ' and CP version: ' + this._cpVersion);
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
 
 
@@ -341,8 +369,58 @@ export class LibraryMgmt {
     private _libArchiveUri:vscode.Uri;
     private _libTag: string = '';
     private _cpVersion: string = '';
+    private _progInc: number = 0;
+    private _customCancelToken: vscode.CancellationTokenSource | null = null;
 
     // ** private methods **
+
+    // ** methods to show progress and stop with context flag
+
+    // ** stop progress and set context flag
+    private async stopLibUpdateProgress() {
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+        this._progInc=101;
+        if(this._customCancelToken){
+            this._customCancelToken.cancel();
+        }
+    }
+    // ** show progress and set context flag
+    private async showLibUpdateProgress(progressMessage:string) {
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        this._progInc=0;
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Library Maintenance Progress",
+            cancellable: false
+        }, (progress, token) => {
+            token.onCancellationRequested(() => {
+                console.log("User canceled the long running operation");
+            });
+            progress.report({ increment: 0 });
+            const p = new Promise<void>(resolve => {
+                const intvlId=setInterval(() => {
+                    progress.report({increment:this._progInc,message:progressMessage,});
+                    if(this._progInc>=100){
+                        clearInterval(intvlId);
+                        resolve();
+                    }
+                },500);
+                setTimeout(() => {
+                    clearInterval(intvlId);
+                    resolve();
+                }, 20000);	// ****** TBD ****** how to set max timeout
+                //hook up the custom cancel token
+                this._customCancelToken=new vscode.CancellationTokenSource();
+                this._customCancelToken.token.onCancellationRequested(() => {
+                    this._customCancelToken?.dispose();
+                    this._customCancelToken=null;
+                    clearInterval(intvlId);
+                    resolve();
+                });
+            });
+            return p;
+        });
+    }
 
     private async downloadOrigBundle(libTag: string, pyLibFmt: string): Promise<string> {
         //check to see if already downloaded
