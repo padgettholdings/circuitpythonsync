@@ -71,6 +71,12 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.selectlibs",
+        "title": "CP Select Libraries",
+        "enablement": "!circuitpythonsync.updatinglibs",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.mngcpfiles",
         "title": "CP Manage Files",
         "category": "CircuitPythonSync"

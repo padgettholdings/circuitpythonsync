@@ -27,6 +27,8 @@ export class LibraryMgmt {
         this._progInc=0;    //set to greater than 100 to stop progress
 
         const updateLibCmd=vscode.commands.registerCommand('circuitpythonsync.libupdate', async () => {
+            //first make sure ready- **NO** update will check
+            //const ready=await this.readyForLibCmds();
             //do quick input to show the libtag and cpversion and allow to change
             const pickButton:cmdQuickInputButton={
                 iconPath:iconCommand1,
@@ -144,6 +146,47 @@ export class LibraryMgmt {
         });
         context.subscriptions.push(updateLibCmd);
 
+        const selectLibsCmd=vscode.commands.registerCommand('circuitpythonsync.selectlibs', async () => {
+            //first make sure ready, that is, requested version already loaded and in settings
+            const ready=await this.readyForLibCmds();
+            if(!ready) {
+                return;
+            }
+            //read the metadata file
+            const libMetadataPath = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${this._libTag}.json`);
+            const libMetadata = JSON.parse(fs.readFileSync(libMetadataPath, 'utf8'));
+            let pickItems:vscode.QuickPickItem[]=[];
+            for (const lib in libMetadata) {
+                pickItems.push({ label: lib, description: libMetadata[lib].version });
+            }
+            //filter out the current libs
+            const libPath=await getLibPath();
+            let libContents: [string, vscode.FileType][]=[];
+            if(libPath!=='') {
+                const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+                if(!wsRootFolder) {return;}
+                libContents=await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(wsRootFolder.uri,libPath));
+                for(const [libName, libType] of libContents) {
+                    pickItems=pickItems.filter(item => item.label !== libName.replace('.mpy',''));
+                }
+            }
+            // now do the quickpick with the pick items
+            const newLibs=await vscode.window.showQuickPick(pickItems, {
+                canPickMany: true,
+                placeHolder: 'Select libraries',
+                ignoreFocusOut: true,
+                title: 'Select Libraries to Add',
+            });
+            if(newLibs) {
+                //add the new libs by passing optional parameter to the updateLibraries
+                let newLibsToAdd=newLibs.map(lib => lib.label);
+                newLibsToAdd=[...new Set(newLibsToAdd)]; //remove duplicates just for safety
+                //and update the libraries with the new libs
+                await this.updateLibraries(newLibsToAdd);
+            }
+        });
+        context.subscriptions.push(selectLibsCmd);
+
         /*
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this._statusBarItem.command = 'extension.openLibraryMgmt';
@@ -252,7 +295,8 @@ export class LibraryMgmt {
     }
 
     // this can be called from main extension ####TBD#### should it only be called from command in this class????
-    public async updateLibraries() {
+    // ** optional parameter for adding new libs
+    public async updateLibraries(addNewLibs?:string[]) {
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
         this.showLibUpdateProgress("Updating Libraries...");   //this also sets the context
         //get the actual lib path
@@ -270,6 +314,11 @@ export class LibraryMgmt {
         const libContents=await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(wsRootFolder.uri,libPath));
         for(const [libName, libType] of libContents) {
             libNeeds.push(libName.replace('.mpy',''));
+        }
+        // ** add the new libs if any
+        if(typeof addNewLibs !== 'undefined' && addNewLibs.length>0) {
+            libNeeds=libNeeds.concat(addNewLibs);
+            libNeeds=[...new Set(libNeeds)]; //remove duplicates just for safety
         }
         if(libNeeds.length===0) {
             vscode.window.showInformationMessage('No libraries to update');
@@ -361,6 +410,43 @@ export class LibraryMgmt {
 
     // ** private methods **
 
+    // ** check for conditions to be able to run commands
+    private async readyForLibCmds(): Promise<boolean> {
+        // so need to check for workspace before doing anything
+        if (!vscode.workspace.workspaceFolders) {
+            vscode.window.showErrorMessage('No workspace is open, cannot init library management');
+            return false;
+        }
+        const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
+        // now the libtag and cpversion
+        if(this._libTag === '' || this._cpVersion === '') {
+            vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
+            return false;
+        }
+        // check that the instance libtag and cpversion match settings, if not say must update first
+        const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+        const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+        if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
+            vscode.window.showErrorMessage('Library tag or CircuitPython version changed, run update first before adding new libs');
+            return false;
+        }
+        // now the source files and metadata
+        const cpVersionFmt = `${this._cpVersion}.x-mpy`;
+        const libOnlyZipPyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${this._libTag}-lib.zip`);
+        const libOnlyZipMpyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${this._libTag}-lib.zip`);
+        if(!fs.existsSync(libOnlyZipPyUri.fsPath) || !fs.existsSync(libOnlyZipMpyUri.fsPath)) {
+            vscode.window.showErrorMessage('Library source files not found, run update first');
+            return false;
+        }
+        //and finally the metadata
+        const libMetadataPath = path.join(this._libArchiveUri.fsPath,`adafruit-circuitpython-bundle-${this._libTag}.json`);
+        if(!fs.existsSync(libMetadataPath)) {
+            vscode.window.showErrorMessage('Library metadata file not found, run update first');
+            return false;
+        }
+        // ** all conditions met
+        return true;
+    }
     // ** methods to show progress and stop with context flag
 
     // ** stop progress and set context flag
