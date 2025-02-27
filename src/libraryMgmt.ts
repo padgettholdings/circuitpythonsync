@@ -391,7 +391,10 @@ export class LibraryMgmt {
         fs.rmSync(libExtractLibTemp, { recursive: true });
         // set the libstubs in the settings for pylance
         // ######TBD##### need to check if already set and add to array
-        await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', [libExtractTarget], vscode.ConfigurationTarget.Workspace);
+        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
+        extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
+        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+        await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
         // ** done with updating the libraries
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
         this.stopLibUpdateProgress();
