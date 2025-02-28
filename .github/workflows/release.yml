@@ -66,6 +66,8 @@ jobs:
           - run: npm i -g npm@latest
           - run: npm --version
           - if: ${{ matrix.npm_config_arch == 'aarch64' }}
+            run: sudo apt-get update
+          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
             run: sudo apt-get install build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           - if: ${{ matrix.npm_config_arch == 'aarch64' }}
             run: npm install

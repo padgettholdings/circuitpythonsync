@@ -8,6 +8,8 @@ import * as strgs from './strings.js';
 import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
+import { LibraryMgmt } from './libraryMgmt.js';
+
 //import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
 
@@ -319,7 +321,7 @@ async function getlibListSelect(cpLines:cpFileLine[]): Promise<libListSelect[]> 
 }
 
 // ** #37, add utility to return real path to library
-async function getLibPath(): Promise<string>{
+export async function getLibPath(): Promise<string>{
 	let retVal:string="";
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}
@@ -645,6 +647,15 @@ export async function activate(context: vscode.ExtensionContext) {
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
 	}
+
+	// ** spin up the library management
+	/*
+	const libMgmtSys=new LibraryMgmt(context);
+	// now call the constructor if have workspace
+	if(haveCurrentWorkspace){
+		libMgmtSys.setup();	//don't need to wait
+	}
+	*/
 
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
@@ -1438,6 +1449,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		*/
 	}
+
+	// ** spin up the library management
+	const libMgmtSys=new LibraryMgmt(context);
+	// now call the constructor if have workspace
+	if(haveCurrentWorkspace){
+		libMgmtSys.setupLibSources();	//don't need to wait
+	}
+		
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show

@@ -2,9 +2,9 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.1",
+  "version": "0.1.2-c",
   "publisher": "standsi",
-  "license":"MIT",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/standsi/circuitpythonsync.git"
@@ -65,6 +65,18 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.libupdate",
+        "title": "CP Update Lib",
+        "enablement": "!circuitpythonsync.updatinglibs",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.selectlibs",
+        "title": "CP Select Libraries",
+        "enablement": "!circuitpythonsync.updatinglibs",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.mngcpfiles",
         "title": "CP Manage Files",
         "category": "CircuitPythonSync"
@@ -88,7 +100,7 @@
       {
         "command": "boardExplorer.refresh",
         "title": "Refresh",
-        "icon":"$(refresh)"
+        "icon": "$(refresh)"
       },
       {
         "command": "boardExplorer.delete",
@@ -107,9 +119,9 @@
         "title": "Open Board in OS",
         "category": "CircuitPythonSync",
         "enablement": "config.circuitpythonsync.drivepath",
-        "icon":"$(explorer-view-icon)"
+        "icon": "$(explorer-view-icon)"
       }
-  ],
+    ],
     "menus": {
       "commandPalette": [
         {
@@ -129,7 +141,7 @@
           "when": "false"
         }
       ],
-      "explorer/context":[
+      "explorer/context": [
         {
           "command": "circuitpythonsync.filediff",
           "when": "!explorerResourceIsFolder",
@@ -163,46 +175,73 @@
         }
       ]
     },
-    "configuration":{     
-        "title": "CircuitPython Sync",
-        "properties": {
-          "circuitpythonsync.drivepath": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "default": null,
-            "description": "Last path saved for the attached board. Intended to be set at the workspace level.",
-            "scope": "window"
-          },
-          "circuitpythonsync.cpfilestxt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "default":"cpfiles.txt",
-            "description": "Manifest filename used to store copy filenames.",
-            "scope":"window"
-          },
-          "circuitpythonsync.cpfilesbak": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "default":"cpfiles.bak",
-            "description": "Manifest backup filename used to store copy filenames.",
-            "scope":"window"
-          },
-          "circuitpythonsync.cpbootfile": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "default":"boot_out.txt",
-            "description": "CircuitPython default file in root of device.",
-            "scope":"window"
-          }
+    "configuration": {
+      "title": "CircuitPython Sync",
+      "properties": {
+        "circuitpythonsync.drivepath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Last path saved for the attached board. Intended to be set at the workspace level.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpfilestxt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "cpfiles.txt",
+          "description": "Manifest filename used to store copy filenames.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpfilesbak": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "cpfiles.bak",
+          "description": "Manifest backup filename used to store copy filenames.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpbootfile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "boot_out.txt",
+          "description": "CircuitPython default file in root of device.",
+          "scope": "window"
+        },
+        "circuitpythonsync.curlibtag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "",
+          "description": "CircuitPython library bundle tag.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpbaseversion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "",
+          "description": "CircuitPython version.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpfullversion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "",
+          "description": "CircuitPython version.",
+          "scope": "window"
         }
+      }
     }
   },
   "scripts": {
@@ -214,18 +253,20 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.91.0",
+    "@types/drivelist": "6.4.4",
     "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
+    "@types/vscode": "^1.91.0",
     "@typescript-eslint/eslint-plugin": "^8.10.0",
     "@typescript-eslint/parser": "^8.7.0",
-    "eslint": "^9.13.0",
-    "typescript": "^5.6.3",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "@types/drivelist": "6.4.4"
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
-    "drivelist": "^12.0.2"
+    "axios": "^1.7.9",
+    "drivelist": "^12.0.2",
+    "zip-lib": "^1.0.5"
   }
 }
