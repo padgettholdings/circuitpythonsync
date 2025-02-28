@@ -56,9 +56,15 @@ export class LibraryMgmt {
                 if(items[0].commandName==='update') {
                     quickPick.hide();
                     quickPick.dispose();
-                    // if changed from prior settings, do setup
+                    // if changed from prior settings, do setup - ALSO check full version here just to make sure matches new cp lib version
                     const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
                     const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+                    const cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+                    //first make sure new cp lib version matches full version, if not error, manually update
+                    if(this._cpVersion !== cpVersionFull.split('.')[0]) {
+                        vscode.window.showErrorMessage('CircuitPython lib version does not match full CP version, correct in .vscode/settings.json');
+                        return;
+                    }
                     if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
                         const ans=await vscode.window.showInformationMessage('Library tag or CP version changed, do you want to update to tag '+this._libTag+', CP '+this._cpVersion, 'Yes','No');
                         if(ans==='Yes') {
@@ -219,13 +225,34 @@ export class LibraryMgmt {
         this._progInc=5;
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
-        const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+        let libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
         this._libTag = libTag;
-        const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+        let cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
         this._cpVersion = cpVersion;
-        //if configs are not defined, ###TBD###
-        if(libTag === '' || cpVersion === '') {
-            vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
+        let cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+        this._cpVersionFull = cpVersionFull;
+        //if lib or cp version configs are not defined, set from latest and check for conflicts in cp versions
+        if(this._libTag===''){
+            const latestTag=await this.getLatestBundleTag();
+            this._libTag=latestTag;
+            libTag=this._libTag;
+            await vscode.workspace.getConfiguration().update('circuitpythonsync.curlibtag',this._libTag,vscode.ConfigurationTarget.Workspace);
+        }
+        if(this._cpVersion===''){
+            const latestCPTag=await this.getLatestCPTag();
+            this._cpVersion=latestCPTag.split('.')[0];
+            cpVersion=this._cpVersion;
+            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpbaseversion',this._cpVersion,vscode.ConfigurationTarget.Workspace);
+        }
+        if(this._cpVersionFull===''){
+            const latestCPTag=await this.getLatestCPTag();
+            this._cpVersionFull=latestCPTag;
+            cpVersionFull=this._cpVersionFull;
+            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpfullversion',this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
+        } 
+        // finally check to see if cpverion and cpfullversion match in first part
+        if(this._cpVersion !== this._cpVersionFull.split('.')[0]) {
+            vscode.window.showErrorMessage('CircuitPython lib version does not match full CP version, correct in .vscode/settings.json');
             //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
             this.stopLibUpdateProgress();
             return;
@@ -408,6 +435,7 @@ export class LibraryMgmt {
     private _libArchiveUri:vscode.Uri;
     private _libTag: string = '';
     private _cpVersion: string = '';
+    private _cpVersionFull: string = '';
     private _progInc: number = 0;
     private _customCancelToken: vscode.CancellationTokenSource | null = null;
 
@@ -421,16 +449,17 @@ export class LibraryMgmt {
             return false;
         }
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
-        // now the libtag and cpversion
-        if(this._libTag === '' || this._cpVersion === '') {
-            vscode.window.showErrorMessage('Please set the library tag and CircuitPython version in the settings');
+        // now the libtag and cpversions
+        if(this._libTag === '' || this._cpVersion === '' || this._cpVersionFull === '') {
+            vscode.window.showErrorMessage('Please set the library tag and CircuitPython versions in the settings');
             return false;
         }
         // check that the instance libtag and cpversion match settings, if not say must update first
         const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
         const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
-        if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
-            vscode.window.showErrorMessage('Library tag or CircuitPython version changed, run update first before adding new libs');
+        const cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+        if(this._libTag!==libTag || this._cpVersion!==cpVersion || this._cpVersionFull!==cpVersionFull) {
+            vscode.window.showErrorMessage('Library tag or CircuitPython versions changed, run update first before adding new libs');
             return false;
         }
         // now the source files and metadata
@@ -558,6 +587,14 @@ export class LibraryMgmt {
     private async getLatestBundleTag(): Promise<string> {
         let r: axios.AxiosResponse = await axios.default.get(
             "https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/latest",
+            { headers: { Accept: "application/json" } }
+        );
+        return await r.data.tag_name;
+    }
+    
+    private async getLatestCPTag(): Promise<string> {
+        let r: axios.AxiosResponse = await axios.default.get(
+            "https://github.com/adafruit/circuitpython/releases/latest",
             { headers: { Accept: "application/json" } }
         );
         return await r.data.tag_name;

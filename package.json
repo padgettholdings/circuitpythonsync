@@ -219,7 +219,7 @@
             "string",
             "null"
           ],
-          "default": "20241221",
+          "default": "",
           "description": "CircuitPython library bundle tag.",
           "scope": "window"
         },
@@ -228,7 +228,16 @@
             "string",
             "null"
           ],
-          "default": "9",
+          "default": "",
+          "description": "CircuitPython version.",
+          "scope": "window"
+        },
+        "circuitpythonsync.cpfullversion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "",
           "description": "CircuitPython version.",
           "scope": "window"
         }
