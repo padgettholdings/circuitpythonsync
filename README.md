@@ -89,4 +89,5 @@
 
 ## issues #39 and 42, manage libraries and lib stubs
 - create release v0.1.2 for platform testing prior to PR
+- create release v0.1.2-c to correct package file names after fixing aarch64 gcc load
 
