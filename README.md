@@ -86,3 +86,7 @@
 
 ## issue #37, cp files and lib manager enhancments
 - create release v0.1.1 for platform testing prior to PR
+
+## issues #39 and 42, manage libraries and lib stubs
+- create release v0.1.2 for platform testing prior to PR
+
