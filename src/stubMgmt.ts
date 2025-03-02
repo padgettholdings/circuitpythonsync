@@ -17,6 +17,7 @@ export class StubMgmt {
     private _stubsDirUri: vscode.Uri;
     private _cpVersionFull: string = '';
     private _cpVersionFullStubUri: vscode.Uri | undefined;
+    private _customCancelToken: vscode.CancellationTokenSource | null = null;
 
     constructor(context: vscode.ExtensionContext)  {
         this._context = context;
@@ -179,6 +180,55 @@ export class StubMgmt {
         }
     }
     
+        // ** methods to show progress and stop with context flag
+    
+        // ** stop progress and set context flag
+        private async stopStubUpdateProgress() {
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', false);
+            this._progInc=101;
+            if(this._customCancelToken){
+                this._customCancelToken.cancel();
+            }
+        }
+        // ** show progress and set context flag
+        private async showStubUpdateProgress(progressMessage:string) {
+            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', true);
+            this._progInc=0;
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Py Stub Maintenance Progress",
+                cancellable: false
+            }, (progress, token) => {
+                token.onCancellationRequested(() => {
+                    console.log("User canceled the long running operation");
+                });
+                progress.report({ increment: 0 });
+                const p = new Promise<void>(resolve => {
+                    const intvlId=setInterval(() => {
+                        progress.report({increment:this._progInc,message:progressMessage,});
+                        if(this._progInc>=100){
+                            clearInterval(intvlId);
+                            resolve();
+                        }
+                    },500);
+                    setTimeout(() => {
+                        clearInterval(intvlId);
+                        resolve();
+                    }, 20000);	// ****** TBD ****** how to set max timeout
+                    //hook up the custom cancel token
+                    this._customCancelToken=new vscode.CancellationTokenSource();
+                    this._customCancelToken.token.onCancellationRequested(() => {
+                        this._customCancelToken?.dispose();
+                        this._customCancelToken=null;
+                        clearInterval(intvlId);
+                        resolve();
+                    });
+                });
+                return p;
+            });
+        }
+    
+    
     
     // **public methods**
 
@@ -189,25 +239,45 @@ export class StubMgmt {
             //vscode.window.showErrorMessage('Must set the CircuitPython full version in the settings.');
             throw new Error('Must set the CircuitPython full version in the settings.');
         }
+        // ** start progress display **
+        await this.showStubUpdateProgress('Checking/Updating Python stubs...');
         this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
         if(fs.existsSync(this._cpVersionFullStubUri.fsPath)){
+            this._progInc=50;
             //stubs already installed
             //just make sure extra path for the base stub dir is in config
             let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
+            const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
+            extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
             extraPathsConfig=extraPathsConfig.concat([this._cpVersionFullStubUri.fsPath]);
             extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            // ** also do the board path in extrapaths in case version changed
+            this._progInc=75;
+            const boardName = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
+            if(boardName){
+                const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(this._cpVersionFullStubUri, 'board_definitions'),boardName);
+                extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            }
             await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+            this.stopStubUpdateProgress();
             return;
         }
+        this._progInc=10;
         // now check to see if the archive zip for this version is already downloaded
         if(!this._stubZipArchiveUri){return;}  //should not happen
         const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
         if(fs.existsSync(stubZipArchiveTarUri.fsPath)){
             //need to extract the tar file, does error checking and throws if needed
+            this._progInc=75;
             await this.extractTarGz(stubZipArchiveTarUri.fsPath,this._stubsDirUri.fsPath);
+            this.stopStubUpdateProgress();
             return;
         }
         // need to get the stub tar file and extract.  get a fresh pypi manifest
+        this._progInc=20;
         if(!this._stubZipArchiveUri){return;}  //should not happen
         //create stub archive directory if not there
         if(!fs.existsSync(this._stubZipArchiveUri.fsPath)){
@@ -215,17 +285,21 @@ export class StubMgmt {
         }
         const destJson = vscode.Uri.joinPath(this._stubZipArchiveUri,'circuitpython-stubs.json').fsPath;
         await this.getPyPiCPStubsJson(destJson);    //error checks and throws if could not get
+        this._progInc=40;
         //read and process the file for chosen release
         const stubsReleases = JSON.parse(fs.readFileSync(destJson, 'utf8'));
         let rls=stubsReleases.releases[this._cpVersionFull];
         if(!rls){
+            this.stopStubUpdateProgress();
             throw new Error('No releases found for tag: '+this._cpVersionFull);
         }
         for(const r of rls){
             if(r.packagetype === 'sdist'){
+                this._progInc=60;
                 console.log('found sdist:',r.filename ,r.url);
                 await this.downloadStubs(r.url, stubZipArchiveTarUri.fsPath);
                 //now extract the sdist
+                this._progInc=75;
                 const zipSource = stubZipArchiveTarUri.fsPath;
                 const zipTarget = this._stubsDirUri.fsPath;
                 await this.extractTarGz(zipSource, zipTarget);
@@ -235,9 +309,19 @@ export class StubMgmt {
                 extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
                 extraPathsConfig=extraPathsConfig.concat([this._cpVersionFullStubUri.fsPath]);
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                // ** also do the board path in extrapaths in case version changed
+                const boardName = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
+                if(boardName){
+                    const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                    extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                    const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(this._cpVersionFullStubUri, 'board_definitions'),boardName);
+                    extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                    extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                }
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
                 break;
             }
         }
+        this.stopStubUpdateProgress();
     }
 }

@@ -79,6 +79,7 @@
       {
         "command": "circuitpythonsync.selectBoard",
         "title": "CP Select Board",
+        "enablement": "!circuitpythonsync.updatingstubs",
         "category": "CircuitPythonSync"
       },
       {
