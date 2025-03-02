@@ -245,6 +245,15 @@
           "default": "",
           "description": "CircuitPython version.",
           "scope": "window"
+        },
+          "circuitpythonsync.cpboardname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": "",
+            "description": "Selected CP board name.",
+            "scope": "window"
         }
       }
     }

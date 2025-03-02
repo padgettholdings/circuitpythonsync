@@ -9,6 +9,7 @@ import path, { win32 } from 'path';
 import { writeFile } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
+import { StubMgmt } from './stubMgmt.js';
 
 //import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
@@ -1450,13 +1451,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		*/
 	}
 
-	// ** spin up the library management
+	// ** spin up the library management, calling the constructor
 	const libMgmtSys=new LibraryMgmt(context);
-	// now call the constructor if have workspace
+	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
-		libMgmtSys.setupLibSources();	//don't need to wait
+		await libMgmtSys.setupLibSources();	//wait???
 	}
-		
+
+	// ** and then the stub management, calling the constructor
+	const stubMgmtSys=new StubMgmt(context);
+	// now call the setup if have workspace
+	if(haveCurrentWorkspace){
+		stubMgmtSys.installStubs();	//don't need to wait
+	}
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show
