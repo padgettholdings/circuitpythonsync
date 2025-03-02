@@ -66,7 +66,9 @@ export class StubMgmt {
                 //and update the python analysis extra paths, must be at top
                 //  AND replace any other board def
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
-                extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
+                //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
+                const bdefextrapath= /circuitpython_stubs-.*\/board_definitions/i;
+                extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
                 extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
@@ -229,6 +231,8 @@ export class StubMgmt {
                 await this.extractTarGz(zipSource, zipTarget);
                 //now set the extra path for the base stub dir
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
+                const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
+                extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
                 extraPathsConfig=extraPathsConfig.concat([this._cpVersionFullStubUri.fsPath]);
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
