@@ -236,7 +236,6 @@ export class StubMgmt {
         extraPathsConfig=extraPathsConfig.concat([cpVersionFullStubUri.fsPath]);
         extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
         // ** also do the board path in extrapaths in case version changed
-        this._progInc=75;
         const boardName = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
         if(boardName){
             const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
@@ -273,9 +272,11 @@ export class StubMgmt {
         await this.showStubUpdateProgress('Checking/Updating Python stubs...');
         this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
         if(fs.existsSync(this._cpVersionFullStubUri.fsPath)){
-            this._progInc=50;
+            this._progInc=75;
             //stubs already installed- **NOTE** don't clean up at this point, only when new stubs loaded
             //just make sure extra path for the base stub dir is in config
+            await this.refreshExtraPaths(this._cpVersionFullStubUri);
+            /*
             let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
             const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
             extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
@@ -292,6 +293,7 @@ export class StubMgmt {
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
             }
             await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+            */
             this.stopStubUpdateProgress();
             return;
         }
@@ -378,6 +380,8 @@ export class StubMgmt {
                     }
                 }
                 //now set the extra path for the base stub dir
+                await this.refreshExtraPaths(this._cpVersionFullStubUri);
+                /*
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
                 const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
                 extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
@@ -393,6 +397,7 @@ export class StubMgmt {
                     extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
                 }
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                */
                 break;
             }
         }
