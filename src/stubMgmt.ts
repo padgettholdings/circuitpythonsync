@@ -130,7 +130,7 @@ export class StubMgmt {
             console.log(`Extracted ${tarGzPath} to ${extractPath}`);
         } catch (error) {
             console.error(`Error during extraction of ${tarGzPath}:`, error);
-            throw new Error(`Error during extraction of ${tarGzPath}:`);
+            throw new Error(`Error during extraction of ${tarGzPath}:`+this.getErrorMessage(error));
         }
     }
 
@@ -180,56 +180,86 @@ export class StubMgmt {
         }
     }
     
-        // ** methods to show progress and stop with context flag
-    
-        // ** stop progress and set context flag
-        private async stopStubUpdateProgress() {
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', false);
-            this._progInc=101;
-            if(this._customCancelToken){
-                this._customCancelToken.cancel();
-            }
+    // ** methods to show progress and stop with context flag
+
+    // ** stop progress and set context flag
+    private async stopStubUpdateProgress() {
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', false);
+        this._progInc=101;
+        if(this._customCancelToken){
+            this._customCancelToken.cancel();
         }
-        // ** show progress and set context flag
-        private async showStubUpdateProgress(progressMessage:string) {
-            vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', true);
-            this._progInc=0;
-            vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: "Py Stub Maintenance Progress",
-                cancellable: false
-            }, (progress, token) => {
-                token.onCancellationRequested(() => {
-                    console.log("User canceled the long running operation");
-                });
-                progress.report({ increment: 0 });
-                const p = new Promise<void>(resolve => {
-                    const intvlId=setInterval(() => {
-                        progress.report({increment:this._progInc,message:progressMessage,});
-                        if(this._progInc>=100){
-                            clearInterval(intvlId);
-                            resolve();
-                        }
-                    },500);
-                    setTimeout(() => {
-                        clearInterval(intvlId);
-                        resolve();
-                    }, 20000);	// ****** TBD ****** how to set max timeout
-                    //hook up the custom cancel token
-                    this._customCancelToken=new vscode.CancellationTokenSource();
-                    this._customCancelToken.token.onCancellationRequested(() => {
-                        this._customCancelToken?.dispose();
-                        this._customCancelToken=null;
-                        clearInterval(intvlId);
-                        resolve();
-                    });
-                });
-                return p;
+    }
+    // ** show progress and set context flag
+    private async showStubUpdateProgress(progressMessage:string) {
+        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatingstubs', true);
+        this._progInc=0;
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Py Stub Maintenance Progress",
+            cancellable: false
+        }, (progress, token) => {
+            token.onCancellationRequested(() => {
+                console.log("User canceled the long running operation");
             });
+            progress.report({ increment: 0 });
+            const p = new Promise<void>(resolve => {
+                const intvlId=setInterval(() => {
+                    progress.report({increment:this._progInc,message:progressMessage,});
+                    if(this._progInc>=100){
+                        clearInterval(intvlId);
+                        resolve();
+                    }
+                },500);
+                setTimeout(() => {
+                    clearInterval(intvlId);
+                    resolve();
+                }, 20000);	// ****** TBD ****** how to set max timeout
+                //hook up the custom cancel token
+                this._customCancelToken=new vscode.CancellationTokenSource();
+                this._customCancelToken.token.onCancellationRequested(() => {
+                    this._customCancelToken?.dispose();
+                    this._customCancelToken=null;
+                    clearInterval(intvlId);
+                    resolve();
+                });
+            });
+            return p;
+        });
+    }
+    
+    private async refreshExtraPaths(cpVersionFullStubUri: vscode.Uri) {
+        //just make sure extra path for the base stub dir is in config
+        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
+        const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
+        extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
+        extraPathsConfig=extraPathsConfig.concat([cpVersionFullStubUri.fsPath]);
+        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+        // ** also do the board path in extrapaths in case version changed
+        this._progInc=75;
+        const boardName = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
+        if(boardName){
+            const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+            extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+            const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(cpVersionFullStubUri, 'board_definitions'),boardName);
+            extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+            extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
         }
-    
-    
-    
+        await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+    }
+
+    // utility to get message from error
+    private getErrorMessage(error: any): string {
+        if (error instanceof Error) {
+            return error.message;
+        } else if (typeof error === 'string') {
+            return error;
+        } else {
+            return 'An unknown error occurred';
+        }
+    }
+
+
     // **public methods**
 
     // get stubs into global storage, download if necessary, only call if have workspace
@@ -244,7 +274,7 @@ export class StubMgmt {
         this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
         if(fs.existsSync(this._cpVersionFullStubUri.fsPath)){
             this._progInc=50;
-            //stubs already installed
+            //stubs already installed- **NOTE** don't clean up at this point, only when new stubs loaded
             //just make sure extra path for the base stub dir is in config
             let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
             const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
@@ -272,7 +302,23 @@ export class StubMgmt {
         if(fs.existsSync(stubZipArchiveTarUri.fsPath)){
             //need to extract the tar file, does error checking and throws if needed
             this._progInc=75;
-            await this.extractTarGz(stubZipArchiveTarUri.fsPath,this._stubsDirUri.fsPath);
+            try {
+                await this.extractTarGz(stubZipArchiveTarUri.fsPath,this._stubsDirUri.fsPath);
+                // ###TBD### clean up any old stubs directories
+                // remove stub directories that are not the current version 
+                const stubsDirContents=await vscode.workspace.fs.readDirectory(this._stubsDirUri);
+                for(const stubDir of stubsDirContents){
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
+                        const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
+                        fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
+                    }
+                }
+                // ###TBD### refresh the extra paths
+                await this.refreshExtraPaths(this._cpVersionFullStubUri);
+                //
+            } catch (error) {
+                vscode.window.showErrorMessage('Error extracting stubs tar file: '+this.getErrorMessage(error));
+            }
             this.stopStubUpdateProgress();
             return;
         }
@@ -284,25 +330,53 @@ export class StubMgmt {
             fs.mkdirSync(this._stubZipArchiveUri.fsPath);
         }
         const destJson = vscode.Uri.joinPath(this._stubZipArchiveUri,'circuitpython-stubs.json').fsPath;
-        await this.getPyPiCPStubsJson(destJson);    //error checks and throws if could not get
+        try {
+            await this.getPyPiCPStubsJson(destJson);    //error checks and throws if could not get
+        } catch (error) {
+            vscode.window.showErrorMessage('Error getting pypi stubs metadata: '+this.getErrorMessage(error));
+            this.stopStubUpdateProgress();
+            return;
+        }
         this._progInc=40;
         //read and process the file for chosen release
         const stubsReleases = JSON.parse(fs.readFileSync(destJson, 'utf8'));
         let rls=stubsReleases.releases[this._cpVersionFull];
         if(!rls){
+            //throw new Error('No releases found for tag: '+this._cpVersionFull);
+            vscode.window.showErrorMessage('No releases found for tag: '+this._cpVersionFull);
             this.stopStubUpdateProgress();
-            throw new Error('No releases found for tag: '+this._cpVersionFull);
+            return;
         }
         for(const r of rls){
             if(r.packagetype === 'sdist'){
                 this._progInc=60;
                 console.log('found sdist:',r.filename ,r.url);
-                await this.downloadStubs(r.url, stubZipArchiveTarUri.fsPath);
+                try {
+                    await this.downloadStubs(r.url, stubZipArchiveTarUri.fsPath);
+                } catch (error) {
+                    vscode.window.showErrorMessage('Error downloading stubs: '+this.getErrorMessage(error));
+                    this.stopStubUpdateProgress();
+                    return;
+                }
                 //now extract the sdist
                 this._progInc=75;
                 const zipSource = stubZipArchiveTarUri.fsPath;
                 const zipTarget = this._stubsDirUri.fsPath;
-                await this.extractTarGz(zipSource, zipTarget);
+                try {
+                    await this.extractTarGz(zipSource, zipTarget);
+                } catch (error) {
+                    vscode.window.showErrorMessage('Error extracting stubs tar file: '+this.getErrorMessage(error));
+                    this.stopStubUpdateProgress();
+                    return;
+                }
+                // remove stub directories that are not the current version 
+                const stubsDirContents=await vscode.workspace.fs.readDirectory(this._stubsDirUri);
+                for(const stubDir of stubsDirContents){
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
+                        const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
+                        fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
+                    }
+                }
                 //now set the extra path for the base stub dir
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get('python.analysis.extraPaths',[]);
                 const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
