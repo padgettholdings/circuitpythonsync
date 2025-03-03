@@ -18,6 +18,7 @@ export class StubMgmt {
     private _cpVersionFull: string = '';
     private _cpVersionFullStubUri: vscode.Uri | undefined;
     private _customCancelToken: vscode.CancellationTokenSource | null = null;
+    private _selectBoardButton: vscode.StatusBarItem | undefined;
 
     constructor(context: vscode.ExtensionContext)  {
         this._context = context;
@@ -73,8 +74,10 @@ export class StubMgmt {
                 extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
-
-
+                //update the status bar button
+                if(this._selectBoardButton){
+                    this._selectBoardButton.tooltip = board.label+' selected, click to change';
+                }
 
                 //const boardInfo = await this.getBoardInfo(board);
                 //const boardPath = await this.getBoardPath(boardInfo);
@@ -86,6 +89,14 @@ export class StubMgmt {
         }
         );
         context.subscriptions.push(selectBoardCmd);
+
+        // create status bar button linked to selectBoardCmd
+        const curBoardSelection = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
+        this._selectBoardButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
+        this._selectBoardButton.text = '$(circuit-board)';
+        this._selectBoardButton.command = 'circuitpythonsync.selectBoard';
+        this._selectBoardButton.tooltip = curBoardSelection ? curBoardSelection+' selected, click to change' : 'Click to Select CP board';
+        this._selectBoardButton.show();
     }
 
     // **private methods**

@@ -1451,19 +1451,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		*/
 	}
 
-	// ** spin up the library management, calling the constructor
-	const libMgmtSys=new LibraryMgmt(context);
-	// now call the setup if have workspace
-	if(haveCurrentWorkspace){
-		await libMgmtSys.setupLibSources();	//wait???
-	}
-
-	// ** and then the stub management, calling the constructor
-	const stubMgmtSys=new StubMgmt(context);
-	// now call the setup if have workspace
-	if(haveCurrentWorkspace){
-		stubMgmtSys.installStubs();	//don't need to wait
-	}
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show
@@ -1487,6 +1474,20 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem2.hide();
 	}
 
+	// ** spin up the library management, calling the constructor
+	const libMgmtSys=new LibraryMgmt(context);
+	// now call the setup if have workspace
+	if(haveCurrentWorkspace){
+		await libMgmtSys.setupLibSources();	//wait???
+	}
+
+	// ** and then the stub management, calling the constructor
+	const stubMgmtSys=new StubMgmt(context);
+	// now call the setup if have workspace
+	if(haveCurrentWorkspace){
+		stubMgmtSys.installStubs();	//don't need to wait
+	}
+	
 	// ** Issue #10 - see if a usb drive with boot file exists, if so, offer to connect but only if not current **
 	//	have the current mapping and the last drive list
 	// find the first usb drive in last drives, if any
