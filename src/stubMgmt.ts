@@ -76,7 +76,7 @@ export class StubMgmt {
                 await vscode.workspace.getConfiguration().update('python.analysis.extraPaths', extraPathsConfig, vscode.ConfigurationTarget.Workspace);
                 //update the status bar button
                 if(this._selectBoardButton){
-                    this._selectBoardButton.tooltip = board.label+' selected, click to change';
+                    this._selectBoardButton.tooltip = new vscode.MarkdownString('**'+board.label+'** selected, click to change');
                 }
 
                 //const boardInfo = await this.getBoardInfo(board);
@@ -93,10 +93,11 @@ export class StubMgmt {
         // create status bar button linked to selectBoardCmd
         const curBoardSelection = vscode.workspace.getConfiguration().get('circuitpythonsync.cpboardname','');
         this._selectBoardButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
-        this._selectBoardButton.text = '$(circuit-board)';
+        this._selectBoardButton.text = 'CP$(circuit-board)';
         this._selectBoardButton.command = 'circuitpythonsync.selectBoard';
-        this._selectBoardButton.tooltip = curBoardSelection ? curBoardSelection+' selected, click to change' : 'Click to Select CP board';
+        this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString('**'+curBoardSelection+'** selected, click to change') : 'Click to Select CP board';
         this._selectBoardButton.show();
+        this._context.subscriptions.push(this._selectBoardButton);
     }
 
     // **private methods**
