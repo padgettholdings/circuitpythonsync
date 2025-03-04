@@ -22,6 +22,10 @@ export const confCurlibPKG:string ='curlibtag';
 export const confCPbaseverPKG:string ='cpbaseversion';
 export const confCPfullverPKG:string ='cpfullversion';
 export const confBoardNamePKG:string ='cpboardname';
+// the python/pylance setting for extra paths, DO NOT prefix with 'circuitpythonsync.'
+// **NOT currently in package.json, but can be added if needed**
+export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
+
 
 //command strings are also in package.json
 export const cmdHelloPKG:string ='circuitpythonsync.helloWorld';
@@ -158,5 +162,37 @@ export const libTagOrCPVerChgConfirm:string[]=[
     ', CP ' //+cpVersion+
 ];
 export const libTagChgInputBox:ibox={prompt:'Enter the library tag or blank for latest',placeHolder:'Enter with blank input to go to latest version.'};
-
-
+export const libTagChgConfirm:string='Are you sure you want Library tag changed to: ';  //+value of new libtag
+export const updateLibNewTagQPplaceholder:string="Accept to save changed settings and update libraries";
+export const updateLibNewTagQPItemTop:qpitem={label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
+export const updateLibNewTagQPItemMiddle:qpitem={label:'Library Tag'};
+export const updateLibNewTagQPItemBottom:qpitem={label:'CircuitPython Version'};
+export const libTagLatestChgConfirm:string='Are you sure you want Library tag changed to latest version: '; //+ latestTag
+export const cpVerChgInputBox:ibox={prompt:'Enter the CircuitPython version'};
+export const cpVerChgConfirm:string='Are you sure you want CP version changed to: ';  // + value of new cp version
+export const updateCpNewVerQPplaceholder:string="Accept to save changed settings and update libraries";
+export const updateCpNewVerQPItemTop:qpitem={label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
+export const updateCpNewVerQPItemMiddle:qpitem={label:'Library Tag'};
+export const updateCpNewVerQPItemBottom:qpitem={label:'CircuitPython Version'};
+export const libBundleFilePrefix:string='adafruit-circuitpython-bundle';    // this is just for internal files NOT the URL
+export const libBundleAdafruitUrlRoot:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download';
+export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
+export const selLibQPtitle:string='Select libraries';
+export const selLibQPplaceholder:string='Select Libraries to Add';
+export const setupLibProgressMsg:string='Check and load lib files...';
+export const setupLibNoWSError:string='No workspace is open, cannot init library management';
+export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
+export const setupLibExtractError:string='Error extracting the lib folders from the original bundle zip files';
+export const updateLibProgressMsg:string="Updating Libraries...";
+export const updateLibNoLibsToUpdate:string='No libraries to update';
+export const updateLibMetadataError:string='Library metadata file not found';
+export const updateLibExtractStubsError:string='Error extracting the lib stubs from the original bundle zip files';
+export const updateLibExtractLibsError:string='Error extracting the lib files from the original bundle zip files';
+export const updateLibUpdatedMsg:string[]=[
+    'Libraries updated for tag: ', //+libTag+
+    ' and CP version: ' //+cpVersion+
+];
+export const libCmdsReadyNeedSettingsError:string='Please set the library tag and CircuitPython versions in the settings';
+export const libCmdsReadyVerChgError:string='Library tag or CircuitPython versions changed, run update first before adding new libs';
+export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
+export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
