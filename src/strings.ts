@@ -2,9 +2,26 @@
 // messages with markdown suffixed with MKDN, check for validity before change
 // strings that also show up in package.json suffixed with PKG, must change there too!
 
+//helper for quickpick item text
+interface qpitem {
+    label: string;
+    description?: string;
+    detail?: string;
+}
+//helper for input box options
+interface ibox {
+    prompt: string;
+    placeHolder?: string;
+}
+
 // workspace config setting for current drive path, fixed to prefix with 'circuitpythonsync.'
 //  CAN CHANGE HERE TO CHANGE AND RECOMPILE IN CODE, BUT package.json will need to be changed also
 export const confDrivepathPKG:string ='drivepath';
+// these are for the lib and stub mgmt settings, fixed to prefix with 'circuitpythonsync.'
+export const confCurlibPKG:string ='curlibtag';
+export const confCPbaseverPKG:string ='cpbaseversion';
+export const confCPfullverPKG:string ='cpfullversion';
+export const confBoardNamePKG:string ='cpboardname';
 
 //command strings are also in package.json
 export const cmdHelloPKG:string ='circuitpythonsync.helloWorld';
@@ -15,6 +32,8 @@ export const cmdMngLibPKG:string ='circuitpythonsync.mngcplibs';
 export const cmdMngFilesPKG:string='circuitpythonsync.mngcpfiles';
 export const cmdDownloadCPboardPKG:string = 'circuitpythonsync.dnldcpboard';
 export const cmdScaffoldProjectPKG:string= 'circuitpythonsync.newproject';
+export const cmdLibUpdatePKG:string='circuitpythonsync.libupdate';
+export const cmdSelectLibsPKG:string='circuitpythonsync.selectlibs';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -124,3 +143,20 @@ export const boardUnkTypeFileFolder:string="** Unknown type of file/folder, cann
 export const diffContextWarning:string='Must have active file in editor, or use context menu in explorer.';
 export const diffBoardFileNoExist:string="Selected file does not exist on board.";
 export const diffScreenHeader:string='Workspace to Board compare file: ';   //+leftFile
+
+//library and stubs related
+export const workspaceLibArchiveFolder:string='libArchive';
+export const updateLibQPtitle:string='Update Libraries';
+export const updateLibQPSelTT:string='Select Libraries for Board';
+export const updateLibQPSelPlaceholder:string='Accept or change the library tag and CircuitPython version';
+export const updateLibQPItemTop:qpitem={label:'Enter or click here to update with current settings',description:'Or click library tag or CP version to change'};
+export const updateLibQPItemMiddle:qpitem={label:'Library Tag'};
+export const updateLibQPItemBottom:qpitem={label:'CircuitPython Version'};
+export const libBaseNoMatchFullVer:string='CircuitPython lib version does not match full CP version, correct in .vscode/settings.json';
+export const libTagOrCPVerChgConfirm:string[]=[
+    'Library tag or CP version changed, do you want to update to tag ', //+libTag+
+    ', CP ' //+cpVersion+
+];
+export const libTagChgInputBox:ibox={prompt:'Enter the library tag or blank for latest',placeHolder:'Enter with blank input to go to latest version.'};
+
+

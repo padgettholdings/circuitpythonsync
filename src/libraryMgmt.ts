@@ -14,7 +14,7 @@ export class LibraryMgmt {
         this._context = context;
 
         const workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : vscode.Uri.file(os.homedir());
-        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
+        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,strgs.workspaceLibArchiveFolder);
 
         interface cmdQuickInputButton extends QuickInputButton {
 			commandName: string;
@@ -26,30 +26,31 @@ export class LibraryMgmt {
         }
         this._progInc=0;    //set to greater than 100 to stop progress
 
-        const updateLibCmd=vscode.commands.registerCommand('circuitpythonsync.libupdate', async () => {
+        const libUpdateCmdId=strgs.cmdLibUpdatePKG;
+        const updateLibCmd=vscode.commands.registerCommand(libUpdateCmdId, async () => {
             //first make sure ready- **NO** update will check
             //const ready=await this.readyForLibCmds();
             //do quick input to show the libtag and cpversion and allow to change
             const pickButton:cmdQuickInputButton={
                 iconPath:iconCommand1,
-                tooltip:"Select Libraries for Board",
+                tooltip:strgs.updateLibQPSelTT,
                 commandName:"selectLibs"
             };    
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
-            quickPick.title = 'Update Libraries';
+            quickPick.title = strgs.updateLibQPtitle;
             quickPick.buttons = [pickButton];
-            quickPick.placeholder = 'Accept or change the library tag and CircuitPython version';
+            quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
             quickPick.items = [
-                { label: 'Enter or click here to update with current settings', description: 'Or click library tag or CP version to change', commandName: 'update' },
-                { label: 'Library Tag', description: this._libTag, commandName: 'libtag' },
-                { label: 'CircuitPython Version', description: this._cpVersion, commandName: 'cpversion' }
+                { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
             ];
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'selectLibs') {
                     quickPick.hide();
                     quickPick.dispose();
-                    vscode.commands.executeCommand('circuitpythonsync.selectlibs');
+                    vscode.commands.executeCommand(strgs.cmdSelectLibsPKG);
                 }
             });
             quickPick.onDidChangeSelection(async (items) => {
@@ -57,20 +58,20 @@ export class LibraryMgmt {
                     quickPick.hide();
                     quickPick.dispose();
                     // if changed from prior settings, do setup - ALSO check full version here just to make sure matches new cp lib version
-                    const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
-                    const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
-                    const cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+                    const libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+                    const cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+                    const cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
                     //first make sure new cp lib version matches full version, if not error, manually update
                     if(this._cpVersion !== cpVersionFull.split('.')[0]) {
-                        vscode.window.showErrorMessage('CircuitPython lib version does not match full CP version, correct in .vscode/settings.json');
+                        vscode.window.showErrorMessage(strgs.libBaseNoMatchFullVer);
                         return;
                     }
                     if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
-                        const ans=await vscode.window.showInformationMessage('Library tag or CP version changed, do you want to update to tag '+this._libTag+', CP '+this._cpVersion, 'Yes','No');
+                        const ans=await vscode.window.showInformationMessage(strgs.libTagOrCPVerChgConfirm[0]+this._libTag+strgs.libTagOrCPVerChgConfirm[1]+this._cpVersion, 'Yes','No');
                         if(ans==='Yes') {
                             //save the new settings
-                            await vscode.workspace.getConfiguration().update('circuitpythonsync.curlibtag',this._libTag,vscode.ConfigurationTarget.Workspace);
-                            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpbaseversion',this._cpVersion,vscode.ConfigurationTarget.Workspace);
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
                             //do the setup
                             await this.setupLibSources(); //will do the update
                         }
@@ -80,7 +81,7 @@ export class LibraryMgmt {
                     }
                 }
                 if (items[0].commandName === 'libtag') {
-                    vscode.window.showInputBox({ prompt: 'Enter the library tag',placeHolder:'Enter with blank input to go to latest version.' }).then(async (value) =>  {
+                    vscode.window.showInputBox({ prompt: strgs.libTagChgInputBox.prompt,placeHolder:strgs.libTagChgInputBox.placeHolder,value:this._libTag }).then(async (value) =>  {
                         if (value!==undefined && value!=='') {
                             const ans=await vscode.window.showInformationMessage('Are you sure you want Library tag changed to: ' + value, 'Yes','No');
                             if(ans==='Yes') {
@@ -118,7 +119,7 @@ export class LibraryMgmt {
                         }
                     });
                 } else if (items[0].commandName === 'cpversion') {
-                    vscode.window.showInputBox({ prompt: 'Enter the CircuitPython version' }).then(async (value) => {
+                    vscode.window.showInputBox({ prompt: 'Enter the CircuitPython version',value:this._cpVersion }).then(async (value) => {
                         if (value) {    //need to check if valid version
                             quickPick.items[1].description = value;
                             const ans=await vscode.window.showInformationMessage('Are you sure you want CP version  changed to: ' + value, 'Yes','No');
@@ -225,30 +226,30 @@ export class LibraryMgmt {
         this._progInc=5;
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
-        let libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
+        let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
         this._libTag = libTag;
-        let cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
+        let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
         this._cpVersion = cpVersion;
-        let cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+        let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
         this._cpVersionFull = cpVersionFull;
         //if lib or cp version configs are not defined, set from latest and check for conflicts in cp versions
         if(this._libTag===''){
             const latestTag=await this.getLatestBundleTag();
             this._libTag=latestTag;
             libTag=this._libTag;
-            await vscode.workspace.getConfiguration().update('circuitpythonsync.curlibtag',this._libTag,vscode.ConfigurationTarget.Workspace);
+            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
         }
         if(this._cpVersion===''){
             const latestCPTag=await this.getLatestCPTag();
             this._cpVersion=latestCPTag.split('.')[0];
             cpVersion=this._cpVersion;
-            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpbaseversion',this._cpVersion,vscode.ConfigurationTarget.Workspace);
+            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
         }
         if(this._cpVersionFull===''){
             const latestCPTag=await this.getLatestCPTag();
             this._cpVersionFull=latestCPTag;
             cpVersionFull=this._cpVersionFull;
-            await vscode.workspace.getConfiguration().update('circuitpythonsync.cpfullversion',this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
+            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPfullverPKG}`,this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
         } 
         // finally check to see if cpverion and cpfullversion match in first part
         if(this._cpVersion !== this._cpVersionFull.split('.')[0]) {
@@ -269,7 +270,7 @@ export class LibraryMgmt {
         }
         this._progInc=15;
         // first check for lib only zips in /libArchive
-        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,'libArchive');
+        this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,strgs.workspaceLibArchiveFolder);
         const libOnlyZipPyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-py-${libTag}-lib.zip`);
         const libOnlyZipMpyUri=vscode.Uri.joinPath(this._libArchiveUri,`adafruit-circuitpython-bundle-${cpVersionFmt}-${libTag}-lib.zip`);
         const pyLibFmts = ['py', cpVersionFmt];
@@ -455,9 +456,9 @@ export class LibraryMgmt {
             return false;
         }
         // check that the instance libtag and cpversion match settings, if not say must update first
-        const libTag:string = vscode.workspace.getConfiguration().get('circuitpythonsync.curlibtag','');
-        const cpVersion:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpbaseversion','');
-        const cpVersionFull:string = vscode.workspace.getConfiguration().get('circuitpythonsync.cpfullversion','');
+        const libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+        const cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+        const cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
         if(this._libTag!==libTag || this._cpVersion!==cpVersion || this._cpVersionFull!==cpVersionFull) {
             vscode.window.showErrorMessage('Library tag or CircuitPython versions changed, run update first before adding new libs');
             return false;
