@@ -25,8 +25,9 @@ export const confBoardNamePKG:string ='cpboardname';
 // the python/pylance setting for extra paths, DO NOT prefix with 'circuitpythonsync.'
 // **NOT currently in package.json, but can be added if needed**
 export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
-//context key used in package.json for enablement
+//context keys used in package.json for enablement
 export const libUpdatingContextKeyPKG:string='circuitpythonsync.updatinglibs';
+export const stubsUpdatingContextKeyPKG:string='circuitpythonsync.updatingstubs';
 
 
 //command strings are also in package.json
@@ -40,6 +41,7 @@ export const cmdDownloadCPboardPKG:string = 'circuitpythonsync.dnldcpboard';
 export const cmdScaffoldProjectPKG:string= 'circuitpythonsync.newproject';
 export const cmdLibUpdatePKG:string='circuitpythonsync.libupdate';
 export const cmdSelectLibsPKG:string='circuitpythonsync.selectlibs';
+export const cmdSelectBoardPKG:string='circuitpythonsync.selectboard';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -214,5 +216,30 @@ export const getOrigBundleLog:string[]=[
     'Downloaded orig bundle for pylibfmt: ',  // + pyLibFmt
     ' with result:'  // + res
 ];
+export const selectBoardMustSetCPVer:string='Must set the CircuitPython full version in the settings.';
+export const stubDnldErrorMsg:string='Error downloading stubs: ';   //+err
+export const stubArchiveFolderName:string='stubArchive';
+export const stubsGlobalStorageFolderName:string='stubs';
+export const boardButtonSetTTMKDN:string[]=[
+    '**',   //+board.label
+    '** selected, click to change'
+];
+export const boardButtonNotSetTTMKDN:string='Click to Select CP board';
+export const boardListSelectedQPItem:qpitem={label:'DNU',description:'Current selection'};
+export const stubsTarGzExtractError:string='Error during extraction of ';   // ${tarGzPath}
+export const stubsPyPiMetadataUrl:string='https://pypi.org/pypi/circuitpython-stubs/json';
+export const stubsPyPiMetadataDnldLog:string='Downloaded cp stubs metadata to:';
+export const stubsPyPiMetadataDnldErrorLog:string='Error downloading the file:';
+export const stubsPyPiFileDnldSuccessRtn:string='File downloaded successfully at:'; // + stubFilePath
+export const stubsPyPiFileDnldErrorLog:string='Error downloading the file:';
+export const updateStubsProgressTitle:string="Py Stub Maintenance Progress";
+export const updateStubsProgressCancelLog:string="User canceled the long running operation";
+export const installStubsMustSetCPVer:string='Must set the CircuitPython full version in the settings.';
+export const installStubsProgressMsg:string='Checking/Updating Python stubs...';
+export const installStubsExtractErrMsg:string='Error extracting stubs tar file: ';  // + err
+export const installStubsMetadataFilename:string='circuitpython-stubs.json';
+export const installStubsMetadataGetError:string='Error getting pypi stubs metadata: ';  // + err
+export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; //+this._cpVersionFull
+export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
 
 

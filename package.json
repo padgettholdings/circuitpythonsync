@@ -77,7 +77,7 @@
         "category": "CircuitPythonSync"
       },
       {
-        "command": "circuitpythonsync.selectBoard",
+        "command": "circuitpythonsync.selectboard",
         "title": "CP Select Board",
         "enablement": "!circuitpythonsync.updatingstubs",
         "category": "CircuitPythonSync"
