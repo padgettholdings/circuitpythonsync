@@ -167,14 +167,14 @@ export const libTagOrCPVerChgConfirm:string[]=[
 ];
 export const libTagChgInputBox:ibox={prompt:'Enter the library tag or blank for latest',placeHolder:'Enter with blank input to go to latest version.'};
 export const libTagChgConfirm:string='Are you sure you want Library tag changed to: ';  //+value of new libtag
-export const updateLibNewTagQPplaceholder:string="Accept to save changed settings and update libraries";
+export const updateLibNewTagQPplaceholder:string="";    //"Accept to save changed settings and update libraries";
 export const updateLibNewTagQPItemTop:qpitem={label:'Click to update with NEW bundle settings',description:'[Or click tag and/or version to modify]'};   //{label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
 export const updateLibNewTagQPItemMiddle:qpitem={label:'Library Tag'};
 export const updateLibNewTagQPItemBottom:qpitem={label:'CircuitPython Version'};
 export const libTagLatestChgConfirm:string='Are you sure you want Library tag changed to latest version: '; //+ latestTag
 export const cpVerChgInputBox:ibox={prompt:'Enter the CircuitPython version'};
 export const cpVerChgConfirm:string='Are you sure you want CP version changed to: ';  // + value of new cp version
-export const updateCpNewVerQPplaceholder:string="Accept to save changed settings and update libraries";
+export const updateCpNewVerQPplaceholder:string=''; //"Accept to save changed settings and update libraries";
 export const updateCpNewVerQPItemTop:qpitem={label:'Click to update with NEW bundle settings',description:'[Or click tag and/or version to modify]'};  //{label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
 export const updateCpNewVerQPItemMiddle:qpitem={label:'Library Tag'};
 export const updateCpNewVerQPItemBottom:qpitem={label:'CircuitPython Version'};

@@ -26,6 +26,8 @@ export class LibraryMgmt {
         }
         this._progInc=0;    //set to greater than 100 to stop progress
 
+        this._libUpdateVerChg=false;    //this gets set to true if either libtag or cpversion changes
+
         const libUpdateCmdId=strgs.cmdLibUpdatePKG;
         const updateLibCmd=vscode.commands.registerCommand(libUpdateCmdId, async () => {
             //first make sure ready- **NO** update will check
@@ -39,12 +41,22 @@ export class LibraryMgmt {
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
             quickPick.title = strgs.updateLibQPtitle;
             quickPick.buttons = [pickButton];
-            quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
-            quickPick.items = [
-                { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
-            ];
+            // see if there is a pending change and alter the QP if so
+            if(this._libUpdateVerChg) {
+                quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                quickPick.items = [
+                    { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
+                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                    { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                ];
+            } else {
+                quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
+                quickPick.items = [
+                    { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                ];
+            }
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'selectLibs') {
@@ -74,68 +86,105 @@ export class LibraryMgmt {
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
                             //do the setup
                             await this.setupLibSources(); //will do the update
+                            this._libUpdateVerChg=false;
                         }
                     } else {
                         //await this.updateLibraries();   // **NO** will need to do full setup and update
                         await this.setupLibSources(); //will do the update
+                        this._libUpdateVerChg=false;
                     }
                 }
                 if (items[0].commandName === 'libtag') {
                     vscode.window.showInputBox({ prompt: strgs.libTagChgInputBox.prompt,placeHolder:strgs.libTagChgInputBox.placeHolder,value:this._libTag }).then(async (value) =>  {
                         if (value!==undefined && value!=='') {
-                            const ans=await vscode.window.showInformationMessage(strgs.libTagChgConfirm + value, 'Yes','No');
-                            if(ans==='Yes') {
-                                this._libTag = value;
-                                //quickPick.items[0].description = value;
-                                quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                            // skip if same as current and use original prompt in QP, still have to rebuild
+                            if(value===this._libTag  && !this._libUpdateVerChg) {
+                                quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 quickPick.items = [
-                                    { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: value, commandName: 'libtag' },
-                                    { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
-                                quickPick.hide();
-                                quickPick.dispose();
+                                const ans=await vscode.window.showInformationMessage(strgs.libTagChgConfirm + value, 'Yes','No');
+                                if(ans==='Yes') {
+                                    this._libTag = value;
+                                    this._libUpdateVerChg=true;
+                                    //quickPick.items[0].description = value;
+                                    quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    quickPick.items = [
+                                        { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
+                                        { label: strgs.updateLibNewTagQPItemMiddle.label, description: value, commandName: 'libtag' },
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    ];                    
+                                    quickPick.show();
+                                } else {
+                                    quickPick.hide();
+                                    quickPick.dispose();
+                                }
                             }
                         } else if (value!==undefined && value===''){
                             //get the latest tag
                             const latestTag=await this.getLatestBundleTag();
-                            const ans=await vscode.window.showInformationMessage(strgs.libTagLatestChgConfirm + latestTag, 'Yes','No');
-                            if(ans==='Yes') {
-                                this._libTag = latestTag;
-                                //quickPick.items[0].description = value;
-                                quickPick.placeholder="Accept to save changed settings and update libraries";
+                            if(latestTag===this._libTag &&  !this._libUpdateVerChg){
+                                quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 quickPick.items = [
-                                    { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
-                                quickPick.hide();
-                                quickPick.dispose();
+                                const ans=await vscode.window.showInformationMessage(strgs.libTagLatestChgConfirm + latestTag, 'Yes','No');
+                                if(ans==='Yes') {
+                                    this._libTag = latestTag;
+                                    this._libUpdateVerChg=true;
+                                    //quickPick.items[0].description = value;
+                                    quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    quickPick.items = [
+                                        { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
+                                        { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    ];                    
+                                    quickPick.show();
+                                } else {
+                                    quickPick.hide();
+                                    quickPick.dispose();
+                                }
                             }
                         }
                     });
                 } else if (items[0].commandName === 'cpversion') {
                     vscode.window.showInputBox({ prompt: strgs.cpVerChgInputBox.prompt,value:this._cpVersion }).then(async (value) => {
                         if (value) {    //need to check if valid version
-                            quickPick.items[1].description = value;
-                            const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + value, 'Yes','No');
-                            if(ans==='Yes') {
-                                this._cpVersion = value;
-                                //quickPick.items[0].description = value;
-                                quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                            //quickPick.items[1].description = value;
+                            //check to see if changed
+                            if(value===this._cpVersion && !this._libUpdateVerChg) {
+                                quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 quickPick.items = [
-                                    { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateCpNewVerQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateCpNewVerQPItemBottom.label, description: value, commandName: 'cpversion' }
-                                ];                    
+                                    { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                ];
                                 quickPick.show();
                             } else {
-                                quickPick.hide();
-                                quickPick.dispose();
+                                const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + value, 'Yes','No');
+                                if(ans==='Yes') {
+                                    this._cpVersion = value;
+                                    this._libUpdateVerChg=true;
+                                    //quickPick.items[0].description = value;
+                                    quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                                    quickPick.items = [
+                                        { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
+                                        { label: strgs.updateCpNewVerQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                        { label: strgs.updateCpNewVerQPItemBottom.label, description: value, commandName: 'cpversion' }
+                                    ];                    
+                                    quickPick.show();
+                                } else {
+                                    quickPick.hide();
+                                    quickPick.dispose();
+                                }
                             }
                         }
                     });
@@ -440,6 +489,7 @@ export class LibraryMgmt {
     private _cpVersionFull: string = '';
     private _progInc: number = 0;
     private _customCancelToken: vscode.CancellationTokenSource | null = null;
+    private _libUpdateVerChg: boolean = false;
 
     // ** private methods **
 
