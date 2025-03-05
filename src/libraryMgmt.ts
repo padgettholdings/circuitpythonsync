@@ -485,7 +485,7 @@ export class LibraryMgmt {
 
     // ** stop progress and set context flag
     private async stopLibUpdateProgress() {
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
+        vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
         this._progInc=101;
         if(this._customCancelToken){
             this._customCancelToken.cancel();
@@ -493,15 +493,15 @@ export class LibraryMgmt {
     }
     // ** show progress and set context flag
     private async showLibUpdateProgress(progressMessage:string) {
-        vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', true);
+        vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, true);
         this._progInc=0;
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: "Library Maintenance Progress",
+            title: strgs.updateLibProgressTitle,
             cancellable: false
         }, (progress, token) => {
             token.onCancellationRequested(() => {
-                console.log("User canceled the long running operation");
+                console.log(strgs.updateLibProgressCancelLog);
             });
             progress.report({ increment: 0 });
             const p = new Promise<void>(resolve => {
@@ -533,8 +533,8 @@ export class LibraryMgmt {
         //check to see if already downloaded
         const tmpZipPath=path.join(this._tempBundlesDir, `${strgs.libBundleFilePrefix}-${pyLibFmt}-${libTag}.zip`);
         if(fs.existsSync(tmpZipPath)) {
-            console.log('File already exists:', tmpZipPath);
-            return 'file already exists';
+            console.log(strgs.libDnldBundleExistsLog, tmpZipPath);
+            return strgs.libDnldBundleExistsRtn;
         }
         //download the file
         try {
@@ -547,7 +547,7 @@ export class LibraryMgmt {
     
             return new Promise((resolve, reject) => {
                 response.data.on('end', () => {
-                    resolve('File downloaded successfully for fmt:' + pyLibFmt);
+                    resolve(strgs.libDnldBundleSuccessRtn + pyLibFmt);
                 });
     
                 response.data.on('error', (err: any) => {
@@ -555,7 +555,7 @@ export class LibraryMgmt {
                 });
             });
         } catch (error) {
-            console.error('Error downloading the file:', error);
+            console.error(strgs.libDnldBundleErrorMsg, error);
             throw error;
         }
     }
@@ -565,8 +565,8 @@ export class LibraryMgmt {
         //check first if already downloaded
         if
         (fs.existsSync(dest)) {
-            console.log('File already exists:', dest);
-            return 'file already exists';
+            console.log(strgs.libDnldMetadataExistsLog, dest);
+            return strgs.libDnldMetadataExistsRtn;
         }
         try {
             const response = await axios.default({
@@ -577,10 +577,10 @@ export class LibraryMgmt {
                 fs.writeFileSync(dest, JSON.stringify(response.data), {
                     encoding: "utf8",
                 });
-                console.log('Downloaded lib metadata to:', dest);
+                console.log(strgs.libDnldMetadataSuccessLog, dest);
             });
         } catch (error) {
-            console.error('Error downloading the file:', error);
+            console.error(strgs.libDnldMetadataErrorLog, error);
             throw error;
         }
         return 'done';
@@ -588,7 +588,7 @@ export class LibraryMgmt {
     
     private async getLatestBundleTag(): Promise<string> {
         let r: axios.AxiosResponse = await axios.default.get(
-            "https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/latest",
+            strgs.libBundleAdafruitUrlLatest,
             { headers: { Accept: "application/json" } }
         );
         return await r.data.tag_name;
@@ -596,7 +596,7 @@ export class LibraryMgmt {
     
     private async getLatestCPTag(): Promise<string> {
         let r: axios.AxiosResponse = await axios.default.get(
-            "https://github.com/adafruit/circuitpython/releases/latest",
+            strgs.libCPAdafruitUrlLatest,
             { headers: { Accept: "application/json" } }
         );
         return await r.data.tag_name;
@@ -606,7 +606,7 @@ export class LibraryMgmt {
     private async getOrigBundle(libTag: string, pyLibFmt: string): Promise<string> {
         //    try {
         const res = await this.downloadOrigBundle(libTag, pyLibFmt);
-        console.log('Downloaded orig bundle for pylibfmt: ' + pyLibFmt + ' with result:', res);
+        console.log(strgs.getOrigBundleLog[0] + pyLibFmt + strgs.getOrigBundleLog[1], res);
         //    } catch (error) {
         //        console.error(error);
         //    }

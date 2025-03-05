@@ -25,6 +25,8 @@ export const confBoardNamePKG:string ='cpboardname';
 // the python/pylance setting for extra paths, DO NOT prefix with 'circuitpythonsync.'
 // **NOT currently in package.json, but can be added if needed**
 export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
+//context key used in package.json for enablement
+export const libUpdatingContextKeyPKG:string='circuitpythonsync.updatinglibs';
 
 
 //command strings are also in package.json
@@ -176,6 +178,8 @@ export const updateCpNewVerQPItemMiddle:qpitem={label:'Library Tag'};
 export const updateCpNewVerQPItemBottom:qpitem={label:'CircuitPython Version'};
 export const libBundleFilePrefix:string='adafruit-circuitpython-bundle';    // this is just for internal files NOT the URL
 export const libBundleAdafruitUrlRoot:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download';
+export const libBundleAdafruitUrlLatest:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/latest';
+export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitpython/releases/latest";
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
 export const selLibQPplaceholder:string='Select Libraries to Add';
@@ -184,6 +188,8 @@ export const setupLibNoWSError:string='No workspace is open, cannot init library
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
 export const setupLibExtractError:string='Error extracting the lib folders from the original bundle zip files';
 export const updateLibProgressMsg:string="Updating Libraries...";
+export const updateLibProgressTitle:string="Library Maintenance Progress";
+export const updateLibProgressCancelLog:string="User canceled the long running operation";
 export const updateLibNoLibsToUpdate:string='No libraries to update';
 export const updateLibMetadataError:string='Library metadata file not found';
 export const updateLibExtractStubsError:string='Error extracting the lib stubs from the original bundle zip files';
@@ -196,3 +202,17 @@ export const libCmdsReadyNeedSettingsError:string='Please set the library tag an
 export const libCmdsReadyVerChgError:string='Library tag or CircuitPython versions changed, run update first before adding new libs';
 export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
+export const libDnldBundleExistsLog:string='File already exists:';
+export const libDnldBundleExistsRtn:string='file already exists';
+export const libDnldBundleSuccessRtn:string='File downloaded successfully for fmt:';  // + pyLibFmt
+export const libDnldBundleErrorMsg:string='Error downloading the file:';
+export const libDnldMetadataExistsLog:string='File already exists:';
+export const libDnldMetadataExistsRtn:string='file already exists';
+export const libDnldMetadataSuccessLog:string='Downloaded lib metadata to:';
+export const libDnldMetadataErrorLog:string='Error downloading the file:';
+export const getOrigBundleLog:string[]=[
+    'Downloaded orig bundle for pylibfmt: ',  // + pyLibFmt
+    ' with result:'  // + res
+];
+
+
