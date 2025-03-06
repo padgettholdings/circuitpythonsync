@@ -70,7 +70,7 @@ export class StubMgmt {
                 //  AND replace any other board def
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
                 //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
-                const bdefextrapath= /circuitpython_stubs-.*\/board_definitions/i;
+                const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
                 extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
                 extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
