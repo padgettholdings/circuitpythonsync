@@ -214,6 +214,7 @@ export class StubMgmt {
         }, (progress, token) => {
             token.onCancellationRequested(() => {
                 console.log(strgs.updateStubsProgressCancelLog);
+                vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
             });
             progress.report({ increment: 0 });
             const p = new Promise<void>(resolve => {
@@ -221,11 +222,13 @@ export class StubMgmt {
                     progress.report({increment:this._progInc,message:progressMessage,});
                     if(this._progInc>=100){
                         clearInterval(intvlId);
+                        vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                         resolve();
                     }
                 },500);
                 setTimeout(() => {
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                     resolve();
                 }, 20000);	// ****** TBD ****** how to set max timeout
                 //hook up the custom cancel token
@@ -234,6 +237,7 @@ export class StubMgmt {
                     this._customCancelToken?.dispose();
                     this._customCancelToken=null;
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                     resolve();
                 });
             });

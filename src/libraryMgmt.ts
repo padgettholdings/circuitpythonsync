@@ -552,6 +552,7 @@ export class LibraryMgmt {
         }, (progress, token) => {
             token.onCancellationRequested(() => {
                 console.log(strgs.updateLibProgressCancelLog);
+                vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
             });
             progress.report({ increment: 0 });
             const p = new Promise<void>(resolve => {
@@ -559,11 +560,13 @@ export class LibraryMgmt {
                     progress.report({increment:this._progInc,message:progressMessage,});
                     if(this._progInc>=100){
                         clearInterval(intvlId);
+                        vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
                         resolve();
                     }
                 },500);
                 setTimeout(() => {
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
                     resolve();
                 }, 20000);	// ****** TBD ****** how to set max timeout
                 //hook up the custom cancel token
@@ -572,6 +575,7 @@ export class LibraryMgmt {
                     this._customCancelToken?.dispose();
                     this._customCancelToken=null;
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
                     resolve();
                 });
             });
