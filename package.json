@@ -46,12 +46,12 @@
       },
       {
         "command": "circuitpythonsync.button1",
-        "title": "CP Copy",
+        "title": "CP Copy Files to Board",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.button2",
-        "title": "CP Lib",
+        "title": "CP Copy Libs to Board",
         "category": "CircuitPythonSync"
       },
       {
@@ -61,12 +61,12 @@
       },
       {
         "command": "circuitpythonsync.mngcplibs",
-        "title": "CP Manage Lib",
+        "title": "CP Manage Libs Copy",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.libupdate",
-        "title": "CP Update Lib",
+        "title": "CP Update Libraries",
         "enablement": "!circuitpythonsync.updatinglibs",
         "category": "CircuitPythonSync"
       },
@@ -84,7 +84,7 @@
       },
       {
         "command": "circuitpythonsync.mngcpfiles",
-        "title": "CP Manage Files",
+        "title": "CP Manage Files Copy",
         "category": "CircuitPythonSync"
       },
       {
@@ -94,12 +94,12 @@
       },
       {
         "command": "circuitpythonsync.newproject",
-        "title": "Make New CP Project",
+        "title": "CP Make New Project",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.filediff",
-        "title": "Compare file to board",
+        "title": "CP Compare file to board",
         "enablement": "!explorerResourceIsFolder",
         "category": "CircuitPythonSync"
       },
@@ -122,7 +122,7 @@
       },
       {
         "command": "boardExplorer.openBoardOS",
-        "title": "Open Board in OS",
+        "title": "CP Open Board in OS",
         "category": "CircuitPythonSync",
         "enablement": "config.circuitpythonsync.drivepath",
         "icon": "$(explorer-view-icon)"
