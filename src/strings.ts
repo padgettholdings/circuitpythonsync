@@ -70,8 +70,8 @@ export function getCpFilesMsgs(strgs_cpfiles:string):[strgs_noWriteCpfile:string
 
 
 //status bar button label text, keep short, icon usually to right
-export const btnCopyLbl:string ='CPCopy';
-export const btnLibLbl:string ='CPLib';
+export const btnCopyLbl:string = 'CP$(files)$(arrow-small-right)';   //'CPCopy';
+export const btnLibLbl:string = 'CP$(folder-library)$(arrow-small-right)'; //'CPLib';
 export const btnLightBkgd:string ='statusBarItem.warningBackground';
 
 //file to try to determine if path has circuit python boot file, only change if adafruit does
@@ -87,10 +87,12 @@ export function getCpBootMsgs(strgs_cpBootFile:string):[strgs_cpBootNoFindMKDN:s
 //various messages
 export const mngLibChecks:string = 'Check or uncheck desired files and folders';
 export const mngFileChecks:string = 'Check or uncheck desired files';
+export const btnFilesTTPrefixMKDN:string="***Files***-";
+export const btnLibsTTPrefixMKDN:string="***Libs***-";
 export const mustMapMKDN:string='**MUST MAP DRIVE FIRST**';
 export const noFilesMKDN:string='**NO FILES EXIST THAT ARE TO BE COPIED**';
-export const enabledToCopy:string='Enabled to copy to ';  //+curDriveSetting'
-export const canCopyInsCurDrive:string[]=[
+export const enabledToCopyMKDN:string='Enabled to copy to ';  //+curDriveSetting'
+export const canCopyInsCurDriveMKDN:string[]=[
     'Can copy to ', //+curDriveSetting + 
     ' BUT not USB drive!'
 ];

@@ -500,18 +500,18 @@ async function updateStatusBarItems() {
 		statusBarItem1.text=`${strgs.btnCopyLbl} $(error)`;
 		statusBarItem2.text=`${strgs.btnLibLbl} $(error)`;
 		//and the right tooltip
-		statusBarItem1.tooltip=new vscode.MarkdownString(strgs.mustMapMKDN);
-		statusBarItem2.tooltip=new vscode.MarkdownString(strgs.mustMapMKDN);
+		statusBarItem1.tooltip=new vscode.MarkdownString(strgs.btnFilesTTPrefixMKDN+strgs.mustMapMKDN);
+		statusBarItem2.tooltip=new vscode.MarkdownString(strgs.btnLibsTTPrefixMKDN+strgs.mustMapMKDN);
 	} else {
 		//NEXT see if have valid files to copy, if not show no sync
 		//NOTE will need to short circuit further actions on these exists flags
 		if(!pyFilesExist) {
 			statusBarItem1.text=`${strgs.btnCopyLbl} $(sync-ignored)`;
-			statusBarItem1.tooltip=new vscode.MarkdownString(strgs.noFilesMKDN);
+			statusBarItem1.tooltip=new vscode.MarkdownString(strgs.btnFilesTTPrefixMKDN+strgs.noFilesMKDN);
 		}
 		if(!libFilesExist){
 			statusBarItem2.text=`${strgs.btnLibLbl} $(sync-ignored)`;
-			statusBarItem2.tooltip=new vscode.MarkdownString(strgs.noFilesMKDN);
+			statusBarItem2.tooltip=new vscode.MarkdownString(strgs.btnLibsTTPrefixMKDN+strgs.noFilesMKDN);
 		}
 
 		//check to see if boot_out.txt is there, warn if not
@@ -542,12 +542,12 @@ async function updateStatusBarItems() {
 			if(pyFilesExist){
 				statusBarItem1.text=`${strgs.btnCopyLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem1.tooltip=new vscode.MarkdownString(strgs_cpBootNoFindMKDN);
+				statusBarItem1.tooltip=new vscode.MarkdownString(strgs.btnFilesTTPrefixMKDN+strgs_cpBootNoFindMKDN);
 			}
 			if(libFilesExist){
 				statusBarItem2.text=`${strgs.btnLibLbl} $(warning)`;
 				//and the right tooltip
-				statusBarItem2.tooltip=new vscode.MarkdownString(strgs_cpBootNoFindMKDN);
+				statusBarItem2.tooltip=new vscode.MarkdownString(strgs.btnLibsTTPrefixMKDN+strgs_cpBootNoFindMKDN);
 			}
 		} else {
 			//Try to see if location of boot file matches one of the drives but not usb
@@ -564,20 +564,20 @@ async function updateStatusBarItems() {
 			if(gotValidDrive) {
 				if(pyFilesExist){
 					statusBarItem1.text=strgs.btnCopyLbl;
-					statusBarItem1.tooltip=strgs.enabledToCopy+curDriveSetting;
+					statusBarItem1.tooltip=new vscode.MarkdownString(strgs.btnFilesTTPrefixMKDN+strgs.enabledToCopyMKDN+curDriveSetting);
 				}
 				if(libFilesExist){
 					statusBarItem2.text=strgs.btnLibLbl;
-					statusBarItem2.tooltip=strgs.enabledToCopy+curDriveSetting;
+					statusBarItem2.tooltip=new vscode.MarkdownString(strgs.btnLibsTTPrefixMKDN+strgs.enabledToCopyMKDN+curDriveSetting);
 				}
 			} else {
 				if(pyFilesExist){
 					statusBarItem1.text=`${strgs.btnCopyLbl} $(info)`;
-					statusBarItem1.tooltip=strgs.canCopyInsCurDrive[0]+curDriveSetting + strgs.canCopyInsCurDrive[1];
+					statusBarItem1.tooltip=new vscode.MarkdownString(strgs.btnFilesTTPrefixMKDN+strgs.canCopyInsCurDriveMKDN[0]+curDriveSetting + strgs.canCopyInsCurDriveMKDN[1]);
 				}
 				if(libFilesExist){
 					statusBarItem2.text=`${strgs.btnLibLbl} $(info)`;
-					statusBarItem2.tooltip=strgs.canCopyInsCurDrive[0]+curDriveSetting + strgs.canCopyInsCurDrive[1];
+					statusBarItem2.tooltip=new vscode.MarkdownString(strgs.btnLibsTTPrefixMKDN+strgs.canCopyInsCurDriveMKDN[0]+curDriveSetting + strgs.canCopyInsCurDriveMKDN[1]);
 				}
 			}
 		}
@@ -1454,9 +1454,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show
-	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
+	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
 	statusBarItem1.command=button1Id;
-	statusBarItem2=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,50);
+	statusBarItem2=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,51);
 	statusBarItem2.command=button2Id;
 	updateStatusBarItems();
 	//statusBarItem1.text='CPCopy';
