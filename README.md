@@ -96,3 +96,6 @@
 
 # Issue #48, migrate strings from lib and stubs updates
 - create release v0.1.4 for baseline prior to PR to master
+
+# Issue #51, board change not working on windows
+- create release v0.1.4-a with fix to filter old board extra paths
