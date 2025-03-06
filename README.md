@@ -93,3 +93,9 @@
 
 # Issue #43, manage stubs
 - create release v0.1.3 for platform testing prior to PR into master
+
+# Issue #48, migrate strings from lib and stubs updates
+- create release v0.1.4 for baseline prior to PR to master
+
+# Issue #51, board change not working on windows
+- create release v0.1.4-a with fix to filter old board extra paths
