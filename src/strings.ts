@@ -71,7 +71,7 @@ export function getCpFilesMsgs(strgs_cpfiles:string):[strgs_noWriteCpfile:string
 
 //status bar button label text, keep short, icon usually to right
 export const btnCopyLbl:string = 'CP$(files)$(arrow-small-right)';   //'CPCopy';
-export const btnLibLbl:string = 'CP$(folder-library)$(arrow-small-right)'; //'CPLib';
+export const btnLibLbl:string = 'CP$(library)$(arrow-small-right)'; //'CPLib';
 export const btnLightBkgd:string ='statusBarItem.warningBackground';
 
 //file to try to determine if path has circuit python boot file, only change if adafruit does
