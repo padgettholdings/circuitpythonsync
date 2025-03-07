@@ -6,7 +6,7 @@ import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
 import path, { win32 } from 'path';
-import { writeFile } from 'fs';
+import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
@@ -1925,15 +1925,57 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//write the file in the calc path if filename
 			if(tEntry.fileName!==''){	
-				bFContent=toBinaryArray(tEntry.fileContent);
-				try{
-					await vscode.workspace.fs.writeFile(fpathUri,bFContent);
-				} catch(error) {
-					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+				// ** if file is settings.json in .vscode will need to do a merge not overwrite
+				if(tEntry.fileName!=='settings.json' || tEntry.folderName!=='.vscode'
+					|| !existsSync(fpathUri.fsPath)) {
+					bFContent=toBinaryArray(tEntry.fileContent);
+					try{
+						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+					}
+				} else {
+					// ** need to read the existing settings.json IF THERE and merge
+					// first read the existing settings.json
+					let existContent:Uint8Array;
+					try{
+						existContent=await vscode.workspace.fs.readFile(fpathUri);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrReadSettings+fse.message);
+						return;
+					}
+					//now merge the two, first parse the existing
+					let existObj;
+					try{
+						existObj=JSON.parse(new TextDecoder().decode(existContent));
+					} catch(error) {
+						vscode.window.showErrorMessage(strgs.projTemplateErrParseSettings);
+						return;
+					}
+					//now parse the new
+					let newObj;
+					try{
+						newObj=JSON.parse(tEntry.fileContent);
+					} catch(error) {
+						vscode.window.showErrorMessage(strgs.projTemplateErrParseTemplateSettings);
+						return;
+					}
+					//now merge, new overwrites existing
+					const mergedObj={...existObj,...newObj};
+					//now write back
+					bFContent=toBinaryArray(JSON.stringify(mergedObj,null,2));
+					try{
+						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+					}
 				}
 			}
 		}
+		//###TBD### ask if want to init libraries and stubs?
 	});
 	context.subscriptions.push(makeProjCmd);
 

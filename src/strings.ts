@@ -137,6 +137,9 @@ export const projTemplateAskDnld:string='Would you rather download from the mapp
 export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
 export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
 export const projTemplateErrWriteFile:string='** ERROR in writing new project file: ';  //+fse.message
+export const projTemplateErrReadSettings:string='** ERROR in reading settings.json during project template setup: ';  //+fse.message
+export const projTemplateErrParseSettings:string='** ERROR in parsing settings.json during project template setup: ';
+export const projTemplateErrParseTemplateSettings:string='** ERROR in parsing template settings.json during project template setup: ';
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
@@ -243,5 +246,5 @@ export const installStubsMetadataFilename:string='circuitpython-stubs.json';
 export const installStubsMetadataGetError:string='Error getting pypi stubs metadata: ';  // + err
 export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; //+this._cpVersionFull
 export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
-
+export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP tag: ';  // + err
 

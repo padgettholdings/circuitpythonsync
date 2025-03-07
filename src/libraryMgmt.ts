@@ -73,6 +73,13 @@ export class LibraryMgmt {
                     const libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                     const cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
                     const cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+                    // ** in the case where a new project was created and the settings are all blank in the settings.json,
+                    // need to call the setupLibSources to get the settings and do the setup
+                    if(libTag==='' || cpVersion==='' || cpVersionFull==='') {
+                        await this.setupLibSources();
+                        this._libUpdateVerChg=false;
+                        return;
+                    }
                     //first make sure new cp lib version matches full version, if not error, manually update
                     if(this._cpVersion !== cpVersionFull.split('.')[0]) {
                         vscode.window.showErrorMessage(strgs.libBaseNoMatchFullVer);
