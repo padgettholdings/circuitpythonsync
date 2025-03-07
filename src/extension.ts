@@ -1896,7 +1896,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
 		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
-		if(wsContents.some(entry => entry[0]!=='.vscode')){
+		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
+		if(wsContents.some(entry => entry[0]!=='.vscode' && entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName)){
 			//got something other than settings dir, ask if overwrite
 			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
