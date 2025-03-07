@@ -102,6 +102,15 @@ export class StubMgmt {
         this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
         this._selectBoardButton.show();
         this._context.subscriptions.push(this._selectBoardButton);
+
+        // ** monitor config changes so can keep button updated to board selection, really just for empty/null board names
+        vscode.workspace.onDidChangeConfiguration((e) => {  
+            if(e.affectsConfiguration(`circuitpythonsync.${strgs.confBoardNamePKG}`) && this._selectBoardButton){
+                const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
+                this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
+            }
+        }
+        );
     }
 
     // **private methods**
@@ -442,5 +451,10 @@ export class StubMgmt {
             }
         }
         this.stopStubUpdateProgress();
+    }
+
+    // ** provide access to stubs archive folder exists as a way to see if setup is done
+    public stubsArchiveExists(): boolean {
+        return this._stubZipArchiveUri ? fs.existsSync(this._stubZipArchiveUri.fsPath) : false;
     }
 }

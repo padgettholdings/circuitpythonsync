@@ -1977,6 +1977,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		}
 		//###TBD### ask if want to init libraries and stubs?
+		if(libMgmtSys && stubMgmtSys &&
+			(!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) ){
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskLibStub,'Yes','No');
+			if(ans==='Yes'){
+				await libMgmtSys.setupLibSources();
+				await stubMgmtSys.installStubs();
+			}
+		}
 	});
 	context.subscriptions.push(makeProjCmd);
 

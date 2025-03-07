@@ -140,6 +140,7 @@ export const projTemplateErrWriteFile:string='** ERROR in writing new project fi
 export const projTemplateErrReadSettings:string='** ERROR in reading settings.json during project template setup: ';  //+fse.message
 export const projTemplateErrParseSettings:string='** ERROR in parsing settings.json during project template setup: ';
 export const projTemplateErrParseTemplateSettings:string='** ERROR in parsing template settings.json during project template setup: ';
+export const projTemplateAskLibStub:string='Would you like to initialize the library and board Python stubs?';
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message

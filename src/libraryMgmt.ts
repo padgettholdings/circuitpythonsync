@@ -486,6 +486,11 @@ export class LibraryMgmt {
         vscode.window.showInformationMessage(strgs.updateLibUpdatedMsg[0] + this._libTag + strgs.updateLibUpdatedMsg[1] + this._cpVersion);
     }
 
+    // ** provide access to libarchive folder exists as a way to see if installed
+    public libArchiveExists():boolean {
+        return fs.existsSync(this._libArchiveUri.fsPath);
+    }
+
 
     // ** private properties **
     private _tempBundlesDir: string = '';
