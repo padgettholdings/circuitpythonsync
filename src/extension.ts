@@ -1913,21 +1913,21 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		let picks:vscode.QuickPickItem[]=[
 			{
-				label: "Merge settings only (overrides all files)",
+				label: strgs.projTemplateQpItemMerge,
 				picked: false
 			},
 			{
-				label: "Add Sample Files instead of overwrite",
+				label: strgs.projTemplateQPItemSamples,
 				picked: false
 			}
 		];
 		const choices=await vscode.window.showQuickPick(picks,
-			{title: "Make or Update Project",placeHolder: "Choose options for templating project", canPickMany:true}
+			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder, canPickMany:true}
 		);
 		// ** if no choice that is cancel, get out
 		if(!choices){return;}
-		const addSampleFiles=choices.some(choice => choice.label==="Add Sample Files instead of overwrite");
-		const mergeSettings=choices.some(choice => choice.label==="Merge settings only (overrides all files)");
+		const addSampleFiles=choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
+		const mergeSettings=choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never

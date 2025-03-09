@@ -141,6 +141,10 @@ export const projTemplateErrReadSettings:string='** ERROR in reading settings.js
 export const projTemplateErrParseSettings:string='** ERROR in parsing settings.json during project template setup: ';
 export const projTemplateErrParseTemplateSettings:string='** ERROR in parsing template settings.json during project template setup: ';
 export const projTemplateAskLibStub:string='Would you like to initialize the library and board Python stubs?';
+export const projTemplateQPTitle:string='Make or Update Project';
+export const projTemplateQPPlaceholder:string="Choose options for templating project";
+export const projTemplateQpItemMerge:string="Merge settings only (overrides all files)";
+export const projTemplateQPItemSamples:string="Add Sample Files instead of overwrite";
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
