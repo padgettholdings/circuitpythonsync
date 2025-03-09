@@ -10,6 +10,7 @@ import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+//import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
@@ -1910,12 +1911,31 @@ export async function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 		}
+		let picks:vscode.QuickPickItem[]=[
+			{
+				label: "Merge settings only (overrides all files)",
+				picked: false
+			},
+			{
+				label: "Add Sample Files instead of overwrite",
+				picked: false
+			}
+		];
+		const choices=await vscode.window.showQuickPick(picks,
+			{title: "Make or Update Project",placeHolder: "Choose options for templating project", canPickMany:true}
+		);
+		// ** if no choice that is cancel, get out
+		if(!choices){return;}
+		const addSampleFiles=choices.some(choice => choice.label==="Add Sample Files instead of overwrite");
+		const mergeSettings=choices.some(choice => choice.label==="Merge settings only (overrides all files)");
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
 		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
 		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
-		if(wsContents.some(entry => entry[0]!=='.vscode' && entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName)){
+		if(wsContents.some(entry => entry[0]!=='.vscode' 
+			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
+			&& !mergeSettings && !addSampleFiles)) {
 			//got something other than settings dir, ask if overwrite
 			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
@@ -1924,8 +1944,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		let fpathUri:vscode.Uri;
 		let bFContent:Uint8Array;
 		for(const tEntry of cpProjTemplate){
-			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName===''){
+			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName==='') {
 				//this is just a folder, make it even if it exists??????
+				// ** if mergeSettings skip folder only, but anything else allow it
+				if(mergeSettings) {continue;}
 				fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
 				try{
 					await vscode.workspace.fs.createDirectory(fpathUri);
@@ -1935,6 +1957,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			} else {
 				//have file and possibly folder, set a composite path if folder, else just root
+				//  ** use the file names from the template, set .sample later
 				fpathUri=wsRootFolderUri;
 				if(tEntry.folderName!=='/' && tEntry.folderName!==''){
 					fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
@@ -1947,6 +1970,17 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** if file is settings.json in .vscode will need to do a merge not overwrite
 				if(tEntry.fileName!=='settings.json' || tEntry.folderName!=='.vscode'
 					|| !existsSync(fpathUri.fsPath)) {
+					// now process files:
+					//	if settings.json and mergeSettings, can just let write; sample doesn't apply
+					//	if mergeSettings and not settings.json, skip any other files
+					//	if not merge but addsample, just write with .sample extension if file exists
+					//	if not merge and not sample, write as is
+					let isSettings:boolean=(tEntry.fileName==='settings.json' && tEntry.folderName==='.vscode');
+					if(mergeSettings && !isSettings) {continue;}
+					if(!mergeSettings && addSampleFiles && !isSettings && existsSync(fpathUri.fsPath)) {
+						// ** add .sample to filename
+						fpathUri=fpathUri.with({path:fpathUri.path+'.sample'});
+					}
 					bFContent=toBinaryArray(tEntry.fileContent);
 					try{
 						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
