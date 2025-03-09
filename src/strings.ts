@@ -159,6 +159,7 @@ export const diffBoardFileNoExist:string="Selected file does not exist on board.
 export const diffScreenHeader:string='Workspace to Board compare file: ';   //+leftFile
 
 //library and stubs related
+export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
 export const workspaceLibArchiveFolder:string='libArchive';
 export const updateLibQPtitle:string='Update Libraries';
 export const updateLibQPSelTT:string='Select Libraries for Board';
@@ -191,6 +192,7 @@ export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitp
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
 export const selLibQPplaceholder:string='Select Libraries to Add';
+export const selLibsNoLibFolder:string='No libraries folder found, create before selecting';
 export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';

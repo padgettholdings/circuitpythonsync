@@ -216,6 +216,12 @@ export class LibraryMgmt {
             if(!ready) {
                 return;
             }
+            // ** shortcut out with info msg if lib folder doesn't yet exist
+            const libPath=await getLibPath();
+            if(libPath==='') {
+                vscode.window.showInformationMessage(strgs.selLibsNoLibFolder);
+                return;
+            }
             //read the metadata file
             const libMetadataPath = path.join(this._libArchiveUri.fsPath,`${strgs.libBundleFilePrefix}-${this._libTag}.json`);
             const libMetadata = JSON.parse(fs.readFileSync(libMetadataPath, 'utf8'));
@@ -224,7 +230,6 @@ export class LibraryMgmt {
                 pickItems.push({ label: lib, description: libMetadata[lib].version });
             }
             //filter out the current libs
-            const libPath=await getLibPath();
             let libContents: [string, vscode.FileType][]=[];
             if(libPath!=='') {
                 const wsRootFolder=vscode.workspace.workspaceFolders?.[0];

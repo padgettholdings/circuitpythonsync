@@ -1474,19 +1474,37 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem2.hide();
 	}
 
+	// ** will need to construct both lib and stub mgmt classes,
+	//	but the ask if want to init them based on whether archive folders are there
 	// ** spin up the library management, calling the constructor
 	const libMgmtSys=new LibraryMgmt(context);
+	// ** and then the stub management, calling the constructor
+	const stubMgmtSys=new StubMgmt(context);
+
+	if(haveCurrentWorkspace){
+		// ** if archives are not there, ask if want to init
+		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
+			const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
+			if(ans==='Yes'){
+				await libMgmtSys.setupLibSources();
+				await stubMgmtSys.installStubs();
+			}
+		} else {
+			await libMgmtSys.setupLibSources();
+			await stubMgmtSys.installStubs();
+		}
+	}
+	/*
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
 		await libMgmtSys.setupLibSources();	//wait???
 	}
 
-	// ** and then the stub management, calling the constructor
-	const stubMgmtSys=new StubMgmt(context);
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
 		stubMgmtSys.installStubs();	//don't need to wait
 	}
+	*/
 	
 	// ** Issue #10 - see if a usb drive with boot file exists, if so, offer to connect but only if not current **
 	//	have the current mapping and the last drive list
