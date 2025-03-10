@@ -76,8 +76,14 @@ export class LibraryMgmt {
                     // ** in the case where a new project was created and the settings are all blank in the settings.json,
                     // need to call the setupLibSources to get the settings and do the setup
                     if(libTag==='' || cpVersion==='' || cpVersionFull==='') {
-                        await this.setupLibSources();
-                        this._libUpdateVerChg=false;
+                        try {
+                            await this.setupLibSources();
+                            this._libUpdateVerChg=false;
+                        } catch (error) {
+                            //report the error but continue, will get out
+                            vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
+                            this.stopLibUpdateProgress();
+                        }
                         return;
                     }
                     //first make sure new cp lib version matches full version, if not error, manually update
@@ -92,13 +98,25 @@ export class LibraryMgmt {
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
                             //do the setup
-                            await this.setupLibSources(); //will do the update
-                            this._libUpdateVerChg=false;
+                            try {
+                                await this.setupLibSources(); //will do the update
+                                this._libUpdateVerChg=false;
+                            } catch (error) {
+                                //report the error but continue, will get out
+                                vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
+                                this.stopLibUpdateProgress();
+                            }
                         }
                     } else {
                         //await this.updateLibraries();   // **NO** will need to do full setup and update
-                        await this.setupLibSources(); //will do the update
-                        this._libUpdateVerChg=false;
+                        try {
+                            await this.setupLibSources(); //will do the update
+                            this._libUpdateVerChg=false;
+                        } catch (error) {
+                            //report the error but continue, will get out
+                            vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));	
+                            this.stopLibUpdateProgress();			                            
+                        }
                     }
                 }
                 if (items[0].commandName === 'libtag') {
@@ -251,7 +269,13 @@ export class LibraryMgmt {
                 let newLibsToAdd=newLibs.map(lib => lib.label);
                 newLibsToAdd=[...new Set(newLibsToAdd)]; //remove duplicates just for safety
                 //and update the libraries with the new libs
-                await this.updateLibraries(newLibsToAdd);
+                try {
+                    await this.updateLibraries(newLibsToAdd);
+                } catch (error) {
+                    //report the error, will get out
+                    vscode.window.showErrorMessage(strgs.updateLibGeneralError+this.getErrorMessage(error));
+                    this.stopLibUpdateProgress();
+                }
             }
         });
         context.subscriptions.push(selectLibsCmd);
@@ -380,7 +404,13 @@ export class LibraryMgmt {
         await this.downloadLibMetadata(libTag);
         // ** if any libs in the lib directory update them with dependencies and create stubs
         this.stopLibUpdateProgress();   // let update start another progress
-        await this.updateLibraries();
+        try {
+            await this.updateLibraries();
+        } catch (error) {
+            //report the error, will get out
+            vscode.window.showErrorMessage(strgs.updateLibGeneralError+this.getErrorMessage(error));
+            this.stopLibUpdateProgress();
+        }
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
 
@@ -551,7 +581,7 @@ export class LibraryMgmt {
     // ** methods to show progress and stop with context flag
 
     // ** stop progress and set context flag
-    private async stopLibUpdateProgress() {
+    public async stopLibUpdateProgress() {
         vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
         this._progInc=101;
         if(this._customCancelToken){
@@ -599,6 +629,17 @@ export class LibraryMgmt {
             return p;
         });
     }
+
+        // utility to get message from error
+    private getErrorMessage(error: any): string {
+        if (error instanceof Error) {
+            return error.message;
+        } else if (typeof error === 'string') {
+            return error;
+        } else {
+            return 'An unknown error occurred';
+        }
+    }    
 
     private async downloadOrigBundle(libTag: string, pyLibFmt: string): Promise<string> {
         //check to see if already downloaded

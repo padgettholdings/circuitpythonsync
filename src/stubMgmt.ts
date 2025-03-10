@@ -56,7 +56,8 @@ export class StubMgmt {
             try{
                 await this.installStubs();
             }catch(err){
-                vscode.window.showErrorMessage(strgs.stubDnldErrorMsg+err);
+                vscode.window.showErrorMessage(strgs.stubDnldErrorMsg+this.getErrorMessage(err));
+                this.stopStubUpdateProgress();
                 return;
             }
             // should have all the stubs now
@@ -208,7 +209,7 @@ export class StubMgmt {
     // ** methods to show progress and stop with context flag
 
     // ** stop progress and set context flag
-    private async stopStubUpdateProgress() {
+    public async stopStubUpdateProgress() {
         vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
         this._progInc=101;
         if(this._customCancelToken){

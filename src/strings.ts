@@ -144,7 +144,7 @@ export const projTemplateAskLibStub:string='Would you like to initialize the lib
 export const projTemplateQPTitle:string='Make or Update Project';
 export const projTemplateQPPlaceholder:string="Choose options for templating project";
 export const projTemplateQpItemMerge:string="Merge settings only (overrides all files)";
-export const projTemplateQPItemSamples:string="Add Sample Files instead of overwrite";
+export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, with settings";
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
@@ -201,6 +201,7 @@ export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
 export const setupLibExtractError:string='Error extracting the lib folders from the original bundle zip files';
+export const setupLibGeneralError:string='Error setting up the libraries: ';    //+err.message
 export const updateLibProgressMsg:string="Updating Libraries...";
 export const updateLibProgressTitle:string="Library Maintenance Progress";
 export const updateLibProgressCancelLog:string="User canceled the long running operation";
@@ -212,6 +213,7 @@ export const updateLibUpdatedMsg:string[]=[
     'Libraries updated for tag: ', //+libTag+
     ' and CP version: ' //+cpVersion+
 ];
+export const updateLibGeneralError:string='Error updating the libraries: ';    //+err.message
 export const libCmdsReadyNeedSettingsError:string='Please set the library tag and CircuitPython versions in the settings';
 export const libCmdsReadyVerChgError:string='Library tag or CircuitPython versions changed, run update first before adding new libs';
 export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
@@ -254,4 +256,4 @@ export const installStubsMetadataGetError:string='Error getting pypi stubs metad
 export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; //+this._cpVersionFull
 export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
 export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP tag: ';  // + err
-
+export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message

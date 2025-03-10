@@ -586,6 +586,18 @@ async function updateStatusBarItems() {
 	//?? do we do show here??
 }
 
+// utility to get message from error
+function getErrorMessage(error: any): string {
+	if (error instanceof Error) {
+		return error.message;
+	} else if (typeof error === 'string') {
+		return error;
+	} else {
+		return 'An unknown error occurred';
+	}
+}
+
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -1487,12 +1499,37 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
 			if(ans==='Yes'){
-				await libMgmtSys.setupLibSources();
-				await stubMgmtSys.installStubs();
+				try {
+					await libMgmtSys.setupLibSources();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+					libMgmtSys.stopLibUpdateProgress();
+				}
+				try {
+					await stubMgmtSys.installStubs();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+					stubMgmtSys.stopStubUpdateProgress();
+					
+				}
 			}
 		} else {
-			await libMgmtSys.setupLibSources();
-			await stubMgmtSys.installStubs();
+			try {
+				await libMgmtSys.setupLibSources();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+				libMgmtSys.stopLibUpdateProgress();
+			}
+			try {
+				await stubMgmtSys.installStubs();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+				stubMgmtSys.stopStubUpdateProgress();
+			}
 		}
 	}
 	/*
@@ -2033,8 +2070,18 @@ export async function activate(context: vscode.ExtensionContext) {
 			(!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) ){
 			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskLibStub,'Yes','No');
 			if(ans==='Yes'){
-				await libMgmtSys.setupLibSources();
-				await stubMgmtSys.installStubs();
+				try {
+					await libMgmtSys.setupLibSources();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));				
+				}
+				try {
+					await stubMgmtSys.installStubs();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));				
+				}
 			}
 		}
 	});
