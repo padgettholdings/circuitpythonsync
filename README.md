@@ -102,4 +102,5 @@
 
 # Issues #44, #50, #53, #55, fix bugs and clean up project startup seq
 - create release v0.1.5 for platform testing.
+- create release v0.1.5-a as baseline from fixing all listed bugs
 
