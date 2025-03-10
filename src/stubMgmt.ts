@@ -42,18 +42,22 @@ export class StubMgmt {
                 return;
             }
             //check for cp full version
+            // **NO** let the install check for the version and setup latest if needed
+            /*
             const cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
             if(cpVersionFull===''){
                 vscode.window.showErrorMessage(strgs.selectBoardMustSetCPVer);
                 return;
             }
             this._cpVersionFull = cpVersionFull;
+            */
             //this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
             // let the install chech all parts of stub setup
             try{
                 await this.installStubs();
             }catch(err){
-                vscode.window.showErrorMessage(strgs.stubDnldErrorMsg+err);
+                vscode.window.showErrorMessage(strgs.stubDnldErrorMsg+this.getErrorMessage(err));
+                this.stopStubUpdateProgress();
                 return;
             }
             // should have all the stubs now
@@ -99,6 +103,15 @@ export class StubMgmt {
         this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
         this._selectBoardButton.show();
         this._context.subscriptions.push(this._selectBoardButton);
+
+        // ** monitor config changes so can keep button updated to board selection, really just for empty/null board names
+        vscode.workspace.onDidChangeConfiguration((e) => {  
+            if(e.affectsConfiguration(`circuitpythonsync.${strgs.confBoardNamePKG}`) && this._selectBoardButton){
+                const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
+                this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
+            }
+        }
+        );
     }
 
     // **private methods**
@@ -196,7 +209,7 @@ export class StubMgmt {
     // ** methods to show progress and stop with context flag
 
     // ** stop progress and set context flag
-    private async stopStubUpdateProgress() {
+    public async stopStubUpdateProgress() {
         vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
         this._progInc=101;
         if(this._customCancelToken){
@@ -214,6 +227,7 @@ export class StubMgmt {
         }, (progress, token) => {
             token.onCancellationRequested(() => {
                 console.log(strgs.updateStubsProgressCancelLog);
+                vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
             });
             progress.report({ increment: 0 });
             const p = new Promise<void>(resolve => {
@@ -221,11 +235,13 @@ export class StubMgmt {
                     progress.report({increment:this._progInc,message:progressMessage,});
                     if(this._progInc>=100){
                         clearInterval(intvlId);
+                        vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                         resolve();
                     }
                 },500);
                 setTimeout(() => {
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                     resolve();
                 }, 20000);	// ****** TBD ****** how to set max timeout
                 //hook up the custom cancel token
@@ -234,6 +250,7 @@ export class StubMgmt {
                     this._customCancelToken?.dispose();
                     this._customCancelToken=null;
                     clearInterval(intvlId);
+                    vscode.commands.executeCommand('setContext', strgs.stubsUpdatingContextKeyPKG, false);
                     resolve();
                 });
             });
@@ -271,6 +288,14 @@ export class StubMgmt {
         }
     }
 
+    private async getLatestCPTag(): Promise<string> {
+        let r: axios.AxiosResponse = await axios.default.get(
+            strgs.libCPAdafruitUrlLatest,
+            { headers: { Accept: "application/json" } }
+        );
+        return await r.data.tag_name;
+    }
+
 
     // **public methods**
 
@@ -279,12 +304,24 @@ export class StubMgmt {
         this._cpVersionFull = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
         if(this._cpVersionFull===''){
             //vscode.window.showErrorMessage('Must set the CircuitPython full version in the settings.');
-            throw new Error(strgs.installStubsMustSetCPVer);
+            //throw new Error(strgs.installStubsMustSetCPVer);
+            // **NO** go ahead and fetch the latest like libs does
+            try{
+                const latestCPTag=await this.getLatestCPTag();
+                this._cpVersionFull=latestCPTag;
+            }catch(err){
+                vscode.window.showErrorMessage(strgs.installStubsGetLatestCPTagErrMsg+err);
+                return;
+            }
+            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPfullverPKG}`,this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
         }
         // ** start progress display **
         await this.showStubUpdateProgress(strgs.installStubsProgressMsg);
+        if(!this._stubZipArchiveUri){return;}  //should not happen
+        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+
         this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
-        if(fs.existsSync(this._cpVersionFullStubUri.fsPath)){
+        if(fs.existsSync(this._cpVersionFullStubUri.fsPath) && fs.existsSync(stubZipArchiveTarUri.fsPath)){
             this._progInc=75;
             //stubs already installed- **NOTE** don't clean up at this point, only when new stubs loaded
             //just make sure extra path for the base stub dir is in config
@@ -312,8 +349,8 @@ export class StubMgmt {
         }
         this._progInc=10;
         // now check to see if the archive zip for this version is already downloaded
-        if(!this._stubZipArchiveUri){return;}  //should not happen
-        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+        //if(!this._stubZipArchiveUri){return;}  //should not happen
+        //const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
         if(fs.existsSync(stubZipArchiveTarUri.fsPath)){
             //need to extract the tar file, does error checking and throws if needed
             this._progInc=75;
@@ -415,5 +452,10 @@ export class StubMgmt {
             }
         }
         this.stopStubUpdateProgress();
+    }
+
+    // ** provide access to stubs archive folder exists as a way to see if setup is done
+    public stubsArchiveExists(): boolean {
+        return this._stubZipArchiveUri ? fs.existsSync(this._stubZipArchiveUri.fsPath) : false;
     }
 }

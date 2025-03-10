@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.4-a",
+  "version": "0.1.5-a",
   "publisher": "standsi",
   "license": "MIT",
   "repository": {
@@ -94,7 +94,7 @@
       },
       {
         "command": "circuitpythonsync.newproject",
-        "title": "CP Make New Project",
+        "title": "CP Make or Update Project",
         "category": "CircuitPythonSync"
       },
       {
@@ -194,68 +194,41 @@
           "scope": "window"
         },
         "circuitpythonsync.cpfilestxt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "cpfiles.txt",
-          "description": "Manifest filename used to store copy filenames.",
-          "scope": "window"
+          "description": "Manifest filename used to store copy filenames."
         },
         "circuitpythonsync.cpfilesbak": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "cpfiles.bak",
-          "description": "Manifest backup filename used to store copy filenames.",
-          "scope": "window"
+          "description": "Manifest backup filename used to store copy filenames."
         },
         "circuitpythonsync.cpbootfile": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "boot_out.txt",
           "description": "CircuitPython default file in root of device.",
           "scope": "window"
         },
         "circuitpythonsync.curlibtag": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "",
-          "description": "CircuitPython library bundle tag.",
-          "scope": "window"
+          "description": "CircuitPython library bundle tag."
         },
         "circuitpythonsync.cpbaseversion": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "",
-          "description": "CircuitPython version.",
-          "scope": "window"
+          "description": "CircuitPython version."
         },
         "circuitpythonsync.cpfullversion": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "",
-          "description": "CircuitPython version.",
-          "scope": "window"
+          "description": "CircuitPython version."
         },
           "circuitpythonsync.cpboardname": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "default": "",
-            "description": "Selected CP board name.",
-            "scope": "window"
-        }
+            "description": "Selected CP board name."
+          }
       }
     }
   },

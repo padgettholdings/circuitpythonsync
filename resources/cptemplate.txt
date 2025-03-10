@@ -8,7 +8,7 @@ while True:
 
 >>>lib/
 
->>>pyrightconfig.json
+>>>pyrightconfig.json.sample
 {
     "reportShadowedImports":false,
     "reportMissingImports":"information"
@@ -21,3 +21,12 @@ while True:
 
 >>>.gitignore
 *.uf2
+
+>>>.vscode/settings.json
+{
+    "python.languageServer": "Pylance",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingModuleSource": "none",
+        "reportShadowedImports": "none"
+    }
+}

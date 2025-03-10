@@ -137,6 +137,14 @@ export const projTemplateAskDnld:string='Would you rather download from the mapp
 export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
 export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
 export const projTemplateErrWriteFile:string='** ERROR in writing new project file: ';  //+fse.message
+export const projTemplateErrReadSettings:string='** ERROR in reading settings.json during project template setup: ';  //+fse.message
+export const projTemplateErrParseSettings:string='** ERROR in parsing settings.json during project template setup: ';
+export const projTemplateErrParseTemplateSettings:string='** ERROR in parsing template settings.json during project template setup: ';
+export const projTemplateAskLibStub:string='Would you like to initialize the library and board Python stubs?';
+export const projTemplateQPTitle:string='Make or Update Project';
+export const projTemplateQPPlaceholder:string="Choose options for templating project";
+export const projTemplateQpItemMerge:string="Merge settings only (overrides all files)";
+export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, with settings";
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
@@ -155,6 +163,7 @@ export const diffBoardFileNoExist:string="Selected file does not exist on board.
 export const diffScreenHeader:string='Workspace to Board compare file: ';   //+leftFile
 
 //library and stubs related
+export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
 export const workspaceLibArchiveFolder:string='libArchive';
 export const updateLibQPtitle:string='Update Libraries';
 export const updateLibQPSelTT:string='Select Libraries for Board';
@@ -187,10 +196,12 @@ export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitp
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
 export const selLibQPplaceholder:string='Select Libraries to Add';
+export const selLibsNoLibFolder:string='No libraries folder found, create before selecting';
 export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
 export const setupLibExtractError:string='Error extracting the lib folders from the original bundle zip files';
+export const setupLibGeneralError:string='Error setting up the libraries: ';    //+err.message
 export const updateLibProgressMsg:string="Updating Libraries...";
 export const updateLibProgressTitle:string="Library Maintenance Progress";
 export const updateLibProgressCancelLog:string="User canceled the long running operation";
@@ -202,6 +213,7 @@ export const updateLibUpdatedMsg:string[]=[
     'Libraries updated for tag: ', //+libTag+
     ' and CP version: ' //+cpVersion+
 ];
+export const updateLibGeneralError:string='Error updating the libraries: ';    //+err.message
 export const libCmdsReadyNeedSettingsError:string='Please set the library tag and CircuitPython versions in the settings';
 export const libCmdsReadyVerChgError:string='Library tag or CircuitPython versions changed, run update first before adding new libs';
 export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
@@ -243,5 +255,5 @@ export const installStubsMetadataFilename:string='circuitpython-stubs.json';
 export const installStubsMetadataGetError:string='Error getting pypi stubs metadata: ';  // + err
 export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; //+this._cpVersionFull
 export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
-
-
+export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP tag: ';  // + err
+export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message

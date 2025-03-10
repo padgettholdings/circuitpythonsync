@@ -6,10 +6,11 @@ import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
 import path, { win32 } from 'path';
-import { writeFile } from 'fs';
+import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+//import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
 //import { loadEnvFile } from 'process';
@@ -584,6 +585,18 @@ async function updateStatusBarItems() {
 	}
 	//?? do we do show here??
 }
+
+// utility to get message from error
+function getErrorMessage(error: any): string {
+	if (error instanceof Error) {
+		return error.message;
+	} else if (typeof error === 'string') {
+		return error;
+	} else {
+		return 'An unknown error occurred';
+	}
+}
+
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -1474,19 +1487,62 @@ export async function activate(context: vscode.ExtensionContext) {
 		statusBarItem2.hide();
 	}
 
+	// ** will need to construct both lib and stub mgmt classes,
+	//	but the ask if want to init them based on whether archive folders are there
 	// ** spin up the library management, calling the constructor
 	const libMgmtSys=new LibraryMgmt(context);
+	// ** and then the stub management, calling the constructor
+	const stubMgmtSys=new StubMgmt(context);
+
+	if(haveCurrentWorkspace){
+		// ** if archives are not there, ask if want to init
+		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
+			const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
+			if(ans==='Yes'){
+				try {
+					await libMgmtSys.setupLibSources();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+					libMgmtSys.stopLibUpdateProgress();
+				}
+				try {
+					await stubMgmtSys.installStubs();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+					stubMgmtSys.stopStubUpdateProgress();
+					
+				}
+			}
+		} else {
+			try {
+				await libMgmtSys.setupLibSources();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+				libMgmtSys.stopLibUpdateProgress();
+			}
+			try {
+				await stubMgmtSys.installStubs();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+				stubMgmtSys.stopStubUpdateProgress();
+			}
+		}
+	}
+	/*
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
 		await libMgmtSys.setupLibSources();	//wait???
 	}
 
-	// ** and then the stub management, calling the constructor
-	const stubMgmtSys=new StubMgmt(context);
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
 		stubMgmtSys.installStubs();	//don't need to wait
 	}
+	*/
 	
 	// ** Issue #10 - see if a usb drive with boot file exists, if so, offer to connect but only if not current **
 	//	have the current mapping and the last drive list
@@ -1892,11 +1948,31 @@ export async function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 		}
+		let picks:vscode.QuickPickItem[]=[
+			{
+				label: strgs.projTemplateQpItemMerge,
+				picked: false
+			},
+			{
+				label: strgs.projTemplateQPItemSamples,
+				picked: false
+			}
+		];
+		const choices=await vscode.window.showQuickPick(picks,
+			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder, canPickMany:true}
+		);
+		// ** if no choice that is cancel, get out
+		if(!choices){return;}
+		const addSampleFiles=choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
+		const mergeSettings=choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
 		const wsContents=await vscode.workspace.fs.readDirectory(wsRootFolderUri);
-		if(wsContents.some(entry => entry[0]!=='.vscode')){
+		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
+		if(wsContents.some(entry => entry[0]!=='.vscode' 
+			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
+			&& !mergeSettings && !addSampleFiles)) {
 			//got something other than settings dir, ask if overwrite
 			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
@@ -1905,8 +1981,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		let fpathUri:vscode.Uri;
 		let bFContent:Uint8Array;
 		for(const tEntry of cpProjTemplate){
-			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName===''){
+			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName==='') {
 				//this is just a folder, make it even if it exists??????
+				// ** if mergeSettings skip folder only, but anything else allow it
+				if(mergeSettings) {continue;}
 				fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
 				try{
 					await vscode.workspace.fs.createDirectory(fpathUri);
@@ -1916,6 +1994,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			} else {
 				//have file and possibly folder, set a composite path if folder, else just root
+				//  ** use the file names from the template, set .sample later
 				fpathUri=wsRootFolderUri;
 				if(tEntry.folderName!=='/' && tEntry.folderName!==''){
 					fpathUri=vscode.Uri.joinPath(wsRootFolderUri,tEntry.folderName);
@@ -1925,12 +2004,83 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			//write the file in the calc path if filename
 			if(tEntry.fileName!==''){	
-				bFContent=toBinaryArray(tEntry.fileContent);
-				try{
-					await vscode.workspace.fs.writeFile(fpathUri,bFContent);
-				} catch(error) {
-					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+				// ** if file is settings.json in .vscode will need to do a merge not overwrite
+				if(tEntry.fileName!=='settings.json' || tEntry.folderName!=='.vscode'
+					|| !existsSync(fpathUri.fsPath)) {
+					// now process files:
+					//	if settings.json and mergeSettings, can just let write; sample doesn't apply
+					//	if mergeSettings and not settings.json, skip any other files
+					//	if not merge but addsample, just write with .sample extension if file exists
+					//	if not merge and not sample, write as is
+					let isSettings:boolean=(tEntry.fileName==='settings.json' && tEntry.folderName==='.vscode');
+					if(mergeSettings && !isSettings) {continue;}
+					if(!mergeSettings && addSampleFiles && !isSettings && existsSync(fpathUri.fsPath)) {
+						// ** add .sample to filename
+						fpathUri=fpathUri.with({path:fpathUri.path+'.sample'});
+					}
+					bFContent=toBinaryArray(tEntry.fileContent);
+					try{
+						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+					}
+				} else {
+					// ** need to read the existing settings.json IF THERE and merge
+					// first read the existing settings.json
+					let existContent:Uint8Array;
+					try{
+						existContent=await vscode.workspace.fs.readFile(fpathUri);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrReadSettings+fse.message);
+						return;
+					}
+					//now merge the two, first parse the existing
+					let existObj;
+					try{
+						existObj=JSON.parse(new TextDecoder().decode(existContent));
+					} catch(error) {
+						vscode.window.showErrorMessage(strgs.projTemplateErrParseSettings);
+						return;
+					}
+					//now parse the new
+					let newObj;
+					try{
+						newObj=JSON.parse(tEntry.fileContent);
+					} catch(error) {
+						vscode.window.showErrorMessage(strgs.projTemplateErrParseTemplateSettings);
+						return;
+					}
+					//now merge, new overwrites existing
+					const mergedObj={...existObj,...newObj};
+					//now write back
+					bFContent=toBinaryArray(JSON.stringify(mergedObj,null,2));
+					try{
+						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
+					} catch(error) {
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.projTemplateErrWriteFile+fse.message);
+					}
+				}
+			}
+		}
+		//###TBD### ask if want to init libraries and stubs?
+		if(libMgmtSys && stubMgmtSys &&
+			(!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) ){
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskLibStub,'Yes','No');
+			if(ans==='Yes'){
+				try {
+					await libMgmtSys.setupLibSources();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));				
+				}
+				try {
+					await stubMgmtSys.installStubs();
+				} catch (error) {
+					//report the error but continue
+					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));				
 				}
 			}
 		}
