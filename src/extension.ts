@@ -188,6 +188,7 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	return "";
 }
 
+
 //helper type for return of file states
 // ** per #26, add flags for no py files and filenames not existing
 interface fileStates {
@@ -494,6 +495,32 @@ function parseCpProjTemplate(templateFileContents:string){
 	}
 }
 
+// ** #57, get the override project template text from file or URL in setting
+async function getProjTemplateText(): Promise<string> {
+	let retVal:string='';
+	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+	let projTemplatePath:string=cpsyncSettings.get('cptemplatepath','');
+	projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
+	//if empty, return empty
+	if(!projTemplatePath) {return retVal;}
+	//if file, read it
+	if(projTemplatePath.startsWith('file:')){
+		const projTemplatePathUri=vscode.Uri.parse(projTemplatePath);
+		try{
+			const templateContentBytes=await vscode.workspace.fs.readFile(projTemplatePathUri);
+			retVal=fromBinaryArray(templateContentBytes);
+		} catch {
+			console.log(strgs.projTemplateNoLoad);
+			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+		}
+	}
+	//if URL, get it
+	if(projTemplatePath.startsWith('http')){
+		// ** #57, add URL fetch
+	}
+	return retVal;
+}
+
 // ** update both status bar buttons
 async function updateStatusBarItems() {
 	if(curDriveSetting===''){
@@ -647,16 +674,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
 
 	// ** try to get template file and parse it
-	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
-	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	let templateContent:string='';
-	try{
-		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
-		templateContent=fromBinaryArray(templateContentBytes);
-	} catch {
-		console.log(strgs.projTemplateNoLoad);
-		vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+	// ** #57, get the override project template text from file or URL in setting
+	const projTemplateText=await getProjTemplateText();
+	if(projTemplateText){
+		templateContent=projTemplateText;
+	} else {
+		//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+		const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+		//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+		try{
+			const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+			templateContent=fromBinaryArray(templateContentBytes);
+		} catch {
+			console.log(strgs.projTemplateNoLoad);
+			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+		}
 	}
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
