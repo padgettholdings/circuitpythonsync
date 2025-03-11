@@ -20,7 +20,30 @@ while True:
 #CIRCUITPY_WIFI_PASSWORD="mysecretpassword"
 
 >>>.gitignore
+# Sometimes it can be useful to save the CircuitPython runtime file loaded onto your board
+#   so you can re-flash the board easily if you want to start over.
+# You may not want to save in the repo; you can always re-download with
+#   the version number stored in the settings.json.
+# Comment the following line to save the uf2 file in the repo.
 *.uf2
+
+# Un-comment the following line to ignore the generated lib stubs; 
+#   they will be restored when the extension starts from archive zips in the libArchive folder.
+# libstubs are used to provide the intellisense for the libraries.
+# This might be helpful if you have a solution with many libraries to reduce the repo size.
+#/libArchive/libstubs/**
+
+# Un-comment the following line to ignore all lib source files, 
+#   the extension will need to download again on start.
+# This avoids storing the lib zip files in the repo; the version used 
+#  is still kept in settings.json so can be downloaded again on a fresh repo clone.
+#/libArchive/**
+
+# Un-comment the following line to ignore all stub files; 
+#   they will need to download again by the extension when it starts.
+# This avoids storing the stub zip files in the repo; the version used
+#  is still kept in settings.json so will be downloaded again on a fresh repo clone.
+#/stubArchive/**
 
 >>>.vscode/settings.json
 {
