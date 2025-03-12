@@ -224,11 +224,16 @@
           "default": "",
           "description": "CircuitPython version."
         },
-          "circuitpythonsync.cpboardname": {
-            "type": "string",
-            "default": "",
-            "description": "Selected CP board name."
-          }
+        "circuitpythonsync.cpboardname": {
+          "type": "string",
+          "default": "",
+          "description": "Selected CP board name."
+        },
+        "circuitpythonsync.cptemplatepath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to personal CP template file."
+        }
       }
     }
   },

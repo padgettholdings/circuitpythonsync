@@ -10,6 +10,8 @@ import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+import * as axios from 'axios';
+import * as fs from 'fs';
 //import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
@@ -500,7 +502,7 @@ async function getProjTemplateText(): Promise<string> {
 	let retVal:string='';
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
 	let projTemplatePath:string=cpsyncSettings.get('cptemplatepath','');
-	projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
+	//projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
 	//if empty, return empty
 	if(!projTemplatePath) {return retVal;}
 	//if file, read it
@@ -513,10 +515,54 @@ async function getProjTemplateText(): Promise<string> {
 			console.log(strgs.projTemplateNoLoad);
 			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
 		}
-	}
-	//if URL, get it
-	if(projTemplatePath.startsWith('http')){
+	} else if(projTemplatePath.startsWith('https:')){  //if URL, get it, must be ssl
 		// ** #57, add URL fetch
+		const projTemplatePathUri=vscode.Uri.parse(projTemplatePath);	//just to check validity and if it is github
+		// if ref is to github will use authenticated fetch if login is set
+		if(projTemplatePathUri.authority.toLowerCase().endsWith('github.com') ||
+			projTemplatePathUri.authority.toLowerCase().endsWith('githubusercontent.com')) {
+			//just try to get the github auth
+			const session = await vscode.authentication.getSession(
+				'github',
+				['repo'],
+				{ createIfNone: false }
+			);
+			if(session){
+				const token=session.accessToken;
+				//const token='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';
+				// download the contents of the file from github using axios
+				try {
+					// const response=await axios.default(
+					// 	{
+					// 		method: 'get',
+					// 		url: projTemplatePath+"?token="+token,
+					// 		responseType: 'text'
+					// 	}
+					// );
+					const response = await axios.default.get(projTemplatePath, {
+						headers: {
+							'Authorization': `Bearer ${token}`,
+							'Accept': 'application/vnd.github.v3.raw'	
+						}
+					});
+					retVal=response.data;
+				} catch (err) {
+					console.log('Error downloading file from GitHub:', err);
+					vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+				}
+			}
+		} else {
+			//not github, just try to get it
+			try {
+				const response = await axios.default.get(projTemplatePath, {
+					responseType: 'text'
+				});
+				retVal=response.data;
+			} catch (err) {
+				console.log('Error downloading file from URL:', err);
+				vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+			}
+		}
 	}
 	return retVal;
 }
