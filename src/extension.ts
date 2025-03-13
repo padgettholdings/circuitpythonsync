@@ -511,9 +511,9 @@ async function getProjTemplateText(): Promise<string> {
 		try{
 			const templateContentBytes=await vscode.workspace.fs.readFile(projTemplatePathUri);
 			retVal=fromBinaryArray(templateContentBytes);
-		} catch {
-			console.log(strgs.projTemplateNoLoad);
-			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+		} catch(err) {
+			console.log(strgs.projTemplatePersNoLoad,err);
+			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
 		}
 	} else if(projTemplatePath.startsWith('https:')){  //if URL, get it, must be ssl
 		// ** #57, add URL fetch
@@ -530,12 +530,13 @@ async function getProjTemplateText(): Promise<string> {
 			const session = await vscode.authentication.getSession(
 				'github',
 				['repo'],
-				{ createIfNone: false }
+				{ createIfNone: true }
 			);
 			if(session){
 				const token=session.accessToken;
 				//const token='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';
 				//const token='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';
+				//projTemplatePath='https://api.github.com/repos/standsi/my-typescript-project/contents/myCpTemplate.txt';
 				// download the contents of the file from github using axios
 				try {
 					// const response=await axios.default(
@@ -548,13 +549,14 @@ async function getProjTemplateText(): Promise<string> {
 					const response = await axios.default.get(projTemplatePath, {
 						headers: {
 							'Authorization': `Bearer ${token}`,
-							'Accept': 'application/vnd.github.v3.raw'	
+							'Accept': 'application/vnd.github.v3.raw',
+							'X-GitHub-Api-Version': '2022-11-28'	
 						}
 					});
 					retVal=response.data;
 				} catch (err) {
 					console.log('Error downloading file from GitHub:', err);
-					vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+					vscode.window.showErrorMessage(strgs.projTemplateGHNoLoad+getErrorMessage(err));
 				}
 			}
 		} else {
@@ -566,7 +568,7 @@ async function getProjTemplateText(): Promise<string> {
 				retVal=response.data;
 			} catch (err) {
 				console.log('Error downloading file from URL:', err);
-				vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
 			}
 		}
 	}

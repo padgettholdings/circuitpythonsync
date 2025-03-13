@@ -132,7 +132,9 @@ export const dnldWarnOverwrite:string='File/Folder exists and overwrite not conf
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
 
 // project template related
-export const projTemplateNoLoad:string='** ERROR - could not load cp project template.';
+export const projTemplateNoLoad:string='** ERROR - could not load default cp project template.';
+export const projTemplateGHNoLoad:string='** ERROR loading peronal cp project template from GitHub; try signing in your account again and restart. Code:';  //+err.message
+export const projTemplatePersNoLoad:string='** ERROR loading peronal cp project template, code:';  //+err.message
 export const projTemplateAskDnld:string='Would you rather download from the mapped drive?';
 export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
 export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
