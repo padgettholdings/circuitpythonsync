@@ -522,6 +522,11 @@ async function getProjTemplateText(): Promise<string> {
 		if(projTemplatePathUri.authority.toLowerCase().endsWith('github.com') ||
 			projTemplatePathUri.authority.toLowerCase().endsWith('githubusercontent.com')) {
 			//just try to get the github auth
+			// const session = await vscode.authentication.getSession(
+			// 	'github',
+			// 	['repo'],
+			// 	{ createIfNone: false }
+			// );
 			const session = await vscode.authentication.getSession(
 				'github',
 				['repo'],
@@ -530,6 +535,7 @@ async function getProjTemplateText(): Promise<string> {
 			if(session){
 				const token=session.accessToken;
 				//const token='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';
+				//const token='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';
 				// download the contents of the file from github using axios
 				try {
 					// const response=await axios.default(
