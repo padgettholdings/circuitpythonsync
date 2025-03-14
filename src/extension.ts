@@ -448,6 +448,7 @@ interface cpProjTemplateItem {
 }
 
 let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
+let projTemplatePath:string='';	//** #57, make path global so that can use in make project quick pick
 
 function parseCpProjTemplate(templateFileContents:string){
 	// first break into lines
@@ -501,7 +502,8 @@ function parseCpProjTemplate(templateFileContents:string){
 async function getProjTemplateText(): Promise<string> {
 	let retVal:string='';
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
-	let projTemplatePath:string=cpsyncSettings.get('cptemplatepath','');
+	// ** #57, make path global so that can use in make project quick pick
+	projTemplatePath=cpsyncSettings.get('cptemplatepath','');
 	//projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
 	//if empty, return empty
 	if(!projTemplatePath) {return retVal;}
@@ -571,6 +573,10 @@ async function getProjTemplateText(): Promise<string> {
 				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
 			}
 		}
+	}
+	// if return is empty then blank the project template path so becomes the default
+	if(!retVal || retVal.length===0){
+		projTemplatePath='';
 	}
 	return retVal;
 }
@@ -2046,7 +2052,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		];
 		const choices=await vscode.window.showQuickPick(picks,
-			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder, canPickMany:true}
+			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
+			 canPickMany:true}
 		);
 		// ** if no choice that is cancel, get out
 		if(!choices){return;}
