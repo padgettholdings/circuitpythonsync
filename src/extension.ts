@@ -508,16 +508,7 @@ async function getProjTemplateText(): Promise<string> {
 	//if empty, return empty
 	if(!projTemplatePath) {return retVal;}
 	//if file, read it
-	if(projTemplatePath.startsWith('file:')){
-		const projTemplatePathUri=vscode.Uri.parse(projTemplatePath);
-		try{
-			const templateContentBytes=await vscode.workspace.fs.readFile(projTemplatePathUri);
-			retVal=fromBinaryArray(templateContentBytes);
-		} catch(err) {
-			console.log(strgs.projTemplatePersNoLoad,err);
-			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
-		}
-	} else if(projTemplatePath.startsWith('https:')){  //if URL, get it, must be ssl
+	if(projTemplatePath.startsWith('https:')){  //if URL, get it, must be ssl
 		// ** #57, add URL fetch
 		const projTemplatePathUri=vscode.Uri.parse(projTemplatePath);	//just to check validity and if it is github
 		// if ref is to github will use authenticated fetch if login is set
@@ -573,6 +564,28 @@ async function getProjTemplateText(): Promise<string> {
 				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
 			}
 		}
+	} else {
+		// assume it is a file, if windows add the file scheme explicitly
+		if (os.platform()==='win32') {
+			projTemplatePath='file:'+projTemplatePath;
+		}
+		// parse path to see if scheme is file and no error occurs
+		let projTemplatePathUri:vscode.Uri | undefined=undefined;
+		try{
+			projTemplatePathUri=vscode.Uri.parse(projTemplatePath);
+		} catch {
+			//just let it be undefined and will bail
+			projTemplatePathUri=undefined;
+		}
+		if(projTemplatePathUri && projTemplatePathUri.scheme=== 'file'){
+			try{
+				const templateContentBytes=await vscode.workspace.fs.readFile(projTemplatePathUri);
+				retVal=fromBinaryArray(templateContentBytes);
+			} catch(err) {
+				console.log(strgs.projTemplatePersNoLoad,err);
+				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
+			}
+		} 
 	}
 	// if return is empty then blank the project template path so becomes the default
 	if(!retVal || retVal.length===0){
@@ -2043,6 +2056,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		let picks:vscode.QuickPickItem[]=[
 			{
+				label: strgs.projTemplateQPItemAll,
+				picked: false
+			},
+			{
 				label: strgs.projTemplateQpItemMerge,
 				picked: false
 			},
@@ -2053,12 +2070,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		];
 		const choices=await vscode.window.showQuickPick(picks,
 			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
-			 canPickMany:true}
+			 canPickMany:false}
 		);
 		// ** if no choice that is cancel, get out
 		if(!choices){return;}
-		const addSampleFiles=choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
-		const mergeSettings=choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+		const addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
+		const mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
