@@ -233,6 +233,13 @@
           "type": "string",
           "default": "",
           "description": "Path to personal CP template file."
+        },
+        "circuitpythonsync.cptemplatepaths": {
+          "type": "array",
+          "description": "Paths to personal CP board file.",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

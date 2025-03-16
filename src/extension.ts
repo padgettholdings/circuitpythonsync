@@ -503,6 +503,7 @@ async function getProjTemplateText(): Promise<string> {
 	let retVal:string='';
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
 	// ** #57, make path global so that can use in make project quick pick
+	//  **This picks up the current/last setting, which may be changed in the UI, and this will be called again
 	projTemplatePath=cpsyncSettings.get('cptemplatepath','');
 	//projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
 	//if empty, return empty
@@ -2054,6 +2055,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 		}
+		// ** #57, allow for "looping" back to main QP if pick alternate template
+		let readyForTemplateProc:boolean=false;
 		let picks:vscode.QuickPickItem[]=[
 			{
 				label: strgs.projTemplateQPItemAll,
@@ -2068,14 +2071,79 @@ export async function activate(context: vscode.ExtensionContext) {
 				picked: false
 			}
 		];
-		const choices=await vscode.window.showQuickPick(picks,
-			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
-			 canPickMany:false}
-		);
-		// ** if no choice that is cancel, get out
-		if(!choices){return;}
-		const addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
-		const mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+		// determine if there are personal template paths, if so can provision a pick to go choose
+		const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+		const projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
+		let pickTemplates:vscode.QuickPickItem[]=[];
+		if(projTemplatePaths && projTemplatePaths.length>0) {
+			picks.push({
+				label:'Choose different template'
+			});
+			// ** add the paths to the pick list
+			pickTemplates=projTemplatePaths.map((path:string) => {
+				return {
+					label: path
+				};
+			});
+			// now put a default at the top of the list
+			pickTemplates.unshift({
+				label: '(reset to default)'
+			});
+		}
+		let addSampleFiles:boolean=false;
+		let mergeSettings:boolean=false;
+		while(!readyForTemplateProc){
+			const choices=await vscode.window.showQuickPick(picks,
+				{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
+				canPickMany:false}
+			);
+			// ** if no choice that is cancel, get out
+			if(!choices){return;}
+			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
+			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+			const pickNewTemplate:boolean=choices.label==='Choose different template';
+			if(pickNewTemplate) {
+				// ** #57, get the template path from the user
+				const newTemplate=await vscode.window.showQuickPick(pickTemplates,{
+					title: 'Choose personal template',
+					placeHolder: 'Pick the path or link to the desired template'
+				});
+				if(!newTemplate) {continue;}	//if no pick just bring main qp back up
+				// ** set the new template path in the config, get method will use it
+				let newTemplatePath:string=newTemplate.label;
+				if(newTemplate.label==='(reset to default)') {
+					// ** reset to default
+					newTemplatePath='';
+				}
+				await cpsyncSettings.update('cptemplatepath',newTemplatePath, vscode.ConfigurationTarget.Global);
+				// ** now re-read the template into the project array
+				let templateContent:string='';
+				// ** #57, get the override project template text from file or URL in setting
+				const projTemplateText=await getProjTemplateText();
+				if(projTemplateText){
+					templateContent=projTemplateText;
+				} else {
+					//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+					const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+					//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+					try{
+						const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+						templateContent=fromBinaryArray(templateContentBytes);
+					} catch {
+						console.log(strgs.projTemplateNoLoad);
+						vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+						return;
+					}
+				}
+				if(templateContent){
+					parseCpProjTemplate(templateContent);
+				}
+				// and loop back to see what action is needed
+			} else {
+				// ** set the flag to true to proceed
+				readyForTemplateProc=true;
+			}
+		}
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
