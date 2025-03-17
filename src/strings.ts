@@ -148,6 +148,7 @@ export const projTemplateQPPlaceholder:string="Pick option for templating projec
 export const projTemplateQPItemAll:string='All files (overwrite) and settings (merge) from template';
 export const projTemplateQpItemMerge:string="Merge settings only (no files)";
 export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, merge settings";
+export const projTemplateQPItemAddNew:string='Choose different template or add/remove from list';
 export const projAddTemplateLinkTitle:string='Add a new personal template or remove from list';
 export const projAddTemplateLinkPlaceholder:string='Choose to add or click existing to remove, or ESC to exit';
 export const projAddTemplateLinkUrl:string='Enter URL to new template';

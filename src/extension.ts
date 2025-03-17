@@ -451,6 +451,8 @@ let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
 let projTemplatePath:string='';	//** #57, make path global so that can use in make project quick pick
 
 function parseCpProjTemplate(templateFileContents:string){
+	// clear the array
+	cpProjTemplate=Array<cpProjTemplateItem>(0);
 	// first break into lines
 	// ** this needs to be platform agnostic, so use better RE
 	//const tlines:string[]=templateFileContents.split(/\n/);
@@ -2076,9 +2078,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
 		const projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
 		let pickTemplates:vscode.QuickPickItem[]=[];
-		picks.push({
-			label:'Choose different template or add new'
-		});
+		picks.push(
+			{
+				label:'',
+				kind:vscode.QuickPickItemKind.Separator
+			},
+			{
+			label:strgs.projTemplateQPItemAddNew
+			}
+		);
 		if(projTemplatePaths && projTemplatePaths.length>0) {
 			// ** add the paths to the pick list
 			pickTemplates=projTemplatePaths.map((path:string) => {
@@ -2089,7 +2097,20 @@ export async function activate(context: vscode.ExtensionContext) {
 		} else {
 			// might have deleted list after load, so set back to default
 			projTemplatePath='';
-			//######TBD####### need to re-load template array from default
+			await cpsyncSettings.update('cptemplatepath',projTemplatePath, vscode.ConfigurationTarget.Global);
+			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+			try{
+				const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+				templateContent=fromBinaryArray(templateContentBytes);
+			} catch {
+				console.log(strgs.projTemplateNoLoad);
+				vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+				return;
+			}
+			if(templateContent){
+				parseCpProjTemplate(templateContent);
+			}
 		}
 		// put a separator before the next two picks
 		pickTemplates.unshift({
@@ -2098,7 +2119,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		// add command to add new templates at top
 		pickTemplates.unshift({
-			label: 'Add new template...'
+			label: 'Add new template or manage list...'
 		});
 		// now put a default at the top of the list
 		pickTemplates.unshift({
@@ -2122,7 +2143,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(!choices){return;}
 			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
 			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
-			const pickNewTemplate:boolean=choices.label==='Choose different template or add new';
+			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
 				const newTemplate=await vscode.window.showQuickPick(pickTemplates,{
@@ -2136,7 +2157,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** set the new template path in the config, get method will use it
 				let newTemplatePath:string=newTemplate.label;
 				// check to see if want to go to add new template path/link, flag command to return to make project
-				if(newTemplate.label==='Add new template...'){
+				if(newTemplate.label==='Add new template or manage list...'){
 					vscode.commands.executeCommand('circuitpythonsync.addtemplatelink',true);
 					return;   // get out of this command, flag will return to make project
 				}
@@ -2365,7 +2386,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** set the new template path in the config, get method will use it
 				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
 
-				projTemplatePath=newTemplateUrl;	//??????? what happens?
+				//projTemplatePath=newTemplateUrl;	// ** NO, don't change since won't update array
 			} else if (choice.label==='Add new local path'){
 				// ** get the path from the user
 				const newTemplatePath=await vscode.window.showOpenDialog({
@@ -2385,7 +2406,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** set the new template path in the config, get method will use it
 				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
 				// ** set the new template path in the config, get method will use it
-				projTemplatePath=newTemplatePath[0].fsPath;	//??????? what happens?
+				//projTemplatePath=newTemplatePath[0].fsPath;	// ** NO, don't change since won't update array
 			} else if (choice.label.startsWith('$(trash)')) {
 				// ** delete the path from the list
 				const delPath=choice.label.replace('$(trash)','');	//remove trash icon
@@ -2402,7 +2423,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//check to see if flag is set
 		if(typeof fromMakeProject !== 'undefined' && fromMakeProject){
 			// ** #57, return to make project command 
-			vscode.commands.executeCommand(makeNewProjectId,'Choose different template or add new');
+			vscode.commands.executeCommand(makeNewProjectId,strgs.projTemplateQPItemAddNew);
 			return;
 		}
 	});
