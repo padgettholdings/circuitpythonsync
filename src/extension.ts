@@ -2119,11 +2119,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		// add command to add new templates at top
 		pickTemplates.unshift({
-			label: 'Add new template or manage list...'
+			label: strgs.projTemplateAddMngQPitemAdd
 		});
 		// now put a default at the top of the list
 		pickTemplates.unshift({
-			label: '(reset to default)'
+			label: strgs.projTemplateAddMngQPitemDflt
 		});
 		let addSampleFiles:boolean=false;
 		let mergeSettings:boolean=false;
@@ -2147,8 +2147,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
 				const newTemplate=await vscode.window.showQuickPick(pickTemplates,{
-					title: 'Choose personal template',
-					placeHolder: 'Pick the path or link to the desired template'
+					title: strgs.projTemplateAddMngQPTitle,
+					placeHolder: strgs.projTemplateAddMngQPTPlchldr
 				});
 				if(!newTemplate) {
 					choices=undefined;	//get out of this loop
@@ -2157,11 +2157,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** set the new template path in the config, get method will use it
 				let newTemplatePath:string=newTemplate.label;
 				// check to see if want to go to add new template path/link, flag command to return to make project
-				if(newTemplate.label==='Add new template or manage list...'){
+				if(newTemplate.label===strgs.projTemplateAddMngQPitemAdd){
 					vscode.commands.executeCommand('circuitpythonsync.addtemplatelink',true);
 					return;   // get out of this command, flag will return to make project
 				}
-				if(newTemplate.label==='(reset to default)') {
+				if(newTemplate.label===strgs.projTemplateAddMngQPitemDflt) {
 					// ** reset to default
 					newTemplatePath='';
 				}
@@ -2333,10 +2333,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			let projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
 			let picks:vscode.QuickPickItem[]=[
 				{
-				label: 'Add new URL'
+				label: strgs.projAddTemplateLinkitemUrl
 				},
 				{
-				label: 'Add new local path'
+				label: strgs.projAddTemplateLinkitemPath
 				}
 			];
 			// if there are existing items on list, add for deleting
@@ -2363,7 +2363,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				readyForReturn=true;
 				break;
 			}
-			if(choice.label==='Add new URL'){
+			if(choice.label===strgs.projAddTemplateLinkitemUrl){
 				// ** get the url from the user
 				const newTemplateUrl=await vscode.window.showInputBox({
 					title: strgs.projAddTemplateLinkUrl,
@@ -2387,7 +2387,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
 
 				//projTemplatePath=newTemplateUrl;	// ** NO, don't change since won't update array
-			} else if (choice.label==='Add new local path'){
+			} else if (choice.label===strgs.projAddTemplateLinkitemPath){
 				// ** get the path from the user
 				const newTemplatePath=await vscode.window.showOpenDialog({
 					canSelectFiles:true,

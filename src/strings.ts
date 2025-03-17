@@ -149,8 +149,15 @@ export const projTemplateQPItemAll:string='All files (overwrite) and settings (m
 export const projTemplateQpItemMerge:string="Merge settings only (no files)";
 export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, merge settings";
 export const projTemplateQPItemAddNew:string='Choose different template or add/remove from list';
+export const projTemplateAddMngQPitemAdd:string='Add new template or manage list...';
+export const projTemplateAddMngQPitemDflt:string='(reset to default)';
+export const projTemplateAddMngQPTitle:string='Choose personal template';
+export const projTemplateAddMngQPTPlchldr:string='Pick the path or link to the desired template';
 export const projAddTemplateLinkTitle:string='Add a new personal template or remove from list';
 export const projAddTemplateLinkPlaceholder:string='Choose to add or click existing to remove, or ESC to exit';
+export const projAddTemplateLinkitemUrl:string='Add new URL';
+export const projAddTemplateLinkitemPath:string='Add new local path';
+
 export const projAddTemplateLinkUrl:string='Enter URL to new template';
 export const projAddTemplateLinkUrlPlchld:string="Must be Https, if Github you must have access";
 export const projAddTemplateLinkUrlErr:string='Error in URL, try again';
