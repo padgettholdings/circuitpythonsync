@@ -148,6 +148,15 @@ export const projTemplateQPPlaceholder:string="Pick option for templating projec
 export const projTemplateQPItemAll:string='All files (overwrite) and settings (merge) from template';
 export const projTemplateQpItemMerge:string="Merge settings only (no files)";
 export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, merge settings";
+export const projAddTemplateLinkTitle:string='Add a new personal template or remove from list';
+export const projAddTemplateLinkPlaceholder:string='Choose to add or click existing to remove, or ESC to exit';
+export const projAddTemplateLinkUrl:string='Enter URL to new template';
+export const projAddTemplateLinkUrlPlchld:string="Must be Https, if Github you must have access";
+export const projAddTemplateLinkUrlErr:string='Error in URL, try again';
+export const projAddTemplateLinkUrlDup:string='URL already exists in list, try again';
+export const projAddTemplateLinkPath:string='Choose new template file to add';
+export const projAddTemplateLinkPathDup:string='File already exists in list, try again';
+export const projAddTemplateLinkDelErr:string='Error removing template file from list, try again';
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message

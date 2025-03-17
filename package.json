@@ -98,6 +98,11 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.addtemplatelink",
+        "title": "CP Add Template Link",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.filediff",
         "title": "CP Compare file to board",
         "enablement": "!explorerResourceIsFolder",
