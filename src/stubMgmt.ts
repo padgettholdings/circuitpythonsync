@@ -101,7 +101,12 @@ export class StubMgmt {
         this._selectBoardButton.text = 'CP$(circuit-board)';
         this._selectBoardButton.command = selectBoardCmdId;
         this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
-        this._selectBoardButton.show();
+        //don't show button if no workspace
+        if(this._workspaceUri){
+            this._selectBoardButton.show();
+        } else {
+            this._selectBoardButton.hide();
+        }
         this._context.subscriptions.push(this._selectBoardButton);
 
         // ** monitor config changes so can keep button updated to board selection, really just for empty/null board names

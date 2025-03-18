@@ -2050,7 +2050,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
-		if(curDriveSetting!=='') {
+		// BUT if re-entered with forceChoice skip this...
+		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice===''))  {
 			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
 			if(ans==='Yes'){
 				vscode.commands.executeCommand(dnldCpBoardId);
@@ -2322,10 +2323,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
 	const addNewTemplateLinkCmd=vscode.commands.registerCommand(cmdAddNewTemplateLinkId, async (fromMakeProject:boolean) => {
 		//if no workspace do nothing but notify
-		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
-			return;
-		}
+		// if(!haveCurrentWorkspace) {
+		// 	vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+		// 	return;
+		// }
 		// loop getting new entries until cancel or done
 		let readyForReturn:boolean=false;
 		while(!readyForReturn){
