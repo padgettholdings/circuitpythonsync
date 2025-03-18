@@ -10,6 +10,8 @@ import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+import * as axios from 'axios';
+import * as fs from 'fs';
 //import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
@@ -187,6 +189,7 @@ async function writeCpfiles(fileContents:string): Promise<string | undefined>{
 	}
 	return "";
 }
+
 
 //helper type for return of file states
 // ** per #26, add flags for no py files and filenames not existing
@@ -445,8 +448,11 @@ interface cpProjTemplateItem {
 }
 
 let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
+let projTemplatePath:string='';	//** #57, make path global so that can use in make project quick pick
 
 function parseCpProjTemplate(templateFileContents:string){
+	// clear the array
+	cpProjTemplate=Array<cpProjTemplateItem>(0);
 	// first break into lines
 	// ** this needs to be platform agnostic, so use better RE
 	//const tlines:string[]=templateFileContents.split(/\n/);
@@ -492,6 +498,103 @@ function parseCpProjTemplate(templateFileContents:string){
 	if(cpItem){
 		cpProjTemplate.push(cpItem);
 	}
+}
+
+// ** #57, get the override project template text from file or URL in setting
+async function getProjTemplateText(): Promise<string> {
+	let retVal:string='';
+	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+	// ** #57, make path global so that can use in make project quick pick
+	//  **This picks up the current/last setting, which may be changed in the UI, and this will be called again
+	projTemplatePath=cpsyncSettings.get('cptemplatepath','');
+	//projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
+	//if empty, return empty
+	if(!projTemplatePath) {return retVal;}
+	//if file, read it
+	if(projTemplatePath.startsWith('https:')){  //if URL, get it, must be ssl
+		// ** #57, add URL fetch
+		const projTemplatePathUri=vscode.Uri.parse(projTemplatePath);	//just to check validity and if it is github
+		// if ref is to github will use authenticated fetch if login is set
+		if(projTemplatePathUri.authority.toLowerCase().endsWith('github.com') ||
+			projTemplatePathUri.authority.toLowerCase().endsWith('githubusercontent.com')) {
+			//just try to get the github auth
+			// const session = await vscode.authentication.getSession(
+			// 	'github',
+			// 	['repo'],
+			// 	{ createIfNone: false }
+			// );
+			const session = await vscode.authentication.getSession(
+				'github',
+				['repo'],
+				{ createIfNone: true }
+			);
+			if(session){
+				const token=session.accessToken;
+				//const token='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';
+				//const token='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';
+				//projTemplatePath='https://api.github.com/repos/standsi/my-typescript-project/contents/myCpTemplate.txt';
+				// download the contents of the file from github using axios
+				try {
+					// const response=await axios.default(
+					// 	{
+					// 		method: 'get',
+					// 		url: projTemplatePath+"?token="+token,
+					// 		responseType: 'text'
+					// 	}
+					// );
+					const response = await axios.default.get(projTemplatePath, {
+						headers: {
+							'Authorization': `Bearer ${token}`,
+							'Accept': 'application/vnd.github.v3.raw',
+							'X-GitHub-Api-Version': '2022-11-28'	
+						}
+					});
+					retVal=response.data;
+				} catch (err) {
+					console.log('Error downloading file from GitHub:', err);
+					vscode.window.showErrorMessage(strgs.projTemplateGHNoLoad+getErrorMessage(err));
+				}
+			}
+		} else {
+			//not github, just try to get it
+			try {
+				const response = await axios.default.get(projTemplatePath, {
+					responseType: 'text'
+				});
+				retVal=response.data;
+			} catch (err) {
+				console.log('Error downloading file from URL:', err);
+				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
+			}
+		}
+	} else {
+		// assume it is a file, if windows add the file scheme explicitly
+		if (os.platform()==='win32') {
+			projTemplatePath='file:'+projTemplatePath;
+		}
+		// parse path to see if scheme is file and no error occurs
+		let projTemplatePathUri:vscode.Uri | undefined=undefined;
+		try{
+			projTemplatePathUri=vscode.Uri.parse(projTemplatePath);
+		} catch {
+			//just let it be undefined and will bail
+			projTemplatePathUri=undefined;
+		}
+		if(projTemplatePathUri && projTemplatePathUri.scheme=== 'file'){
+			try{
+				const templateContentBytes=await vscode.workspace.fs.readFile(projTemplatePathUri);
+				retVal=fromBinaryArray(templateContentBytes);
+			} catch(err) {
+				console.log(strgs.projTemplatePersNoLoad,err);
+				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
+			}
+		} 
+	}
+	// if return is empty then blank the project template path so becomes the default
+	if(!retVal || retVal.length===0){
+		projTemplatePath='';
+	}
+	return retVal;
 }
 
 // ** update both status bar buttons
@@ -647,16 +750,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	//vscode.window.showInformationMessage('revised cp boot file msg: '+strgs_cpBootNoFindMKDN);
 
 	// ** try to get template file and parse it
-	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
-	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	let templateContent:string='';
-	try{
-		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
-		templateContent=fromBinaryArray(templateContentBytes);
-	} catch {
-		console.log(strgs.projTemplateNoLoad);
-		vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+	// ** #57, get the override project template text from file or URL in setting
+	const projTemplateText=await getProjTemplateText();
+	if(projTemplateText){
+		templateContent=projTemplateText;
+	} else {
+		//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+		const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+		//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+		try{
+			const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+			templateContent=fromBinaryArray(templateContentBytes);
+		} catch {
+			console.log(strgs.projTemplateNoLoad);
+			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+		}
 	}
 	if(templateContent){
 		parseCpProjTemplate(templateContent);
@@ -1934,21 +2043,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// **command to scaffold new project **
 	const makeNewProjectId=strgs.cmdScaffoldProjectPKG;
-	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async () =>{
+	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async (forceChoice:string) =>{
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
-		if(curDriveSetting!=='') {
+		// BUT if re-entered with forceChoice skip this...
+		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice===''))  {
 			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
 			if(ans==='Yes'){
 				vscode.commands.executeCommand(dnldCpBoardId);
 				return;
 			}
 		}
+		// ** #57, allow for "looping" back to main QP if pick alternate template
+		let readyForTemplateProc:boolean=false;
 		let picks:vscode.QuickPickItem[]=[
+			{
+				label: strgs.projTemplateQPItemAll,
+				picked: false
+			},
 			{
 				label: strgs.projTemplateQpItemMerge,
 				picked: false
@@ -1958,13 +2074,129 @@ export async function activate(context: vscode.ExtensionContext) {
 				picked: false
 			}
 		];
-		const choices=await vscode.window.showQuickPick(picks,
-			{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder, canPickMany:true}
+		// determine if there are personal template paths, if so can provision a pick to go choose
+		//  ** always show option, just may not have links **
+		const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+		const projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
+		let pickTemplates:vscode.QuickPickItem[]=[];
+		picks.push(
+			{
+				label:'',
+				kind:vscode.QuickPickItemKind.Separator
+			},
+			{
+			label:strgs.projTemplateQPItemAddNew
+			}
 		);
-		// ** if no choice that is cancel, get out
-		if(!choices){return;}
-		const addSampleFiles=choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
-		const mergeSettings=choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+		if(projTemplatePaths && projTemplatePaths.length>0) {
+			// ** add the paths to the pick list
+			pickTemplates=projTemplatePaths.map((path:string) => {
+				return {
+					label: path
+				};
+			});
+		} else {
+			// might have deleted list after load, so set back to default
+			projTemplatePath='';
+			await cpsyncSettings.update('cptemplatepath',projTemplatePath, vscode.ConfigurationTarget.Global);
+			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+			try{
+				const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+				templateContent=fromBinaryArray(templateContentBytes);
+			} catch {
+				console.log(strgs.projTemplateNoLoad);
+				vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+				return;
+			}
+			if(templateContent){
+				parseCpProjTemplate(templateContent);
+			}
+		}
+		// put a separator before the next two picks
+		pickTemplates.unshift({
+			label: '',
+			kind: vscode.QuickPickItemKind.Separator
+		});
+		// add command to add new templates at top
+		pickTemplates.unshift({
+			label: strgs.projTemplateAddMngQPitemAdd
+		});
+		// now put a default at the top of the list
+		pickTemplates.unshift({
+			label: strgs.projTemplateAddMngQPitemDflt
+		});
+		let addSampleFiles:boolean=false;
+		let mergeSettings:boolean=false;
+		//check to see if this command called with a forced choice
+		let choices:vscode.QuickPickItem | undefined=undefined;
+		if(forceChoice!==undefined && forceChoice!=='') {
+			choices={label: forceChoice};	//force the choice to be set
+		}
+		while(!readyForTemplateProc){
+			if(!choices) {
+				choices=await vscode.window.showQuickPick(picks,
+					{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
+					canPickMany:false}
+				);
+			}
+			// ** if no choice that is cancel, get out
+			if(!choices){return;}
+			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
+			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
+			if(pickNewTemplate) {
+				// ** #57, get the template path from the user
+				const newTemplate=await vscode.window.showQuickPick(pickTemplates,{
+					title: strgs.projTemplateAddMngQPTitle,
+					placeHolder: strgs.projTemplateAddMngQPTPlchldr
+				});
+				if(!newTemplate) {
+					choices=undefined;	//get out of this loop
+					continue;
+				}	//if no pick just bring main qp back up
+				// ** set the new template path in the config, get method will use it
+				let newTemplatePath:string=newTemplate.label;
+				// check to see if want to go to add new template path/link, flag command to return to make project
+				if(newTemplate.label===strgs.projTemplateAddMngQPitemAdd){
+					vscode.commands.executeCommand('circuitpythonsync.addtemplatelink',true);
+					return;   // get out of this command, flag will return to make project
+				}
+				if(newTemplate.label===strgs.projTemplateAddMngQPitemDflt) {
+					// ** reset to default
+					newTemplatePath='';
+				}
+				await cpsyncSettings.update('cptemplatepath',newTemplatePath, vscode.ConfigurationTarget.Global);
+				// ** now re-read the template into the project array
+				let templateContent:string='';
+				// ** #57, get the override project template text from file or URL in setting
+				const projTemplateText=await getProjTemplateText();
+				if(projTemplateText){
+					templateContent=projTemplateText;
+				} else {
+					//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+					const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+					//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+					try{
+						const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+						templateContent=fromBinaryArray(templateContentBytes);
+					} catch {
+						console.log(strgs.projTemplateNoLoad);
+						vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+						return;
+					}
+				}
+				if(templateContent){
+					parseCpProjTemplate(templateContent);
+				}
+				// and loop back to see what action is needed
+				// clear choices since it may have been forced
+				choices=undefined;
+			} else {
+				// ** set the flag to true to proceed
+				readyForTemplateProc=true;
+			}
+		}
 		//read the workspace and determine if any files exist other than the .vscode folder, ask
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
@@ -2087,6 +2319,117 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(makeProjCmd);
 
+	// ** #57, command to add new links for templates **
+	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
+	const addNewTemplateLinkCmd=vscode.commands.registerCommand(cmdAddNewTemplateLinkId, async (fromMakeProject:boolean) => {
+		//if no workspace do nothing but notify
+		// if(!haveCurrentWorkspace) {
+		// 	vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+		// 	return;
+		// }
+		// loop getting new entries until cancel or done
+		let readyForReturn:boolean=false;
+		while(!readyForReturn){
+			const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
+			let projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
+			let picks:vscode.QuickPickItem[]=[
+				{
+				label: strgs.projAddTemplateLinkitemUrl
+				},
+				{
+				label: strgs.projAddTemplateLinkitemPath
+				}
+			];
+			// if there are existing items on list, add for deleting
+			if(projTemplatePaths && projTemplatePaths.length>0) {
+				// ** add a separator before the next two picks
+				picks.push({
+					label: '',
+					kind: vscode.QuickPickItemKind.Separator
+				});
+				// ** add the paths to the pick list
+				const existingPicks=projTemplatePaths.map((path:string) => {
+					return {
+						label: '$(trash)'+path
+					};
+				});
+				picks.push(...existingPicks);
+			}
+			const choice=await vscode.window.showQuickPick(picks,
+				{title: strgs.projAddTemplateLinkTitle,placeHolder: strgs.projAddTemplateLinkPlaceholder,
+				canPickMany:false}
+			);
+			// ** if no choice that is cancel, get out
+			if(!choice){
+				readyForReturn=true;
+				break;
+			}
+			if(choice.label===strgs.projAddTemplateLinkitemUrl){
+				// ** get the url from the user
+				const newTemplateUrl=await vscode.window.showInputBox({
+					title: strgs.projAddTemplateLinkUrl,
+					placeHolder: strgs.projAddTemplateLinkUrlPlchld,
+					validateInput: (text) => {
+						if(text && text.length>0){
+							return null;
+						} else {
+							return strgs.projAddTemplateLinkUrlErr;
+						}
+					}
+				});
+				if(!newTemplateUrl) {continue;}	//if no pick or error just bring main qp back up
+				// ** add the url to the list
+				if(!projTemplatePaths.includes(newTemplateUrl)) {
+					projTemplatePaths.push(newTemplateUrl);
+				} else {
+					vscode.window.showWarningMessage(strgs.projAddTemplateLinkUrlDup);
+				}
+				// ** set the new template path in the config, get method will use it
+				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+
+				//projTemplatePath=newTemplateUrl;	// ** NO, don't change since won't update array
+			} else if (choice.label===strgs.projAddTemplateLinkitemPath){
+				// ** get the path from the user
+				const newTemplatePath=await vscode.window.showOpenDialog({
+					canSelectFiles:true,
+					canSelectFolders:false,
+					canSelectMany:false,
+					defaultUri: vscode.Uri.parse('/'),
+					title: strgs.projAddTemplateLinkPath
+				});
+				if(!newTemplatePath) {continue;}	//if no pick just bring main qp back up
+				// ** add the path to the list
+				if(!projTemplatePaths.includes(newTemplatePath[0].fsPath)) {
+					projTemplatePaths.push(newTemplatePath[0].fsPath);
+				} else {
+					vscode.window.showWarningMessage(strgs.projAddTemplateLinkPathDup);
+				}
+				// ** set the new template path in the config, get method will use it
+				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+				// ** set the new template path in the config, get method will use it
+				//projTemplatePath=newTemplatePath[0].fsPath;	// ** NO, don't change since won't update array
+			} else if (choice.label.startsWith('$(trash)')) {
+				// ** delete the path from the list
+				const delPath=choice.label.replace('$(trash)','');	//remove trash icon
+				const index=projTemplatePaths.indexOf(delPath);
+				if(index>-1) {
+					projTemplatePaths.splice(index,1);
+					// ** set the new template path in the config, get method will use it
+					await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+				} else {
+					vscode.window.showWarningMessage(strgs.projAddTemplateLinkDelErr);
+				}
+			}
+		}
+		//check to see if flag is set
+		if(typeof fromMakeProject !== 'undefined' && fromMakeProject){
+			// ** #57, return to make project command 
+			vscode.commands.executeCommand(makeNewProjectId,strgs.projTemplateQPItemAddNew);
+			return;
+		}
+	});
+	context.subscriptions.push(addNewTemplateLinkCmd);
+	
 	// ** diff file **
 	const cmdFileDiffId ='circuitpythonsync.filediff';
 	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{

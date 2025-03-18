@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.5-a",
+  "version": "0.1.7-a",
   "publisher": "standsi",
   "license": "MIT",
   "repository": {
@@ -95,6 +95,11 @@
       {
         "command": "circuitpythonsync.newproject",
         "title": "CP Make or Update Project",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.addtemplatelink",
+        "title": "CP Add Template Link",
         "category": "CircuitPythonSync"
       },
       {
@@ -224,11 +229,23 @@
           "default": "",
           "description": "CircuitPython version."
         },
-          "circuitpythonsync.cpboardname": {
-            "type": "string",
-            "default": "",
-            "description": "Selected CP board name."
+        "circuitpythonsync.cpboardname": {
+          "type": "string",
+          "default": "",
+          "description": "Selected CP board name."
+        },
+        "circuitpythonsync.cptemplatepath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to personal CP template file."
+        },
+        "circuitpythonsync.cptemplatepaths": {
+          "type": "array",
+          "description": "Paths to personal CP board file.",
+          "items": {
+            "type": "string"
           }
+        }
       }
     }
   },

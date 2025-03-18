@@ -132,7 +132,9 @@ export const dnldWarnOverwrite:string='File/Folder exists and overwrite not conf
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
 
 // project template related
-export const projTemplateNoLoad:string='** ERROR - could not load cp project template.';
+export const projTemplateNoLoad:string='** ERROR - could not load default cp project template.';
+export const projTemplateGHNoLoad:string='** ERROR loading peronal cp project template from GitHub; try signing in your account again and restart. Code:';  //+err.message
+export const projTemplatePersNoLoad:string='** ERROR loading peronal cp project template, code:';  //+err.message
 export const projTemplateAskDnld:string='Would you rather download from the mapped drive?';
 export const projTemplateConfOverwrite:string='Workspace already has files, overwrite?';
 export const projTemplateErrWriteFolder:string='** ERROR in writing new project folder: ';  //+fse.message
@@ -142,9 +144,27 @@ export const projTemplateErrParseSettings:string='** ERROR in parsing settings.j
 export const projTemplateErrParseTemplateSettings:string='** ERROR in parsing template settings.json during project template setup: ';
 export const projTemplateAskLibStub:string='Would you like to initialize the library and board Python stubs?';
 export const projTemplateQPTitle:string='Make or Update Project';
-export const projTemplateQPPlaceholder:string="Choose options for templating project";
-export const projTemplateQpItemMerge:string="Merge settings only (overrides all files)";
-export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, with settings";
+export const projTemplateQPPlaceholder:string="Pick option for templating project "; //+(from default) or (from url/file)
+export const projTemplateQPItemAll:string='All files (overwrite) and settings (merge) from template';
+export const projTemplateQpItemMerge:string="Merge settings only (no files)";
+export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, merge settings";
+export const projTemplateQPItemAddNew:string='Choose different template or add/remove from list';
+export const projTemplateAddMngQPitemAdd:string='Add new template or manage list...';
+export const projTemplateAddMngQPitemDflt:string='(reset to default)';
+export const projTemplateAddMngQPTitle:string='Choose personal template';
+export const projTemplateAddMngQPTPlchldr:string='Pick the path or link to the desired template';
+export const projAddTemplateLinkTitle:string='Add a new personal template or remove from list';
+export const projAddTemplateLinkPlaceholder:string='Choose to add or click existing to remove, or ESC to exit';
+export const projAddTemplateLinkitemUrl:string='Add new URL';
+export const projAddTemplateLinkitemPath:string='Add new local path';
+
+export const projAddTemplateLinkUrl:string='Enter URL to new template';
+export const projAddTemplateLinkUrlPlchld:string="Must be Https, if Github you must have access";
+export const projAddTemplateLinkUrlErr:string='Error in URL, try again';
+export const projAddTemplateLinkUrlDup:string='URL already exists in list, try again';
+export const projAddTemplateLinkPath:string='Choose new template file to add';
+export const projAddTemplateLinkPathDup:string='File already exists in list, try again';
+export const projAddTemplateLinkDelErr:string='Error removing template file from list, try again';
 
 //file and library related strings
 export const abortFileCopyError:string='Aborting file copy trying to read device with error: ';     //+fse.message
