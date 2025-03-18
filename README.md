@@ -107,4 +107,5 @@
 # Issue #57, new setting for personal project template
 - create release v0.1.6 for platform testing
 - create release v0.1.7, adding full list management
+- create baseline release v0.1.7-a before merge #57 to master
 
