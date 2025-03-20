@@ -761,7 +761,7 @@ export class LibraryMgmt {
             // Called before an item is extracted.
             onEntry: function (event) {
                 if (!libNeeds.some((libName) => {
-                    const rg = new RegExp(`^${libName}`);
+                    const rg = new RegExp(`^${libName}(\.py|\.mpy)?$|^${libName}[\\/]+`);
                     return rg.test(event.entryName);
                 }))    ///\/examples\//.test(event.entryName))
                 {
