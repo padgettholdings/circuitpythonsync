@@ -277,3 +277,7 @@ export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; 
 export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
 export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP tag: ';  // + err
 export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message
+
+// ** project bundle related
+export const enterProjectBundleUrl:string='Enter a valid URL to the project bundle';
+export const projectBundleUrlPlaceholder:string='URL must be https://, or ESC to cancel';

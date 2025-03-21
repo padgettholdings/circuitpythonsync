@@ -103,6 +103,11 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.loadProjectBundle",
+        "title": "CP Load Project Bundle",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.filediff",
         "title": "CP Compare file to board",
         "enablement": "!explorerResourceIsFolder",

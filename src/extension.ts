@@ -10,6 +10,8 @@ import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+import { ProjectBundleMgmt } from './projectBundle.js';
+
 import * as axios from 'axios';
 import * as fs from 'fs';
 //import { isSet } from 'util/types';
@@ -1641,6 +1643,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	}
+	// ** #60, construct the package bundle management class
+	const projBundleMgmtSys=new ProjectBundleMgmt(context);
+	if(haveCurrentWorkspace){
+		// other init
+	}
+
+
 	/*
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
