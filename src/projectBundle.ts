@@ -146,6 +146,11 @@ export class ProjectBundleMgmt {
             // cleanup
             //fs.unlinkSync(projectBundleArchiveFile);
             fs.rmdirSync(projectBundleTempDirUri.fsPath, { recursive: true });
+            // ask user about other actions
+            const ansTemplate=await vscode.window.showInformationMessage('Project bundle loaded, do you want to get helpful settings?','Yes','No');
+            if(ansTemplate==='Yes'){
+                await vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemSamples);
+            }
             const ans=await vscode.window.showInformationMessage('Project bundle loaded, do you want to update libraries?','Yes','No');
             if(ans==='Yes'){
                 vscode.commands.executeCommand(strgs.cmdLibUpdatePKG);
