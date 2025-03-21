@@ -23,13 +23,19 @@ export class ProjectBundleMgmt {
 
         this._workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : undefined;
         this._projectBundleArchiveUri = vscode.workspace.workspaceFolders ? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'projectBundleArchive') : undefined;
+        // ** don't create any proj bundle related folders until run command,
+        //  also handles clearing out workspace after activate
+        /*
         if(this._projectBundleArchiveUri && !fs.existsSync(this._projectBundleArchiveUri.fsPath)){
             fs.mkdirSync(this._projectBundleArchiveUri.fsPath);
         }
+        */
         this._projectBundleTempUri = vscode.Uri.joinPath(this._context.globalStorageUri, 'projectBundleTemp');
+        /*
         if(!fs.existsSync(this._projectBundleTempUri.fsPath)){
             fs.mkdirSync(this._projectBundleTempUri.fsPath);
         }
+        */
 
         // interface cmdQuickInputButton extends QuickInputButton {
         //     commandName: string;
@@ -64,8 +70,12 @@ export class ProjectBundleMgmt {
             }
             // try to download the bundle to a temp directory
             if(!this._projectBundleArchiveUri){
-                vscode.window.showErrorMessage('cannot get project bundle archive directory');
+                vscode.window.showErrorMessage('Project bundle archive directory not initialized, restart');
                 return;
+            } else {
+                if(!fs.existsSync(this._projectBundleArchiveUri.fsPath)){
+                    fs.mkdirSync(this._projectBundleArchiveUri.fsPath);
+                }
             }
             // try to get the id from the url, if not use the date
             // example:
@@ -74,16 +84,30 @@ export class ProjectBundleMgmt {
             const match=projectBundleUrl.toLowerCase().match(pat);
             const id=match?match[1]:new Date().toISOString().split('T')[0].replace(/[^0-9]/g,'');
             const projectBundleArchiveFile = path.join(this._projectBundleArchiveUri.fsPath, `projectBundle${id}.zip`);
-            try {
-                await this.downloadFile(projectBundleUrl, projectBundleArchiveFile);
-            } catch (error) {
-                vscode.window.showErrorMessage(this.getErrorMessage(error));
-                return;
+            // check to see if file already exists, offer to skip re-download
+            let skipDownload=false;
+            if(fs.existsSync(projectBundleArchiveFile)){
+                const ans=await vscode.window.showWarningMessage('Project bundle by that ID already downloaded, Use it?','Yes','No, download again');
+                if(ans==='Yes'){
+                    skipDownload=true;
+                }
+            }
+            if (!skipDownload) {
+                try {
+                    await this.downloadFile(projectBundleUrl, projectBundleArchiveFile);
+                } catch (error) {
+                    vscode.window.showErrorMessage(this.getErrorMessage(error));
+                    return;
+                }
             }
             //now extract into temp directory
             if(!this._projectBundleTempUri){
-                vscode.window.showErrorMessage('cannot get project bundle temp directory');
+                vscode.window.showErrorMessage('Project bundle temp directory not initialized, restart');
                 return;
+            } else {
+                if(!fs.existsSync(this._projectBundleTempUri.fsPath)){
+                    fs.mkdirSync(this._projectBundleTempUri.fsPath);
+                }        
             }
             const projectBundleTempDirUri = vscode.Uri.joinPath(this._projectBundleTempUri, `projectBundle${id}`);
             try {
@@ -149,12 +173,14 @@ export class ProjectBundleMgmt {
             // ask user about other actions
             const ansTemplate=await vscode.window.showInformationMessage('Project bundle loaded, do you want to get helpful settings?','Yes','No');
             if(ansTemplate==='Yes'){
-                await vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemSamples);
+                vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemSamples);
             }
+            /*
             const ans=await vscode.window.showInformationMessage('Project bundle loaded, do you want to update libraries?','Yes','No');
             if(ans==='Yes'){
                 vscode.commands.executeCommand(strgs.cmdLibUpdatePKG);
             }
+            */
         });
         this._context.subscriptions.push(cmdLoadProjectBundle);
 

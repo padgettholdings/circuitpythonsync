@@ -45,6 +45,11 @@ while True:
 #  is still kept in settings.json so will be downloaded again on a fresh repo clone.
 #/stubArchive/**
 
+# Un-comment the following line to ignore the project bundle archive directory
+#  Avoids storing in repo but may not be available again if need to re-construct
+#  The bundles are usually pretty small so impact is typically minimal
+#/projectBundleArchive/**
+
 >>>.vscode/settings.json
 {
     "python.languageServer": "Pylance",
