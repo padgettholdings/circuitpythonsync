@@ -13,7 +13,7 @@ export class ProjectBundleMgmt {
 
     // ** private variables
     private _context: vscode.ExtensionContext;
-    private _progInc: number;
+    //private _progInc: number;
     private _workspaceUri: vscode.Uri | undefined;
     private _projectBundleArchiveUri: vscode.Uri | undefined;
     private _projectBundleTempUri: vscode.Uri | undefined;
@@ -22,7 +22,7 @@ export class ProjectBundleMgmt {
         this._context = context;
 
         this._workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : undefined;
-        this._projectBundleArchiveUri = vscode.workspace.workspaceFolders ? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'projectBundleArchive') : undefined;
+        this._projectBundleArchiveUri = vscode.workspace.workspaceFolders ? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, strgs.projectBundleArchiveFolderName) : undefined;
         // ** don't create any proj bundle related folders until run command,
         //  also handles clearing out workspace after activate
         /*
@@ -30,25 +30,17 @@ export class ProjectBundleMgmt {
             fs.mkdirSync(this._projectBundleArchiveUri.fsPath);
         }
         */
-        this._projectBundleTempUri = vscode.Uri.joinPath(this._context.globalStorageUri, 'projectBundleTemp');
+        this._projectBundleTempUri = vscode.Uri.joinPath(this._context.globalStorageUri, strgs.projectBundleTempFolderName);
         /*
         if(!fs.existsSync(this._projectBundleTempUri.fsPath)){
             fs.mkdirSync(this._projectBundleTempUri.fsPath);
         }
         */
-
-        // interface cmdQuickInputButton extends QuickInputButton {
-        //     commandName: string;
-        // }
-        // //const iconCommand1:ThemeIcon=new ThemeIcon('library');
-
-        // interface cmdQuickItem extends vscode.QuickPickItem {
-        //     commandName: string;
-        // }
-        this._progInc=0;    //set to greater than 100 to stop progress
+        // don't need progress for now...
+        //this._progInc=0;    //set to greater than 100 to stop progress
 
         // ** Command to load project bundle into workspace
-        const loadProjectBundleCmdId:string='circuitpythonsync.loadProjectBundle';
+        const loadProjectBundleCmdId:string=strgs.cmdLoadProjectBundlePKG;
         let cmdLoadProjectBundle = vscode.commands.registerCommand(loadProjectBundleCmdId, async () => {
             if(!this._workspaceUri){
                 vscode.window.showErrorMessage(strgs.mustHaveWkspce);
@@ -70,7 +62,7 @@ export class ProjectBundleMgmt {
             }
             // try to download the bundle to a temp directory
             if(!this._projectBundleArchiveUri){
-                vscode.window.showErrorMessage('Project bundle archive directory not initialized, restart');
+                vscode.window.showErrorMessage(strgs.projectBundleArchiveDirNotInitErr);
                 return;
             } else {
                 if(!fs.existsSync(this._projectBundleArchiveUri.fsPath)){
@@ -87,7 +79,7 @@ export class ProjectBundleMgmt {
             // check to see if file already exists, offer to skip re-download
             let skipDownload=false;
             if(fs.existsSync(projectBundleArchiveFile)){
-                const ans=await vscode.window.showWarningMessage('Project bundle by that ID already downloaded, Use it?','Yes','No, download again');
+                const ans=await vscode.window.showWarningMessage(strgs.projectBundleDnldExistsSkipQues,'Yes','No, download again');
                 if(ans==='Yes'){
                     skipDownload=true;
                 }
@@ -102,7 +94,7 @@ export class ProjectBundleMgmt {
             }
             //now extract into temp directory
             if(!this._projectBundleTempUri){
-                vscode.window.showErrorMessage('Project bundle temp directory not initialized, restart');
+                vscode.window.showErrorMessage(strgs.projectBundleTempDirNotInitErr);
                 return;
             } else {
                 if(!fs.existsSync(this._projectBundleTempUri.fsPath)){
@@ -124,6 +116,7 @@ export class ProjectBundleMgmt {
             let foundCPy=false;
             let curProjBundleTempDirUri=projectBundleTempDirUri;
             while(!foundCPy){
+                let lastProjBundleTempDirUri=curProjBundleTempDirUri;
                 const tmpDirContents=await vscode.workspace.fs.readDirectory(curProjBundleTempDirUri);
                 for(const [name,type] of tmpDirContents){
                     if(type===vscode.FileType.Directory && name.toLowerCase().startsWith('circuitpython')){
@@ -132,12 +125,18 @@ export class ProjectBundleMgmt {
                         break;
                     }
                     if(type===vscode.FileType.Directory){
-                        curProjBundleTempDirUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
+                        lastProjBundleTempDirUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
                     }
+                }
+                // if did not change the directory, then no more dirs to go down
+                if(curProjBundleTempDirUri.fsPath===lastProjBundleTempDirUri.fsPath){
+                    break;
+                } else {
+                    curProjBundleTempDirUri=lastProjBundleTempDirUri;
                 }
             }
             if(!foundCPy){
-                vscode.window.showErrorMessage('Did not find CircuitPython code folder in project bundle.');
+                vscode.window.showErrorMessage(strgs.projectBundleNoFindCPinZipErr);
                 return;
             }
             //now read the cp directory and copy all files and folders to the workspace
@@ -149,7 +148,7 @@ export class ProjectBundleMgmt {
             for(const [name,type] of projBundleContents){
                 if(wscontents.some(fle => fle[0].toLowerCase()===name.toLowerCase())){
                     //something matches, ask if want to overwrite, if not bail out
-                    const ans=await vscode.window.showWarningMessage('Some bundle content will overwrite existing, continue?','Yes','No, cancel');
+                    const ans=await vscode.window.showWarningMessage(strgs.projectBundleOverwriteConfirm,'Yes','No, cancel');
                     if(ans==='Yes'){
                         break;
                     } else {
@@ -171,7 +170,7 @@ export class ProjectBundleMgmt {
             //fs.unlinkSync(projectBundleArchiveFile);
             fs.rmdirSync(projectBundleTempDirUri.fsPath, { recursive: true });
             // ask user about other actions
-            const ansTemplate=await vscode.window.showInformationMessage('Project bundle loaded, do you want to get helpful settings?','Yes','No');
+            const ansTemplate=await vscode.window.showInformationMessage(strgs.projectBundleGetSettingsQues,'Yes','No');
             if(ansTemplate==='Yes'){
                 vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemSamples);
             }

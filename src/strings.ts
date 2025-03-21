@@ -42,6 +42,7 @@ export const cmdScaffoldProjectPKG:string= 'circuitpythonsync.newproject';
 export const cmdLibUpdatePKG:string='circuitpythonsync.libupdate';
 export const cmdSelectLibsPKG:string='circuitpythonsync.selectlibs';
 export const cmdSelectBoardPKG:string='circuitpythonsync.selectboard';
+export const cmdLoadProjectBundlePKG:string='circuitpythonsync.loadProjectBundle';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -281,3 +282,11 @@ export const installStubsGeneralError:string='Error installing stubs: ';  // + e
 // ** project bundle related
 export const enterProjectBundleUrl:string='Enter a valid URL to the project bundle';
 export const projectBundleUrlPlaceholder:string='URL must be https://, or ESC to cancel';
+export const projectBundleArchiveFolderName:string='projectBundleArchive';
+export const projectBundleTempFolderName:string='projectBundleTemp';
+export const projectBundleArchiveDirNotInitErr:string='Project bundle archive directory not initialized, restart';
+export const projectBundleDnldExistsSkipQues:string='Project bundle by that ID already downloaded, Use it?';
+export const projectBundleTempDirNotInitErr:string='Project bundle temp directory not initialized, restart';
+export const projectBundleNoFindCPinZipErr:string='Did not find CircuitPython code folder in project bundle.';
+export const projectBundleOverwriteConfirm:string='Some bundle content will overwrite existing, continue?';
+export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
