@@ -2137,6 +2137,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		let addSampleFiles:boolean=false;
 		let mergeSettings:boolean=false;
+		// ** #60, add a hidden choice to add files and merge settings only. No overwrite and no samples
+		let addNewMergeSettingsOnly:boolean=false;	// string will be "addNewMergeSettingsOnly"
 		//check to see if this command called with a forced choice
 		let choices:vscode.QuickPickItem | undefined=undefined;
 		if(forceChoice!==undefined && forceChoice!=='') {
@@ -2153,6 +2155,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(!choices){return;}
 			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
 			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+			addNewMergeSettingsOnly=choices.label===strgs.projTemplateQPItemHiddenAddNewWSettings;
 			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
@@ -2213,7 +2216,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
 		if(wsContents.some(entry => entry[0]!=='.vscode' 
 			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
-			&& !mergeSettings && !addSampleFiles)) {
+			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly)) {
 			//got something other than settings dir, ask if overwrite
 			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
@@ -2253,12 +2256,16 @@ export async function activate(context: vscode.ExtensionContext) {
 					//	if mergeSettings and not settings.json, skip any other files
 					//	if not merge but addsample, just write with .sample extension if file exists
 					//	if not merge and not sample, write as is
+					// NEW #60, if addNewMergeSettingsOnly, only merge settings.json and add new files, no samples, no overwrite 
 					let isSettings:boolean=(tEntry.fileName==='settings.json' && tEntry.folderName==='.vscode');
 					if(mergeSettings && !isSettings) {continue;}
 					if(!mergeSettings && addSampleFiles && !isSettings && existsSync(fpathUri.fsPath)) {
 						// ** add .sample to filename
 						fpathUri=fpathUri.with({path:fpathUri.path+'.sample'});
 					}
+					// for addNewMergeSettingsOnly, let only settings.json and non-existing files through
+					if(addNewMergeSettingsOnly && !(isSettings || !existsSync(fpathUri.fsPath))) {continue;}
+					//now write the file
 					bFContent=toBinaryArray(tEntry.fileContent);
 					try{
 						await vscode.workspace.fs.writeFile(fpathUri,bFContent);

@@ -172,7 +172,8 @@ export class ProjectBundleMgmt {
             // ask user about other actions
             const ansTemplate=await vscode.window.showInformationMessage(strgs.projectBundleGetSettingsQues,'Yes','No');
             if(ansTemplate==='Yes'){
-                vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemSamples);
+                // use the special hiddent command to add only new files and merge settings
+                vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemHiddenAddNewWSettings);
             }
             /*
             const ans=await vscode.window.showInformationMessage('Project bundle loaded, do you want to update libraries?','Yes','No');

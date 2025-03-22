@@ -150,6 +150,7 @@ export const projTemplateQPItemAll:string='All files (overwrite) and settings (m
 export const projTemplateQpItemMerge:string="Merge settings only (no files)";
 export const projTemplateQPItemSamples:string="Add Sample Files vs. overwrite, merge settings";
 export const projTemplateQPItemAddNew:string='Choose different template or add/remove from list';
+export const projTemplateQPItemHiddenAddNewWSettings:string='addNewMergeSettingsOnly';  //hidden item to add new files, no overwrite, with settings merge
 export const projTemplateAddMngQPitemAdd:string='Add new template or manage list...';
 export const projTemplateAddMngQPitemDflt:string='(reset to default)';
 export const projTemplateAddMngQPTitle:string='Choose personal template';
