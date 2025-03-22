@@ -128,8 +128,8 @@ export class ProjectBundleMgmt {
                         lastProjBundleTempDirUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
                     }
                 }
-                // if did not change the directory, then no more dirs to go down
-                if(curProjBundleTempDirUri.fsPath===lastProjBundleTempDirUri.fsPath){
+                // if did not find cp dir, and did not change the directory, then no more dirs to go down
+                if(foundCPy || curProjBundleTempDirUri.fsPath===lastProjBundleTempDirUri.fsPath){
                     break;
                 } else {
                     curProjBundleTempDirUri=lastProjBundleTempDirUri;
