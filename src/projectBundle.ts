@@ -137,6 +137,8 @@ export class ProjectBundleMgmt {
             }
             if(!foundCPy){
                 vscode.window.showErrorMessage(strgs.projectBundleNoFindCPinZipErr);
+                // ** cleanup the temp
+                fs.rmdirSync(projectBundleTempDirUri.fsPath, { recursive: true });
                 return;
             }
             //now read the cp directory and copy all files and folders to the workspace
