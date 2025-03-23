@@ -112,4 +112,5 @@
 # Issues #60 and #65, implement proj bundle loader, fix lib loader match
 - create release v0.1.8 for platform testing
 - fix bug from 0.1.8 and add new mode to template load, v0.1.8-a
+- add default proj template to use at end of bundle load, v0.1.8-b for testing before master merge.
 
