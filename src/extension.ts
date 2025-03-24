@@ -1616,22 +1616,25 @@ export async function activate(context: vscode.ExtensionContext) {
 	if(haveCurrentWorkspace){
 		// ** if archives are not there, ask if want to init
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
-			const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
-			if(ans==='Yes'){
-				try {
-					await libMgmtSys.setupLibSources();
-				} catch (error) {
-					//report the error but continue
-					vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
-					libMgmtSys.stopLibUpdateProgress();
-				}
-				try {
-					await stubMgmtSys.installStubs();
-				} catch (error) {
-					//report the error but continue
-					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
-					stubMgmtSys.stopStubUpdateProgress();
-					
+			// ** #68, if not only no arch folders but also missing lib and py files, just bail
+			if(libraryFolderExists || pyFilesExist){
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
+				if(ans==='Yes'){
+					try {
+						await libMgmtSys.setupLibSources();
+					} catch (error) {
+						//report the error but continue
+						vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+						libMgmtSys.stopLibUpdateProgress();
+					}
+					try {
+						await stubMgmtSys.installStubs();
+					} catch (error) {
+						//report the error but continue
+						vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+						stubMgmtSys.stopStubUpdateProgress();
+						
+					}
 				}
 			}
 		} else {
