@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.7-a",
+  "version": "0.1.8-b",
   "publisher": "standsi",
   "license": "MIT",
   "repository": {
@@ -100,6 +100,11 @@
       {
         "command": "circuitpythonsync.addtemplatelink",
         "title": "CP Add Template Link",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.loadProjectBundle",
+        "title": "CP Load Project Bundle",
         "category": "CircuitPythonSync"
       },
       {

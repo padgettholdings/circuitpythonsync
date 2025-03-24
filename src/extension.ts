@@ -10,6 +10,8 @@ import { fstat, writeFile,existsSync } from 'fs';
 import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
 import { LibraryMgmt } from './libraryMgmt.js';
 import { StubMgmt } from './stubMgmt.js';
+import { ProjectBundleMgmt } from './projectBundle.js';
+
 import * as axios from 'axios';
 import * as fs from 'fs';
 //import { isSet } from 'util/types';
@@ -448,16 +450,19 @@ interface cpProjTemplateItem {
 }
 
 let cpProjTemplate:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
+// ** #60, add a default project template that can be used when needed
+let cpProjTemplateDefault:cpProjTemplateItem[]=Array<cpProjTemplateItem>(0);
 let projTemplatePath:string='';	//** #57, make path global so that can use in make project quick pick
 
-function parseCpProjTemplate(templateFileContents:string){
+// ** #60, convert to function that returns the array
+function parseCpProjTemplate(templateFileContents:string): cpProjTemplateItem[] {
 	// clear the array
-	cpProjTemplate=Array<cpProjTemplateItem>(0);
+	let cpProjTemplateTemp=Array<cpProjTemplateItem>(0);
 	// first break into lines
 	// ** this needs to be platform agnostic, so use better RE
 	//const tlines:string[]=templateFileContents.split(/\n/);
 	const tlines:string[]=templateFileContents.split(/\r?\n|\r/);
-	if(tlines.length===0){return;}	//no data
+	if(tlines.length===0){return cpProjTemplateTemp;}	//no data
 	//now go through the lines
 	let cpItem:cpProjTemplateItem | undefined=undefined;
 	for(let line of tlines){
@@ -469,7 +474,7 @@ function parseCpProjTemplate(templateFileContents:string){
 			if(line.startsWith('>>>')){
 				// if already have an item, end it and add to array
 				if(cpItem){
-					cpProjTemplate.push(cpItem);
+					cpProjTemplateTemp.push(cpItem);
 				}
 				//start a new cpitem
 				cpItem={
@@ -496,8 +501,9 @@ function parseCpProjTemplate(templateFileContents:string){
 	}
 	//if active item, add to array 
 	if(cpItem){
-		cpProjTemplate.push(cpItem);
+		cpProjTemplateTemp.push(cpItem);
 	}
+	return cpProjTemplateTemp;
 }
 
 // ** #57, get the override project template text from file or URL in setting
@@ -751,24 +757,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** try to get template file and parse it
 	let templateContent:string='';
+	// ** #60, always get the default project template into the default array, may also use in main
+	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
+	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+	try{
+		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+		templateContent=fromBinaryArray(templateContentBytes);
+	} catch {
+		console.log(strgs.projTemplateNoLoad);
+		vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+		templateContent='';
+	}
+	if(templateContent){
+		cpProjTemplateDefault=parseCpProjTemplate(templateContent);
+	}
 	// ** #57, get the override project template text from file or URL in setting
 	const projTemplateText=await getProjTemplateText();
 	if(projTemplateText){
 		templateContent=projTemplateText;
-	} else {
-		//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-		const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
-		//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
-		try{
-			const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
-			templateContent=fromBinaryArray(templateContentBytes);
-		} catch {
-			console.log(strgs.projTemplateNoLoad);
-			vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
-		}
 	}
 	if(templateContent){
-		parseCpProjTemplate(templateContent);
+		cpProjTemplate = parseCpProjTemplate(templateContent);
 	}
 
 	// ** spin up the library management
@@ -1641,6 +1651,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	}
+	// ** #60, construct the package bundle management class
+	const projBundleMgmtSys=new ProjectBundleMgmt(context);
+	if(haveCurrentWorkspace){
+		// other init
+	}
+
+
 	/*
 	// now call the setup if have workspace
 	if(haveCurrentWorkspace){
@@ -2016,9 +2033,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		//now ready to download to workspace (have to check to resolve transpiler)
 		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 		if(!wsRootFolderUri) {return;}	//should never
+		//####FIXED#### the cpProjTemplate should be only the default!!
 		for(const dirEntry of dirContents){
 			if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
-					&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplate.some(tmpl => tmpl.folderName===dirEntry[0])))) {
+					&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplateDefault.some(tmpl => tmpl.folderName===dirEntry[0])))) {
 				const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
 				const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
 				try {
@@ -2110,7 +2128,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			if(templateContent){
-				parseCpProjTemplate(templateContent);
+				cpProjTemplate = parseCpProjTemplate(templateContent);
 			}
 		}
 		// put a separator before the next two picks
@@ -2128,6 +2146,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		let addSampleFiles:boolean=false;
 		let mergeSettings:boolean=false;
+		// ** #60, add a hidden choice to add files and merge settings only. No overwrite and no samples
+		let addNewMergeSettingsOnly:boolean=false;	// string will be "addNewMergeSettingsOnly"
 		//check to see if this command called with a forced choice
 		let choices:vscode.QuickPickItem | undefined=undefined;
 		if(forceChoice!==undefined && forceChoice!=='') {
@@ -2144,6 +2164,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(!choices){return;}
 			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
 			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
+			addNewMergeSettingsOnly=choices.label===strgs.projTemplateQPItemHiddenAddNewWSettings;
 			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
@@ -2187,7 +2208,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 				if(templateContent){
-					parseCpProjTemplate(templateContent);
+					cpProjTemplate = parseCpProjTemplate(templateContent);
 				}
 				// and loop back to see what action is needed
 				// clear choices since it may have been forced
@@ -2204,7 +2225,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
 		if(wsContents.some(entry => entry[0]!=='.vscode' 
 			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
-			&& !mergeSettings && !addSampleFiles)) {
+			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly)) {
 			//got something other than settings dir, ask if overwrite
 			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
 			if(ans==='No, cancel'){return;}
@@ -2212,7 +2233,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		//now go thru template either making directory or writing file
 		let fpathUri:vscode.Uri;
 		let bFContent:Uint8Array;
-		for(const tEntry of cpProjTemplate){
+		//####TBD#### use the default template if AddNewMergeSEttingsOnly forced
+		let cpProjTemplateCur=cpProjTemplate.slice();
+		if(addNewMergeSettingsOnly) {
+			cpProjTemplateCur=cpProjTemplateDefault.slice();
+		}
+		for(const tEntry of cpProjTemplateCur){
 			if(tEntry.folderName!=='/' && tEntry.folderName!=='' && tEntry.fileName==='') {
 				//this is just a folder, make it even if it exists??????
 				// ** if mergeSettings skip folder only, but anything else allow it
@@ -2244,12 +2270,16 @@ export async function activate(context: vscode.ExtensionContext) {
 					//	if mergeSettings and not settings.json, skip any other files
 					//	if not merge but addsample, just write with .sample extension if file exists
 					//	if not merge and not sample, write as is
+					// NEW #60, if addNewMergeSettingsOnly, only merge settings.json and add new files, no samples, no overwrite 
 					let isSettings:boolean=(tEntry.fileName==='settings.json' && tEntry.folderName==='.vscode');
 					if(mergeSettings && !isSettings) {continue;}
 					if(!mergeSettings && addSampleFiles && !isSettings && existsSync(fpathUri.fsPath)) {
 						// ** add .sample to filename
 						fpathUri=fpathUri.with({path:fpathUri.path+'.sample'});
 					}
+					// for addNewMergeSettingsOnly, let only settings.json and non-existing files through
+					if(addNewMergeSettingsOnly && !(isSettings || !existsSync(fpathUri.fsPath))) {continue;}
+					//now write the file
 					bFContent=toBinaryArray(tEntry.fileContent);
 					try{
 						await vscode.workspace.fs.writeFile(fpathUri,bFContent);
