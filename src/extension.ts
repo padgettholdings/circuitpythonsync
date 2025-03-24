@@ -66,6 +66,10 @@ let confirmDnldOverwrite:boolean;
 let confirmDnldSkipDots:boolean;
 let confirmDnldStdFoldersOnly:boolean;
 
+// ** #68 make libmgmt and stubmgmt global so can use in other modules **
+let libMgmtSys:LibraryMgmt;
+let stubMgmtSys:StubMgmt;
+
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
 	path: string
@@ -342,6 +346,37 @@ export async function getLibPath(): Promise<string>{
 	retVal=libName ? libName[0] : "";
 	return retVal;
 }
+
+// #76, add export functions to allow other modules to access the lib setup and stubs setup
+export async function setupLibSources(onlyIfArchMissing:boolean): Promise<void> {
+	if(libMgmtSys){
+		if(!onlyIfArchMissing || !libMgmtSys.libArchiveExists()){
+			try {
+				await libMgmtSys.setupLibSources();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.setupLibGeneralError+getErrorMessage(error));
+				libMgmtSys.stopLibUpdateProgress();
+			}
+		}
+	}
+}
+
+export async function setupStubs(onlyIfArchMissing:boolean): Promise<void> {
+	if (stubMgmtSys) {
+		if (!onlyIfArchMissing || !stubMgmtSys.stubsArchiveExists()) {
+			try {
+				await stubMgmtSys.installStubs();
+			} catch (error) {
+				//report the error but continue
+				vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));
+				stubMgmtSys.stopStubUpdateProgress();
+			}
+		}
+	}
+}
+
+
 
 // ** #37 select list for files to go to board, similar to libraries
 //checked list interface for lib
@@ -1609,16 +1644,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	// ** will need to construct both lib and stub mgmt classes,
 	//	but the ask if want to init them based on whether archive folders are there
 	// ** spin up the library management, calling the constructor
-	const libMgmtSys=new LibraryMgmt(context);
+	// ** #68, need these to be global
+	libMgmtSys=new LibraryMgmt(context);
 	// ** and then the stub management, calling the constructor
-	const stubMgmtSys=new StubMgmt(context);
+	stubMgmtSys=new StubMgmt(context);
 
 	if(haveCurrentWorkspace){
 		// ** if archives are not there, ask if want to init
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			// ** #68, if not only no arch folders but also missing lib and py files, just bail
 			if(libraryFolderExists || pyFilesExist){
-				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,'Yes','No');
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Update Libraries later'},'Yes','No');
 				if(ans==='Yes'){
 					try {
 						await libMgmtSys.setupLibSources();
@@ -1708,7 +1744,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(connectDrvPath){
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
-					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],'Yes','No');
+					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],
+						{modal:true,detail:'You can alway run Set Drive later'},'Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
