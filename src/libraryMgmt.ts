@@ -354,6 +354,11 @@ export class LibraryMgmt {
         if (!fs.existsSync(this._tempBundlesDir)) {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
         }
+
+        // #67 cleanup temp orig bundles
+        // NOTE: uses URI methods to avoid any platform issues
+        await this.cleanupTempBundles(Number(strgs.libBundleZipTempFilesToKeep));
+
         this._progInc=15;
         // first check for lib only zips in /libArchive
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,strgs.workspaceLibArchiveFolder);
@@ -723,6 +728,38 @@ export class LibraryMgmt {
         //        console.error(error);
         //    }
         return 'done';
+    }
+
+
+    private async cleanupTempBundles(numFilesToKeep: number) {
+        interface dirListWDateTag {
+            file:string,
+            type:vscode.FileType,
+            mtime:number
+        }
+        //
+        // use URI methods to avoid any platform issues
+        const tempBundlesDirUri=vscode.Uri.file(this._tempBundlesDir);
+        const tempOrigBundlesDirContents=await vscode.workspace.fs.readDirectory(tempBundlesDirUri);
+        let dirContentsWDate: dirListWDateTag[] = Array<dirListWDateTag>(0);
+        for(const [file, type] of tempOrigBundlesDirContents) {
+            if(type===vscode.FileType.File) {
+            const fileStat=await vscode.workspace.fs.stat(vscode.Uri.joinPath(tempBundlesDirUri,file));
+            dirContentsWDate.push({file:file,type:type,mtime:fileStat.mtime});
+            }
+        }
+        // if less than or equal to numFilesToKeep (*2, one of each py type), return
+        if(dirContentsWDate.length<=2*numFilesToKeep) {
+            return;
+        }
+        // sort by date ascending so have oldest first
+        dirContentsWDate.sort((a,b) => a.mtime-b.mtime);
+        // remove the oldest files
+        let fileToDelete:vscode.Uri;
+        for(let i=0; i<dirContentsWDate.length-2*numFilesToKeep; i++) {
+            fileToDelete=vscode.Uri.joinPath(tempBundlesDirUri,dirContentsWDate[i].file);
+            await vscode.workspace.fs.delete(fileToDelete);
+        }
     }
     
     private async ziplibextract(libOnlyZipSource: string, libOnlyZipTempDir: string) {
