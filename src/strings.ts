@@ -218,7 +218,7 @@ export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitp
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
 export const selLibQPplaceholder:string='Select Libraries to Add';
-export const selLibsNoLibFolder:string='No libraries folder found, create before selecting';
+export const selLibsNoLibFolder:string='No libraries folder found, create as "lib" before selecting?';      //yes or no
 export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
@@ -236,8 +236,8 @@ export const updateLibUpdatedMsg:string[]=[
     ' and CP version: ' //+cpVersion+
 ];
 export const updateLibGeneralError:string='Error updating the libraries: ';    //+err.message
-export const libCmdsReadyNeedSettingsError:string='Please set the library tag and CircuitPython versions in the settings';
-export const libCmdsReadyVerChgError:string='Library tag or CircuitPython versions changed, run update first before adding new libs';
+export const libCmdsReadyNeedSettingsError:string='Must run Install or Update Libraries to set tags before add new libs.';
+export const libCmdsReadyVerChgError:string='Must run Install or Update Libraries first due to pending version change before adding new libs.';
 export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
 export const libDnldBundleExistsLog:string='File already exists:';
