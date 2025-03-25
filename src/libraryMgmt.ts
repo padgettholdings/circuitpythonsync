@@ -6,7 +6,7 @@ import * as zl from 'zip-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import {getLibPath} from './extension.js';
+import {getLibPath, setupStubs} from './extension.js';
 //import { timeStamp } from 'console';
 
 export class LibraryMgmt {
@@ -79,6 +79,8 @@ export class LibraryMgmt {
                         try {
                             await this.setupLibSources();
                             this._libUpdateVerChg=false;
+                            // ** #68, try to do the stubs if no stubs archive
+                            await setupStubs(true);
                         } catch (error) {
                             //report the error but continue, will get out
                             vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
@@ -101,6 +103,8 @@ export class LibraryMgmt {
                             try {
                                 await this.setupLibSources(); //will do the update
                                 this._libUpdateVerChg=false;
+                                // ** #68, try to do the stubs if no stubs archive
+                                await setupStubs(true);
                             } catch (error) {
                                 //report the error but continue, will get out
                                 vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
@@ -112,6 +116,8 @@ export class LibraryMgmt {
                         try {
                             await this.setupLibSources(); //will do the update
                             this._libUpdateVerChg=false;
+                            // ** #68, try to do the stubs if no stubs archive
+                            await setupStubs(true);
                         } catch (error) {
                             //report the error but continue, will get out
                             vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));	

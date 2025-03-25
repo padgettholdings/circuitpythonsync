@@ -187,7 +187,7 @@ export const diffScreenHeader:string='Workspace to Board compare file: ';   //+l
 //library and stubs related
 export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
 export const workspaceLibArchiveFolder:string='libArchive';
-export const updateLibQPtitle:string='Update Libraries';
+export const updateLibQPtitle:string='Install or Update Libraries';
 export const updateLibQPSelTT:string='Select Libraries for Board';
 export const updateLibQPSelPlaceholder:string='';   //'Accept or change the library tag and CircuitPython version';
 export const updateLibQPItemTop:qpitem={label:'Click to update with current bundle settings',description:'[Or click tag and/or version to modify]'}; //{label:'Enter or click here to update with current settings',description:'Or click library tag or CP version to change'};
