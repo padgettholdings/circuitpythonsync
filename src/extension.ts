@@ -2634,6 +2634,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** #36, refresh the board explorer
 				bfe.boardFileProvider.refresh(curDriveSetting);
 			}
+			// #73, update drive map button
+			statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;
 		}
 	});
 	context.subscriptions.push(cfgChg);
