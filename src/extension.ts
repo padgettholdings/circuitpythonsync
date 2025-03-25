@@ -1651,7 +1651,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			// ** #68, if not only no arch folders but also missing lib and py files, just bail
 			if(libraryFolderExists || pyFilesExist){
-				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Update Libraries later'},'Yes','No');
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Install or Update Libraries later'},'Yes','No');
 				if(ans==='Yes'){
 					try {
 						await libMgmtSys.setupLibSources();
