@@ -8,12 +8,6 @@ while True:
 
 >>>lib/
 
->>>pyrightconfig.json.sample
-{
-    "reportShadowedImports":false,
-    "reportMissingImports":"information"
-}
-
 >>>settings.toml
 # To auto-connect to Wi-Fi on enabled boards uncomment and enter correct info
 #CIRCUITPY_WIFI_SSID="mywifissd"
