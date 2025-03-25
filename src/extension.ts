@@ -50,6 +50,9 @@ let statusBarItem2: vscode.StatusBarItem;
 
 // current drive config
 let curDriveSetting: string;
+// #73, status bar button to map drive
+let statusBarMapDrv: vscode.StatusBarItem;
+
 // need explicit flag to make sure workspace is set so can disable everythin
 let haveCurrentWorkspace: boolean;
 // track whether library folder is there or not
@@ -1618,9 +1621,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	//create the status bar button
 	//NOTE even with no workspace create but don't show
-	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
+	statusBarItem1= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,55);
 	statusBarItem1.command=button1Id;
-	statusBarItem2=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,51);
+	statusBarItem2=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,54);
 	statusBarItem2.command=button2Id;
 	updateStatusBarItems();
 	//statusBarItem1.text='CPCopy';
@@ -1978,11 +1981,35 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		statusBarItem1.show();
 		statusBarItem2.show();
+		// #73, also update board map button on status bar
+		statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;
 		//
 		//bfe.boardFileProvider=new BoardFileProvider(curDriveSetting);
 		bfe.boardFileProvider.refresh(curDriveSetting);
+		// ** #73, if no board chosen ask if want to select one
+		const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
+		if(!curBoardSelection){
+			const ans=await vscode.window.showInformationMessage('Do you want to select a board type?', 'Yes','No');
+			if(ans==='Yes'){
+				// call the select board command
+				vscode.commands.executeCommand(strgs.cmdSelectBoardPKG);
+			}
+		}
+		
 	});
 	context.subscriptions.push(fileCmd);
+
+	// ** #73, create status bar button to map drive, tooltip linked to command
+	statusBarMapDrv=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
+	statusBarMapDrv.text='CP$(plug)';
+	statusBarMapDrv.command=openDirId;
+	statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;
+	if(haveCurrentWorkspace){
+		statusBarMapDrv.show();
+	} else {
+		statusBarMapDrv.hide();
+	}
+	context.subscriptions.push(statusBarMapDrv);
 
 	// ** set defaults for remembered download settings
 	// ** #34, by default only copy "standard" project folders
