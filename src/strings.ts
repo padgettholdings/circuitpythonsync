@@ -281,8 +281,8 @@ export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP ta
 export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message
 export const libBundleZipTempFilesToKeep:string='5';  //number of temp files to keep of each py type- MUST BE NUMBER
 // ** project bundle related
-export const enterProjectBundleUrl:string='Enter a valid URL to the project bundle';
-export const projectBundleUrlPlaceholder:string='URL must be https://, or ESC to cancel';
+export const enterProjectBundleUrl:string='Enter a valid URL to the bundle, or just Enter for local file';
+export const projectBundleUrlPlaceholder:string='URL must be https://, or Enter to pick file, or ESC to cancel';
 export const projectBundleArchiveFolderName:string='projectBundleArchive';
 export const projectBundleTempFolderName:string='projectBundleTemp';
 export const projectBundleArchiveDirNotInitErr:string='Project bundle archive directory not initialized, restart';
