@@ -296,28 +296,28 @@ export class LibraryMgmt {
         context.subscriptions.push(selectLibsCmd);
 
         // ** #71, reset global lib tag and cp ver vars if config changes
+        // NOTE that the full version is not used here, only the tag and base version
         vscode.workspace.onDidChangeConfiguration((e) => {  
             if(e.affectsConfiguration(`circuitpythonsync.${strgs.confCurlibPKG}`) || 
-                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
-                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPfullverPKG}`)) {
+                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ) {
                 const confCurlibPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                 const confCPbaseverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
-                const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
+                //const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
                 // handle two conditions:
                 // - if the configs are blank, set the instances to blank
                 // - if the configs are different from the instance, swap and set the version chg flag, 
                 //      THEN run the lib install
-                if(confCurlibPKG === '' && confCPbaseverPKG === '' && confCPfullverPKG === '') {
+                if(confCurlibPKG === '' && confCPbaseverPKG === '' ) {
                     this._libTag='';
                     this._cpVersion='';
-                    this._cpVersionFull='';
+                    //this._cpVersionFull='';
                     this._libUpdateVerChg=false;  //reset flag so setup will run
                     return;     //get out because likely config is gone
                 }
-                if(this._libTag!==confCurlibPKG || this._cpVersion!==confCPbaseverPKG || this._cpVersionFull!==confCPfullverPKG) {
+                if(this._libTag!==confCurlibPKG || this._cpVersion!==confCPbaseverPKG ) {
                     this._libTag=confCurlibPKG;
                     this._cpVersion=confCPbaseverPKG;
-                    this._cpVersionFull=confCPfullverPKG;
+                    //this._cpVersionFull=confCPfullverPKG;
                     this._libUpdateVerChg=true;  //set flag to true so update will do setup
                     // now run the setup to update the libraries
                     vscode.commands.executeCommand(strgs.cmdLibUpdatePKG);
