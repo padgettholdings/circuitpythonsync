@@ -114,3 +114,7 @@
 - fix bug from 0.1.8 and add new mode to template load, v0.1.8-a
 - add default proj template to use at end of bundle load, v0.1.8-b for testing before master merge.
 
+# Issues #71, #73, #78, enhancements for lib/stubs, selecting libs, and alter default template
+- create release v0.1.9 for platform testing
+- fix bug in lib mgmt config spy to remove full cp version, release v0.1.9-a
+
