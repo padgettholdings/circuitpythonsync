@@ -118,3 +118,5 @@
 - create release v0.1.9 for platform testing
 - fix bug in lib mgmt config spy to remove full cp version, release v0.1.9-a
 
+# Issue #79 - add file upload option for project bundles
+- create release v0.1.10 for platform testing
