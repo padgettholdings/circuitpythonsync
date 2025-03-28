@@ -1774,6 +1774,37 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(wkspcChg);
 
+
+	async function getBootFileContents(curDriveSetting:string): Promise<string> {
+		let retval:string='';
+		let foundBootFile:string='';
+		const _curDrive=curDriveSetting;
+		if(_curDrive){
+			let baseUri=_curDrive;	
+			if (os.platform()==='win32') {
+				baseUri='file:'+baseUri;
+			}
+			const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
+			const dirContents=await vscode.workspace.fs.readDirectory(boardUri);
+			let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+				if(value.length>0){
+					return value[0]===strgs_cpBootFile;
+				} else {
+					return false;
+				}
+			});
+			if(foundBootFile){
+				//get the contents of the boot_out.txt file
+				const bootFileUri:vscode.Uri=vscode.Uri.joinPath(boardUri,strgs_cpBootFile);
+				const bootFileContents=await vscode.workspace.fs.readFile(bootFileUri);
+				const constBootContent=fromBinaryArray(bootFileContents);
+				retval=constBootContent;
+			}
+		}
+		return retval;
+	}
+
+
 	const openDirId:string=strgs.cmdSetDirPKG;
 	//command to get drive using open file dialog -- NOW it tries to find CP drive first
 	const fileCmd=vscode.commands.registerCommand(openDirId, async () => {
@@ -1990,9 +2021,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		//bfe.boardFileProvider=new BoardFileProvider(curDriveSetting);
 		bfe.boardFileProvider.refresh(curDriveSetting);
 		// ** #73, if no board chosen ask if want to select one
+		// ** #82 get contents of boot file to show
 		const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
 		if(!curBoardSelection){
-			const ans=await vscode.window.showInformationMessage('Do you want to select a board type?', 'Yes','No');
+			const bootContents=await getBootFileContents(curDriveSetting);
+			let bootFileBoard:string='';
+			if(bootContents && bootContents.length>0){
+				const re=/board\sid:(.+)\n/i;
+				const match=bootContents.match(re);
+				if(match && match.length>1){
+					bootFileBoard=match[1].trim();
+				}
+			}
+			const ans=await vscode.window.showInformationMessage('Do you want to select a board type?'+(bootFileBoard ? `(boot_file lists ${bootFileBoard})` :''), 'Yes','No');
 			if(ans==='Yes'){
 				// call the select board command
 				vscode.commands.executeCommand(strgs.cmdSelectBoardPKG);
