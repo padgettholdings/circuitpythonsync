@@ -2330,10 +2330,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
 		if(wsContents.some(entry => entry[0]!=='.vscode' 
 			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
-			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly)) {
-			//got something other than settings dir, ask if overwrite
-			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
-			if(ans==='No, cancel'){return;}
+			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly &&
+			// #81, check if none of the template files are present, if so don't ask
+			(cpProjTemplate.some(tmpl => (tmpl.folderName===entry[0] && entry[1]===vscode.FileType.Directory) || (tmpl.fileName===entry[0] && entry[1]===vscode.FileType.File))))) {
+				const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
+				if(ans==='No, cancel'){return;}
 		}
 		//now go thru template either making directory or writing file
 		let fpathUri:vscode.Uri;
