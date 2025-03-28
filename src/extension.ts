@@ -526,10 +526,26 @@ function parseCpProjTemplate(templateFileContents:string): cpProjTemplateItem[] 
 					cpItem.fileName=fldrPath[0];
 				}
 				if(fldrPath.length>1){
-					cpItem.folderName=fldrPath[0];
-					if(fldrPath[1]){
-						cpItem.fileName=fldrPath[1];
+					// ** #70- allow for multi-level folders
+					
+					for(let ix=0; ix<fldrPath.length; ix++){
+						if(ix<fldrPath.length-1){
+						cpItem.folderName+=fldrPath[ix]+(ix<fldrPath.length-2 ? '/':'');
+						} else {
+							//last segment can be either filename or folder
+							if(fldrPath[ix].length>0){
+								cpItem.fileName=fldrPath[ix];
+							} else {
+								//if last segment is empty, then it is a folder
+								cpItem.folderName+= '/'+fldrPath[ix];
+							}
+						}
 					}
+						
+					// cpItem.folderName=fldrPath[0];
+					// if(fldrPath[1]){
+					// 	cpItem.fileName=fldrPath[1];
+					// }
 				}
 			} else {
 				//just flywheel through until start header
