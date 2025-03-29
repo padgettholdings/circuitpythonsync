@@ -527,7 +527,8 @@ function parseCpProjTemplate(templateFileContents:string): cpProjTemplateItem[] 
 				}
 				if(fldrPath.length>1){
 					// ** #70- allow for multi-level folders
-					
+					// clear out the default root folder name
+					cpItem.folderName='';
 					for(let ix=0; ix<fldrPath.length; ix++){
 						if(ix<fldrPath.length-1){
 						cpItem.folderName+=fldrPath[ix]+(ix<fldrPath.length-2 ? '/':'');
@@ -537,7 +538,7 @@ function parseCpProjTemplate(templateFileContents:string): cpProjTemplateItem[] 
 								cpItem.fileName=fldrPath[ix];
 							} else {
 								//if last segment is empty, then it is a folder
-								cpItem.folderName+= '/'+fldrPath[ix];
+								//cpItem.folderName+= '/'+fldrPath[ix];
 							}
 						}
 					}
