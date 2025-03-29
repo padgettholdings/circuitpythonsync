@@ -2438,7 +2438,9 @@ export async function activate(context: vscode.ExtensionContext) {
 						return;
 					}
 					//now merge, new overwrites existing
-					const mergedObj={...existObj,...newObj};
+					// ** #70, allow deep merge of settings.json with array concatenation
+					const mergedObj=deepMerge(existObj,newObj);
+					//const mergedObj={...existObj,...newObj};
 					//now write back
 					bFContent=toBinaryArray(JSON.stringify(mergedObj,null,2));
 					try{
@@ -2471,6 +2473,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(makeProjCmd);
+
+	// ** #70, allow deep merge of settings.json with array concatenation
+	function deepMerge<T extends object>(target: T, source: T): T {
+		for (const key in source) {
+			//console.log(key);
+			if (source[key] instanceof Object && key in target) {
+				if(source[key] instanceof Array && target[key] instanceof Array){
+					const _src = [...source[key], ...target[key]] as T[Extract<keyof T, string>];
+					source[key] = [...new Set(_src as unknown[])] as T[Extract<keyof T, string>];
+				} else {
+					if (typeof source[key] === 'object' && typeof target[key] === 'object' && source[key] !== null && target[key] !== null) {
+						Object.assign(source[key], deepMerge(target[key], source[key]));
+					}
+				}
+			}
+		}
+		return Object.assign(target || {}, source);
+	}
+	
 
 	// ** #57, command to add new links for templates **
 	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
