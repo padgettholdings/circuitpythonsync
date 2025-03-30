@@ -2230,9 +2230,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		);
 		if(projTemplatePaths && projTemplatePaths.length>0) {
 			// ** add the paths to the pick list
+			// ** #85, add description to each pick that shows start and end of string so can tell better the template
 			pickTemplates=projTemplatePaths.map((path:string) => {
 				return {
-					label: path
+					label: path,
+					detail: path.length > 45 ?
+						`      ${path.substring(0, 15)}...${path.substring(path.length - 30)}` : // show start and end of string
+						`      ${path}` // if path is short enough just show it all
 				};
 			});
 		} else {
@@ -2522,9 +2526,13 @@ export async function activate(context: vscode.ExtensionContext) {
 					kind: vscode.QuickPickItemKind.Separator
 				});
 				// ** add the paths to the pick list
+				// ** #85, add description to each pick that shows start and end of string so can tell better the template
 				const existingPicks=projTemplatePaths.map((path:string) => {
 					return {
-						label: '$(trash)'+path
+						label: '$(trash)'+path,
+						detail: path.length > 45 ?
+						`      ${path.substring(0, 15)}...${path.substring(path.length - 30)}` : // show start and end of string
+						`      ${path}` // if path is short enough just show it all
 					};
 				});
 				picks.push(...existingPicks);
