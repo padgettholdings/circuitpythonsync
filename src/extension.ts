@@ -2044,7 +2044,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			const bootContents=await getBootFileContents(curDriveSetting);
 			let bootFileBoard:string='';
 			if(bootContents && bootContents.length>0){
-				const re=/board\sid:(.+)\n/i;
+				const re=/board\sid:(.+)[\n\r]+/i;
 				const match=bootContents.match(re);
 				if(match && match.length>1){
 					bootFileBoard=match[1].trim();
