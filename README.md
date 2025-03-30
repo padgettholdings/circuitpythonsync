@@ -123,4 +123,6 @@
 
 # Issues #70, #81, #85 - adding new template capabilities and fixes
 - create release v0.1.11 for platform testing
+- bug #86 found, board id not being read right, fixed in release v0.1.11-a
+
 
