@@ -120,3 +120,7 @@
 
 # Issue #79 - add file upload option for project bundles
 - create release v0.1.10 for platform testing
+
+# Issues #70, #81, #85 - adding new template capabilities and fixes
+- create release v0.1.11 for platform testing
+
