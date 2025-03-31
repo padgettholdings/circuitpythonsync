@@ -98,7 +98,9 @@ export const canCopyInsCurDriveMKDN:string[]=[
     ' BUT not USB drive!'
 ];
 export const mustHaveWkspce:string='!! Must have open workspace !!';
-export const mustSetDrv:string='!! Must set drive before copy !!';
+export const mustSetDrv:string='!! Must select drive before copy operation !!';
+export const mustSetDrvDnld:string='!! Must select drive before download !!';
+export const mustSetDrvDiff:string='!! Must select drive before diff operation !!';
 export const noFilesSpecd:string='!! No files specified to copy exist !!';
 export const noLibSpecd:string='!! No libraries specified to copy exist !!';
 export const warnEntireLib:string='WARNING! Entire lib folder will be copied, continue?';

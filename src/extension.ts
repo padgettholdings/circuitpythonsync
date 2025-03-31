@@ -2085,7 +2085,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			vscode.window.showInformationMessage(strgs.mustSetDrvDnld);
 			return;
 		}
 		//now try to read the mapped drive directory
@@ -2621,7 +2621,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//also have to have drive mapping to try to compare to
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			vscode.window.showInformationMessage(strgs.mustSetDrvDiff);
 			return;
 		}
 		// ** the arg array should have a length >=1 if context driven, else can look at active editor
