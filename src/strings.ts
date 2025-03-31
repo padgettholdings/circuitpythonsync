@@ -238,8 +238,8 @@ export const updateLibUpdatedMsg:string[]=[
     ' and CP version: ' //+cpVersion+
 ];
 export const updateLibGeneralError:string='Error updating the libraries: ';    //+err.message
-export const libCmdsReadyNeedSettingsError:string='Must run Install or Update Libraries to set tags before add new libs.';
-export const libCmdsReadyVerChgError:string='Must run Install or Update Libraries first due to pending version change before adding new libs.';
+export const libCmdsReadyNeedSettingsError:string='Before selecting libraries run Install or Update Libraries to fetch bundle.';
+export const libCmdsReadyVerChgError:string='Before selecting libraries run Install or Update Libraries due to pending version change.';
 export const libCmdsReadyNoSourceError:string='Library source files not found, run update first';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
 export const libDnldBundleExistsLog:string='File already exists:';
