@@ -2061,7 +2061,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(fileCmd);
 
 	// ** #73, create status bar button to map drive, tooltip linked to command
-	statusBarMapDrv=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
+	statusBarMapDrv=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,53);
 	statusBarMapDrv.text='CP$(plug)';
 	statusBarMapDrv.command=openDirId;
 	statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;

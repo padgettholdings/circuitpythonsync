@@ -106,7 +106,7 @@ export class StubMgmt {
 
         // create status bar button linked to selectBoardCmd
         const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
-        this._selectBoardButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,53);
+        this._selectBoardButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
         this._selectBoardButton.text = 'CP$(circuit-board)';
         this._selectBoardButton.command = selectBoardCmdId;
         this._selectBoardButton.tooltip = curBoardSelection ? new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+curBoardSelection+strgs.boardButtonSetTTMKDN[1]) : strgs.boardButtonNotSetTTMKDN;
