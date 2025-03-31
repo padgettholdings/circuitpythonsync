@@ -158,7 +158,7 @@ export const projTemplateAddMngQPitemDflt:string='(reset to default)';
 export const projTemplateAddMngQPTitle:string='Choose personal template';
 export const projTemplateAddMngQPTPlchldr:string='Pick the path or link to the desired template';
 export const projAddTemplateLinkTitle:string='Add a new personal template or remove from list';
-export const projAddTemplateLinkPlaceholder:string='Choose to add or click existing to remove, or ESC to exit';
+export const projAddTemplateLinkPlaceholder:string='Choose Add or click template to remove from list, or ESC to exit';
 export const projAddTemplateLinkitemUrl:string='Add new URL';
 export const projAddTemplateLinkitemPath:string='Add new local path';
 
