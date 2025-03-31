@@ -526,10 +526,27 @@ function parseCpProjTemplate(templateFileContents:string): cpProjTemplateItem[] 
 					cpItem.fileName=fldrPath[0];
 				}
 				if(fldrPath.length>1){
-					cpItem.folderName=fldrPath[0];
-					if(fldrPath[1]){
-						cpItem.fileName=fldrPath[1];
+					// ** #70- allow for multi-level folders
+					// clear out the default root folder name
+					cpItem.folderName='';
+					for(let ix=0; ix<fldrPath.length; ix++){
+						if(ix<fldrPath.length-1){
+						cpItem.folderName+=fldrPath[ix]+(ix<fldrPath.length-2 ? '/':'');
+						} else {
+							//last segment can be either filename or folder
+							if(fldrPath[ix].length>0){
+								cpItem.fileName=fldrPath[ix];
+							} else {
+								//if last segment is empty, then it is a folder
+								//cpItem.folderName+= '/'+fldrPath[ix];
+							}
+						}
 					}
+						
+					// cpItem.folderName=fldrPath[0];
+					// if(fldrPath[1]){
+					// 	cpItem.fileName=fldrPath[1];
+					// }
 				}
 			} else {
 				//just flywheel through until start header
@@ -2027,7 +2044,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			const bootContents=await getBootFileContents(curDriveSetting);
 			let bootFileBoard:string='';
 			if(bootContents && bootContents.length>0){
-				const re=/board\sid:(.+)\n/i;
+				const re=/board\sid:(.+)[\n\r]+/i;
 				const match=bootContents.match(re);
 				if(match && match.length>1){
 					bootFileBoard=match[1].trim();
@@ -2216,9 +2233,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		);
 		if(projTemplatePaths && projTemplatePaths.length>0) {
 			// ** add the paths to the pick list
+			// ** #85, add description to each pick that shows start and end of string so can tell better the template
 			pickTemplates=projTemplatePaths.map((path:string) => {
 				return {
-					label: path
+					label: path,
+					detail: path.length > 45 ?
+						`      ${path.substring(0, 15)}...${path.substring(path.length - 30)}` : // show start and end of string
+						`      ${path}` // if path is short enough just show it all
 				};
 			});
 		} else {
@@ -2333,10 +2354,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** allow for settings.json merge and lib/stub archive directories to be present, will never template those
 		if(wsContents.some(entry => entry[0]!=='.vscode' 
 			&& entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName 
-			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly)) {
-			//got something other than settings dir, ask if overwrite
-			const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
-			if(ans==='No, cancel'){return;}
+			&& !mergeSettings && !addSampleFiles && !addNewMergeSettingsOnly &&
+			// #81, check if none of the template files are present, if so don't ask
+			(cpProjTemplate.some(tmpl => (tmpl.folderName===entry[0] && entry[1]===vscode.FileType.Directory) || (tmpl.fileName===entry[0] && entry[1]===vscode.FileType.File))))) {
+				const ans=await vscode.window.showWarningMessage(strgs.projTemplateConfOverwrite,'Yes','No, cancel');
+				if(ans==='No, cancel'){return;}
 		}
 		//now go thru template either making directory or writing file
 		let fpathUri:vscode.Uri;
@@ -2423,7 +2445,9 @@ export async function activate(context: vscode.ExtensionContext) {
 						return;
 					}
 					//now merge, new overwrites existing
-					const mergedObj={...existObj,...newObj};
+					// ** #70, allow deep merge of settings.json with array concatenation
+					const mergedObj=deepMerge(existObj,newObj);
+					//const mergedObj={...existObj,...newObj};
 					//now write back
 					bFContent=toBinaryArray(JSON.stringify(mergedObj,null,2));
 					try{
@@ -2457,6 +2481,25 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(makeProjCmd);
 
+	// ** #70, allow deep merge of settings.json with array concatenation
+	function deepMerge<T extends object>(target: T, source: T): T {
+		for (const key in source) {
+			//console.log(key);
+			if (source[key] instanceof Object && key in target) {
+				if(source[key] instanceof Array && target[key] instanceof Array){
+					const _src = [...source[key], ...target[key]] as T[Extract<keyof T, string>];
+					source[key] = [...new Set(_src as unknown[])] as T[Extract<keyof T, string>];
+				} else {
+					if (typeof source[key] === 'object' && typeof target[key] === 'object' && source[key] !== null && target[key] !== null) {
+						Object.assign(source[key], deepMerge(target[key], source[key]));
+					}
+				}
+			}
+		}
+		return Object.assign(target || {}, source);
+	}
+	
+
 	// ** #57, command to add new links for templates **
 	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
 	const addNewTemplateLinkCmd=vscode.commands.registerCommand(cmdAddNewTemplateLinkId, async (fromMakeProject:boolean) => {
@@ -2486,9 +2529,13 @@ export async function activate(context: vscode.ExtensionContext) {
 					kind: vscode.QuickPickItemKind.Separator
 				});
 				// ** add the paths to the pick list
+				// ** #85, add description to each pick that shows start and end of string so can tell better the template
 				const existingPicks=projTemplatePaths.map((path:string) => {
 					return {
-						label: '$(trash)'+path
+						label: '$(trash)'+path,
+						detail: path.length > 45 ?
+						`      ${path.substring(0, 15)}...${path.substring(path.length - 30)}` : // show start and end of string
+						`      ${path}` // if path is short enough just show it all
 					};
 				});
 				picks.push(...existingPicks);
