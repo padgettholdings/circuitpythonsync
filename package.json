@@ -99,7 +99,7 @@
       },
       {
         "command": "circuitpythonsync.addtemplatelink",
-        "title": "CP Add Template Link",
+        "title": "CP Manage Templates",
         "category": "CircuitPythonSync"
       },
       {

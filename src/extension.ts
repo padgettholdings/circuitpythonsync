@@ -2205,6 +2205,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		let readyForTemplateProc:boolean=false;
 		let picks:vscode.QuickPickItem[]=[
 			{
+				label: 'Apply Template',
+				kind: vscode.QuickPickItemKind.Separator
+			},
+			{
 				label: strgs.projTemplateQPItemAll,
 				picked: false
 			},
@@ -2224,7 +2228,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let pickTemplates:vscode.QuickPickItem[]=[];
 		picks.push(
 			{
-				label:'',
+				label:'Templates',
 				kind:vscode.QuickPickItemKind.Separator
 			},
 			{
@@ -2262,7 +2266,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// put a separator before the next two picks
 		pickTemplates.unshift({
-			label: '',
+			label: strgs.projTemplateAddMngQPitemDflt
+		});
+		pickTemplates.unshift({
+			label: 'Choose',
 			kind: vscode.QuickPickItemKind.Separator
 		});
 		// add command to add new templates at top
@@ -2271,7 +2278,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		// now put a default at the top of the list
 		pickTemplates.unshift({
-			label: strgs.projTemplateAddMngQPitemDflt
+			label: 'Templates',
+			kind: vscode.QuickPickItemKind.Separator
 		});
 		let addSampleFiles:boolean=false;
 		let mergeSettings:boolean=false;
