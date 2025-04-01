@@ -836,6 +836,35 @@ export async function activate(context: vscode.ExtensionContext) {
 		cpProjTemplate = parseCpProjTemplate(templateContent);
 	}
 
+	// ** #88 - add virtual doc provider to show raw templates
+	const vtScheme:string='cpstemplate';
+	const vtProvider=new class implements vscode.TextDocumentContentProvider {
+		async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+			let retval='';
+			retval=await getProjTemplateText();
+			// if empty is the default, use that
+			if(!retval){
+				const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+				//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+				try{
+					const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+					retval=fromBinaryArray(templateContentBytes);
+				} catch {
+					console.log(strgs.projTemplateNoLoad);
+					vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+					return '';
+				}
+			}
+			return retval;
+		}
+	};
+	context.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider(vtScheme, vtProvider)
+	);
+
+
+
+
 	// ** spin up the library management
 	/*
 	const libMgmtSys=new LibraryMgmt(context);
@@ -2232,7 +2261,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				kind:vscode.QuickPickItemKind.Separator
 			},
 			{
-			label:strgs.projTemplateQPItemAddNew
+				label:strgs.projTemplateQPItemAddNew
+			},
+			{
+				label: strgs.projTemplateQPItemView
 			}
 		);
 		if(projTemplatePaths && projTemplatePaths.length>0) {
@@ -2285,6 +2317,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		let mergeSettings:boolean=false;
 		// ** #60, add a hidden choice to add files and merge settings only. No overwrite and no samples
 		let addNewMergeSettingsOnly:boolean=false;	// string will be "addNewMergeSettingsOnly"
+		// #88 - add view template raw
+		let viewTemplateRaw:boolean=false;
 		//check to see if this command called with a forced choice
 		let choices:vscode.QuickPickItem | undefined=undefined;
 		if(forceChoice!==undefined && forceChoice!=='') {
@@ -2302,6 +2336,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
 			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
 			addNewMergeSettingsOnly=choices.label===strgs.projTemplateQPItemHiddenAddNewWSettings;
+			viewTemplateRaw=choices.label===strgs.projTemplateQPItemView;
 			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
@@ -2350,6 +2385,26 @@ export async function activate(context: vscode.ExtensionContext) {
 				// and loop back to see what action is needed
 				// clear choices since it may have been forced
 				choices=undefined;
+			} else if(viewTemplateRaw) {
+				// ** #88, show the raw template text
+				let docTitle='CurrentTemplate';
+				if(projTemplatePath){
+					/*
+					if(projTemplatePath.includes('/')){
+						docTitle=projTemplatePath.substring(projTemplatePath.lastIndexOf('/')+1);
+					} else if (projTemplatePath.includes('\\')){
+						docTitle=projTemplatePath.substring(projTemplatePath.lastIndexOf('\\')+1);
+					}
+					*/
+					docTitle=projTemplatePath;
+				} else {
+					docTitle='<DefaultTemplate>';
+				}
+				const vturi=vscode.Uri.parse(vtScheme+':'+docTitle);
+				const vtdoc=await vscode.workspace.openTextDocument(vturi);
+				await vscode.window.showTextDocument(vtdoc,{preview:false});
+				choices=undefined;
+				return;		//get out of command so can see template
 			} else {
 				// ** set the flag to true to proceed
 				readyForTemplateProc=true;
