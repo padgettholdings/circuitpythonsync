@@ -652,8 +652,8 @@ async function getProjTemplateText(): Promise<string> {
 			}
 		} else {
 			// likely invalid path on this platform, flag error the same way as bad file
-			console.log(strgs.projTemplatePersNoLoad,'INVALID_FILE_PATH');
-			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+'INVALID_FILE_PATH');
+			console.log(strgs.projTemplatePersNoLoad,strgs.projTemplateNoLoadUriErrCode);
+			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+strgs.projTemplateNoLoadUriErrCode);
 			retVal='';	//make sure return is empty, also check at end to reset config
 		}
 	}
@@ -2249,7 +2249,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let readyForTemplateProc:boolean=false;
 		let picks:vscode.QuickPickItem[]=[
 			{
-				label: 'Apply Template',
+				label: strgs.projTemplateQPSepTop,
 				kind: vscode.QuickPickItemKind.Separator
 			},
 			{
@@ -2272,7 +2272,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let pickTemplates:vscode.QuickPickItem[]=[];
 		picks.push(
 			{
-				label:'Templates',
+				label:strgs.projTemplateQPItemPickSep,
 				kind:vscode.QuickPickItemKind.Separator
 			},
 			{
@@ -2316,7 +2316,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			label: strgs.projTemplateAddMngQPitemDflt
 		});
 		pickTemplates.unshift({
-			label: 'Choose',
+			label: strgs.projTemplateAddMngQPBotSep,
 			kind: vscode.QuickPickItemKind.Separator
 		});
 		// add command to add new templates at top
@@ -2325,7 +2325,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		// now put a default at the top of the list
 		pickTemplates.unshift({
-			label: 'Templates',
+			label: strgs.projTemplateAddMngQPTopSep,
 			kind: vscode.QuickPickItemKind.Separator
 		});
 		let addSampleFiles:boolean=false;
@@ -2413,7 +2413,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					*/
 					docTitle=projTemplatePath;
 				} else {
-					docTitle='<DefaultTemplate>';
+					docTitle=strgs.projTemplateViewTemplateDfltTitle;
 				}
 				const vturi=vscode.Uri.parse(vtScheme+':'+docTitle);
 				const vtdoc=await vscode.workspace.openTextDocument(vturi);
