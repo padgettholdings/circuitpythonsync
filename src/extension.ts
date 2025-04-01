@@ -648,12 +648,20 @@ async function getProjTemplateText(): Promise<string> {
 			} catch(err) {
 				console.log(strgs.projTemplatePersNoLoad,err);
 				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
+				retVal='';	//make sure return is empty, also check at end to reset config
 			}
-		} 
+		} else {
+			// likely invalid path on this platform, flag error the same way as bad file
+			console.log(strgs.projTemplatePersNoLoad,strgs.projTemplateNoLoadUriErrCode);
+			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+strgs.projTemplateNoLoadUriErrCode);
+			retVal='';	//make sure return is empty, also check at end to reset config
+		}
 	}
 	// if return is empty then blank the project template path so becomes the default
 	if(!retVal || retVal.length===0){
 		projTemplatePath='';
+		// this had to be a reset since would not be here if was originally blank, so reset config
+		await cpsyncSettings.update('cptemplatepath',projTemplatePath,vscode.ConfigurationTarget.Global);
 	}
 	return retVal;
 }
@@ -835,6 +843,35 @@ export async function activate(context: vscode.ExtensionContext) {
 	if(templateContent){
 		cpProjTemplate = parseCpProjTemplate(templateContent);
 	}
+
+	// ** #88 - add virtual doc provider to show raw templates
+	const vtScheme:string='cpstemplate';
+	const vtProvider=new class implements vscode.TextDocumentContentProvider {
+		async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+			let retval='';
+			retval=await getProjTemplateText();
+			// if empty is the default, use that
+			if(!retval){
+				const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+				//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+				try{
+					const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+					retval=fromBinaryArray(templateContentBytes);
+				} catch {
+					console.log(strgs.projTemplateNoLoad);
+					vscode.window.showErrorMessage(strgs.projTemplateNoLoad);
+					return '';
+				}
+			}
+			return retval;
+		}
+	};
+	context.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider(vtScheme, vtProvider)
+	);
+
+
+
 
 	// ** spin up the library management
 	/*
@@ -2061,7 +2098,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(fileCmd);
 
 	// ** #73, create status bar button to map drive, tooltip linked to command
-	statusBarMapDrv=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,52);
+	statusBarMapDrv=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,53);
 	statusBarMapDrv.text='CP$(plug)';
 	statusBarMapDrv.command=openDirId;
 	statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;
@@ -2088,7 +2125,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//if don't have drive can't copy
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			vscode.window.showInformationMessage(strgs.mustSetDrvDnld);
 			return;
 		}
 		//now try to read the mapped drive directory
@@ -2186,6 +2223,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// **command to scaffold new project **
 	const makeNewProjectId=strgs.cmdScaffoldProjectPKG;
+	// ** #88, provide a "no don't ask again" option on board download
+	let noAskDnldAgain:boolean=false;
 	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async (forceChoice:string) =>{
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
@@ -2194,16 +2233,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
 		// BUT if re-entered with forceChoice skip this...
-		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice===''))  {
-			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
+		// #88, also don't if no ask again set
+		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice==='')  && !noAskDnldAgain) { 
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes',"No,don't ask again",'No');
 			if(ans==='Yes'){
+				// #88, set don't ask again since responded.
+				noAskDnldAgain=true;
 				vscode.commands.executeCommand(dnldCpBoardId);
 				return;
-			}
+			} else if (ans==="No,don't ask again"){
+				noAskDnldAgain=true;
+			}			
 		}
 		// ** #57, allow for "looping" back to main QP if pick alternate template
 		let readyForTemplateProc:boolean=false;
 		let picks:vscode.QuickPickItem[]=[
+			{
+				label: strgs.projTemplateQPSepTop,
+				kind: vscode.QuickPickItemKind.Separator
+			},
 			{
 				label: strgs.projTemplateQPItemAll,
 				picked: false
@@ -2224,11 +2272,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		let pickTemplates:vscode.QuickPickItem[]=[];
 		picks.push(
 			{
-				label:'',
+				label:strgs.projTemplateQPItemPickSep,
 				kind:vscode.QuickPickItemKind.Separator
 			},
 			{
-			label:strgs.projTemplateQPItemAddNew
+				label:strgs.projTemplateQPItemAddNew
+			},
+			{
+				label: strgs.projTemplateQPItemView
 			}
 		);
 		if(projTemplatePaths && projTemplatePaths.length>0) {
@@ -2262,7 +2313,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// put a separator before the next two picks
 		pickTemplates.unshift({
-			label: '',
+			label: strgs.projTemplateAddMngQPitemDflt
+		});
+		pickTemplates.unshift({
+			label: strgs.projTemplateAddMngQPBotSep,
 			kind: vscode.QuickPickItemKind.Separator
 		});
 		// add command to add new templates at top
@@ -2271,12 +2325,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 		// now put a default at the top of the list
 		pickTemplates.unshift({
-			label: strgs.projTemplateAddMngQPitemDflt
+			label: strgs.projTemplateAddMngQPTopSep,
+			kind: vscode.QuickPickItemKind.Separator
 		});
 		let addSampleFiles:boolean=false;
 		let mergeSettings:boolean=false;
 		// ** #60, add a hidden choice to add files and merge settings only. No overwrite and no samples
 		let addNewMergeSettingsOnly:boolean=false;	// string will be "addNewMergeSettingsOnly"
+		// #88 - add view template raw
+		let viewTemplateRaw:boolean=false;
 		//check to see if this command called with a forced choice
 		let choices:vscode.QuickPickItem | undefined=undefined;
 		if(forceChoice!==undefined && forceChoice!=='') {
@@ -2294,6 +2351,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			addSampleFiles=choices.label===strgs.projTemplateQPItemSamples;		//choices.some(choice => choice.label===strgs.projTemplateQPItemSamples);
 			mergeSettings=choices.label===strgs.projTemplateQpItemMerge;		//choices.some(choice => choice.label===strgs.projTemplateQpItemMerge);
 			addNewMergeSettingsOnly=choices.label===strgs.projTemplateQPItemHiddenAddNewWSettings;
+			viewTemplateRaw=choices.label===strgs.projTemplateQPItemView;
 			const pickNewTemplate:boolean=choices.label===strgs.projTemplateQPItemAddNew;
 			if(pickNewTemplate) {
 				// ** #57, get the template path from the user
@@ -2342,6 +2400,26 @@ export async function activate(context: vscode.ExtensionContext) {
 				// and loop back to see what action is needed
 				// clear choices since it may have been forced
 				choices=undefined;
+			} else if(viewTemplateRaw) {
+				// ** #88, show the raw template text
+				let docTitle='CurrentTemplate';
+				if(projTemplatePath){
+					/*
+					if(projTemplatePath.includes('/')){
+						docTitle=projTemplatePath.substring(projTemplatePath.lastIndexOf('/')+1);
+					} else if (projTemplatePath.includes('\\')){
+						docTitle=projTemplatePath.substring(projTemplatePath.lastIndexOf('\\')+1);
+					}
+					*/
+					docTitle=projTemplatePath;
+				} else {
+					docTitle=strgs.projTemplateViewTemplateDfltTitle;
+				}
+				const vturi=vscode.Uri.parse(vtScheme+':'+docTitle);
+				const vtdoc=await vscode.workspace.openTextDocument(vturi);
+				await vscode.window.showTextDocument(vtdoc,{preview:false});
+				choices=undefined;
+				return;		//get out of command so can see template
 			} else {
 				// ** set the flag to true to proceed
 				readyForTemplateProc=true;
@@ -2624,7 +2702,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//also have to have drive mapping to try to compare to
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrv);
+			vscode.window.showInformationMessage(strgs.mustSetDrvDiff);
 			return;
 		}
 		// ** the arg array should have a length >=1 if context driven, else can look at active editor

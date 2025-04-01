@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.11-a",
+  "version": "0.1.12",
   "publisher": "standsi",
   "license": "MIT",
   "repository": {
@@ -94,12 +94,12 @@
       },
       {
         "command": "circuitpythonsync.newproject",
-        "title": "CP Make or Update Project",
+        "title": "CP Make or Update Project from Templates",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.addtemplatelink",
-        "title": "CP Add Template Link",
+        "title": "CP Manage Templates",
         "category": "CircuitPythonSync"
       },
       {
