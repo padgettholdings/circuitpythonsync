@@ -648,12 +648,20 @@ async function getProjTemplateText(): Promise<string> {
 			} catch(err) {
 				console.log(strgs.projTemplatePersNoLoad,err);
 				vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+getErrorMessage(err));
+				retVal='';	//make sure return is empty, also check at end to reset config
 			}
-		} 
+		} else {
+			// likely invalid path on this platform, flag error the same way as bad file
+			console.log(strgs.projTemplatePersNoLoad,'INVALID_FILE_PATH');
+			vscode.window.showErrorMessage(strgs.projTemplatePersNoLoad+'INVALID_FILE_PATH');
+			retVal='';	//make sure return is empty, also check at end to reset config
+		}
 	}
 	// if return is empty then blank the project template path so becomes the default
 	if(!retVal || retVal.length===0){
 		projTemplatePath='';
+		// this had to be a reset since would not be here if was originally blank, so reset config
+		await cpsyncSettings.update('cptemplatepath',projTemplatePath,vscode.ConfigurationTarget.Global);
 	}
 	return retVal;
 }
@@ -2215,6 +2223,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// **command to scaffold new project **
 	const makeNewProjectId=strgs.cmdScaffoldProjectPKG;
+	// ** #88, provide a "no don't ask again" option on board download
+	let noAskDnldAgain:boolean=false;
 	const makeProjCmd=vscode.commands.registerCommand(makeNewProjectId, async (forceChoice:string) =>{
 		//if no workspace do nothing but notify
 		if(!haveCurrentWorkspace) {
@@ -2223,12 +2233,17 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
 		// BUT if re-entered with forceChoice skip this...
-		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice===''))  {
-			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes','No, continue');
+		// #88, also don't if no ask again set
+		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice==='')  && !noAskDnldAgain) { 
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes',"No,don't ask again",'No');
 			if(ans==='Yes'){
+				// #88, set don't ask again since responded.
+				noAskDnldAgain=true;
 				vscode.commands.executeCommand(dnldCpBoardId);
 				return;
-			}
+			} else if (ans==="No,don't ask again"){
+				noAskDnldAgain=true;
+			}			
 		}
 		// ** #57, allow for "looping" back to main QP if pick alternate template
 		let readyForTemplateProc:boolean=false;
