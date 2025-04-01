@@ -125,4 +125,7 @@
 - create release v0.1.11 for platform testing
 - bug #86 found, board id not being read right, fixed in release v0.1.11-a
 
+# Issues #87, #88 - Text tweaks and new functions for templates including view
+- create release v0.1.12 for platform testing
+
 
