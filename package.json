@@ -94,7 +94,7 @@
       },
       {
         "command": "circuitpythonsync.newproject",
-        "title": "CP Make or Update Project",
+        "title": "CP Make or Update Project from Templates",
         "category": "CircuitPythonSync"
       },
       {
