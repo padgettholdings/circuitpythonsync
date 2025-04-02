@@ -2084,10 +2084,19 @@ export async function activate(context: vscode.ExtensionContext) {
 					bootFileBoard=match[1].trim();
 				}
 			}
-			const ans=await vscode.window.showInformationMessage('Do you want to select a board type?'+(bootFileBoard ? `(boot_file lists ${bootFileBoard})` :''), 'Yes','No');
-			if(ans==='Yes'){
-				// call the select board command
-				vscode.commands.executeCommand(strgs.cmdSelectBoardPKG);
+			let ans:string|undefined='No';
+			if(bootFileBoard && bootFileBoard.length>0) {
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, I'll pick",'No, cancel');
+			} else {
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard, 'Yes','No, cancel');
+			}
+			if(ans && ans.startsWith('Yes')){
+				// call the select board command, passing bootFileBoard if set
+				if(bootFileBoard && bootFileBoard.length>0 && ans==='Yes, this one') {
+					vscode.commands.executeCommand(strgs.cmdSelectBoardPKG,bootFileBoard);
+				} else {
+					vscode.commands.executeCommand(strgs.cmdSelectBoardPKG);
+				}
 			}
 		}
 		

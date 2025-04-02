@@ -119,6 +119,7 @@ export const errListingDrv:string='Error listing drives:';
 export const pickDrvOrManual:string='Pick detected drive or select manually';
 export const cpDrvSel:string='CP Drive Select';
 export const pickDrvOrMount:string='Pick drive or mount point for CP';
+export const pickDrvAskSelBoard:string='Do you also want to select a board type? ';
 export const pickCommentFlag:string="Commented";
 
 //download related strings
