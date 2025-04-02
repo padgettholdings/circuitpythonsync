@@ -36,7 +36,7 @@ export class StubMgmt {
         }
 
         const selectBoardCmdId=strgs.cmdSelectBoardPKG;
-        const selectBoardCmd=vscode.commands.registerCommand(selectBoardCmdId, async () => {
+        const selectBoardCmd=vscode.commands.registerCommand(selectBoardCmdId, async (boardFilterName:string) => {
             if(!this._workspaceUri){
                 vscode.window.showErrorMessage(strgs.mustHaveWkspce);
                 return;
@@ -60,8 +60,71 @@ export class StubMgmt {
                 this.stopStubUpdateProgress();
                 return;
             }
+            let boardFilter:string=(boardFilterName && boardFilterName!==undefined) ? boardFilterName : '';
             // should have all the stubs now
             const boardList = await this.getBoardList();
+            // ** #90, convert to standard quick pick so have access to filter
+            const qpBoards=vscode.window.createQuickPick<vscode.QuickPickItem>();
+            qpBoards.items=boardList;
+            qpBoards.placeholder = 'pick board';    // strgs.boardListPlaceholder;
+            qpBoards.title = 'select board model';  // strgs.boardListTitle;
+            if(boardFilter && boardFilter.length>0){
+                qpBoards.value=boardFilter; // set the initial value to filter on
+            }
+            qpBoards.onDidChangeSelection(async (items) => {
+                if (items.length === 0) {
+                    return; // no selection
+                }
+                const selectedBoard = items[0];
+                if (!selectedBoard.label) {
+                    return; // no label, shouldn't happen
+                }
+                // got a board
+                // allow the quick pick to close on selection
+                qpBoards.hide();
+                //
+                if(!this._cpVersionFullStubUri){return;}  //should not happen
+                const boardDirUri = vscode.Uri.joinPath(this._cpVersionFullStubUri, 'board_definitions');
+                const boardStubExtraPath = await this.createBoardStubExtraPath(boardDirUri,selectedBoard.label);
+                console.log('boardStubExtraPath:',boardStubExtraPath);
+                //save to config
+                await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confBoardNamePKG}`, selectedBoard.label, vscode.ConfigurationTarget.Workspace);
+                //and update the python analysis extra paths, must be at top
+                //  AND replace any other board def
+                let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
+                //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
+                const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                //update the status bar button
+                if(this._selectBoardButton){
+                    this._selectBoardButton.tooltip = new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+selectedBoard.label+strgs.boardButtonSetTTMKDN[1]);
+                }
+
+                //const boardInfo = await this.getBoardInfo(board);
+                //const boardPath = await this.getBoardPath(boardInfo);
+                //await this.installBoard(boardPath);
+                //const boardStubPathBase = '/home/stan/my-typescript-project/stubs/circuitpython_stubs-'+rlsTag+'/board_definitions/';
+                //const boardStubExtraPath = await createBoardStubExtraPath(boardStubPathBase,boardName);
+                //console.log('boardStubExtraPath:',boardStubExtraPath);
+                // ** #73, if drive not mapped ask if want to map it
+                const curDriveMap = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confDrivepathPKG}`,'');
+                if(!curDriveMap){
+                    const ans=await vscode.window.showInformationMessage('Do you want to map the CP board drive?', 'Yes','No');
+                    if(ans==='Yes'){
+                        // call the select board command
+                        vscode.commands.executeCommand(strgs.cmdSetDirPKG);
+                    }                   
+                }
+            });
+            qpBoards.onDidHide(() => {
+                // cleanup when hidden
+                qpBoards.dispose();
+            });
+            qpBoards.show();
+            /*
             const board = await vscode.window.showQuickPick(boardList, { placeHolder: '' });
             if (board) {
                 if(!this._cpVersionFullStubUri){return;}  //should not happen
@@ -100,6 +163,7 @@ export class StubMgmt {
                     }                   
                 }
             }
+            */
         }
         );
         context.subscriptions.push(selectBoardCmd);
