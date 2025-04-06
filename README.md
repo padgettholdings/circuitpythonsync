@@ -128,4 +128,7 @@
 # Issues #87, #88 - Text tweaks and new functions for templates including view
 - create release v0.1.12 for platform testing
 
+# Last baseline build of multi-platform before replace drivelist and bundling
+- create release v0.1.13 for all platforms
+
 
