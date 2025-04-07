@@ -1,7 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as drivelist from 'drivelist';
+//import * as drivelist from 'drivelist';
+import * as drivelist from './drivelist'; // #74, use this for drive list
 import os, { devNull } from 'os';
 //#19, get strings
 import * as strgs from './strings.js';
@@ -86,6 +87,9 @@ interface drvlstDrive {
 
 //now the last drives queried
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+
+// ALSO need a cache of detected drives managed by the DriveList module
+let detectedDrives: drivelist.detectedDrive[] = [];
 
 //interface for cpfiles parsed line
 // ** #37, add field to preserve orig line
