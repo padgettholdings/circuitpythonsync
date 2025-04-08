@@ -2110,7 +2110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			let ans:string|undefined='No';
 			if(bootFileBoard && bootFileBoard.length>0) {
-				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, I'll pick",'No, cancel');
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, but I'll pick",'No, cancel');
 			} else {
 				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard, 'Yes','No, cancel');
 			}
