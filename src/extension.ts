@@ -1944,14 +1944,21 @@ export async function activate(context: vscode.ExtensionContext) {
 							baseUri='file:'+baseUri;
 						}
 						//**replace glob find files with dir read for performance
-						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-							if(value.length>0){
-								return value[0]===strgs_cpBootFile;
-							} else {
-								return false;
-							}
-						});
+						// ** need to detect error here in case of permissions issues
+						let foundBootFile:[string,vscode.FileType]|undefined=undefined;
+						try {
+							const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+							foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+								if(value.length>0){
+									return value[0]===strgs_cpBootFile;
+								} else {
+									return false;
+								}
+							});
+						} catch (error) {
+							console.error(strgs.errListingDrv, error);
+							continue;
+						}
 						//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 						//const fles=await vscode.workspace.findFiles(rel);
 						//vscode.workspace.findFiles(rel).then(fles => {

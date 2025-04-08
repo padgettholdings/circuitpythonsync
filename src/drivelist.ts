@@ -133,6 +133,8 @@ export async function list():Promise<Drive[]>{
         }
     } else {
         // did not get win drives, will just need to call systeminformation and copy to cache
+        // clear the cache, will populate new
+        detectedDrives = [];
         // Call systeminformation to get more details on the drives
         let diskInfo = await getDiskInfo(); // Get the latest disk info
         // only types of disk or part are valid
