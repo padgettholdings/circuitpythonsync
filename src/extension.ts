@@ -80,16 +80,19 @@ interface drivePick extends vscode.QuickPickItem {
 }
 
 //need cache of drives from drivelist, first define type
+// #63 - add other props from systeminfo
 interface drvlstDrive {
 	drvPath: string;
 	isUsb: boolean;
+	volumeLabel?: string;
+	isRemovable?: boolean;
 }
 
 //now the last drives queried
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
 
 // ALSO need a cache of detected drives managed by the DriveList module
-let detectedDrives: drivelist.detectedDrive[] = [];
+//let detectedDrives: drivelist.detectedDrive[] = [];
 
 //interface for cpfiles parsed line
 // ** #37, add field to preserve orig line
@@ -450,7 +453,9 @@ async function refreshDrives() {
 				//add to array
 				const tmpDrv:drvlstDrive={
 					drvPath:drvPath,
-					isUsb: drv.isUSB ?? false
+					isUsb: drv.isUSB ?? false,
+					volumeLabel: drv.volumeLabel ?? '',
+					isRemovable: drv.isRemovable ?? false
 				};
 				tmpLastDrives.push(tmpDrv);
 			}
@@ -731,7 +736,7 @@ async function updateStatusBarItems() {
 			let gotValidDrive:boolean=true;
 			if(lastDrives){
 				let validDrive=lastDrives.find((value:drvlstDrive,index,ary) => {
-					return (curDriveSetting===value.drvPath && value.isUsb);
+					return (curDriveSetting===value.drvPath && value.volumeLabel?.toLowerCase()==='circuitpy');		// no longer using value.isUsb);
 				});
 				gotValidDrive=validDrive ? true : false;
 			} 
@@ -1773,12 +1778,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	//BUT can't do anything if no workspace
 	if(haveCurrentWorkspace) {
 		const connectCandidate=lastDrives.find((drv:drvlstDrive,index,ary) => {
-			return drv.isUsb;
+			return drv.isRemovable;		// no longer using drv.isUsb;
 		});
 		//if got a candidate, check it...
 		let connectDrvPath:string='';
 		if(connectCandidate) {
-			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy')) {
+			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy') || connectCandidate.volumeLabel?.toLowerCase()==='circuitpy') {
 				connectDrvPath=connectCandidate.drvPath;
 			} else {
 				// need to search for the boot file
@@ -1920,10 +1925,15 @@ export async function activate(context: vscode.ExtensionContext) {
 				//Issue #7, defer usb decision so can list possible but not usb detections
 				if(drvPath) {	// && drv.isUSB) {
 					//see if path contains circuitpy
-					if(drvPath.toLowerCase().includes('circuitpy')) {
+					// ** OR if label is circuitpy
+					if(drvPath.toLowerCase().includes('circuitpy') || drv.volumeLabel?.toLowerCase().includes('circuitpy')) {
+						detectedPath= drvPath;	// not using usb any more drv.isUSB ? drvPath : '';
+						detectedPathNotUsb='';	// !drv.isUSB ? drvPath : '';
+					} else if(drv.isRemovable) {
+						// call this one ok too but not usb
 						detectedPath= drv.isUSB ? drvPath : '';
 						detectedPathNotUsb= !drv.isUSB ? drvPath : '';
-					} else {
+					}else {
 						//not detected yet, see if boot_out.txt at path
 						//need to add file scheme in windows
 						let baseUri=drvPath;
