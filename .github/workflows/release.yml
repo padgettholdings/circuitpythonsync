@@ -25,35 +25,7 @@ jobs:
 
     builds:
         needs: release
-        strategy:
-            matrix:
-              include:
-              - os: windows-latest
-                platform: win32
-                arch: x64
-                npm_config_arch: x64
-              - os: ubuntu-latest
-                platform: linux
-                arch: x64
-                npm_config_arch: x64
-              # this requires special native npm install setup using conditionals below
-              - os: ubuntu-latest
-                platform: linux
-                arch: arm64
-                npm_config_arch: aarch64
-              - os: ubuntu-latest
-                platform: linux
-                arch: armhf
-                npm_config_arch: arm
-              - os: macos-latest
-                platform: darwin
-                arch: x64
-                npm_config_arch: x64
-              - os: macos-latest
-                platform: darwin
-                arch: arm64
-                npm_config_arch: arm64
-        runs-on: ${{ matrix.os }}
+        runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v3
           - uses: actions/setup-node@v4
@@ -65,28 +37,11 @@ jobs:
               python-version: "3.11"
           - run: npm i -g npm@latest
           - run: npm --version
-          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
-            run: sudo apt-get update
-          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
-            run: sudo apt-get install build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          - if: ${{ matrix.npm_config_arch == 'aarch64' }}
-            run: npm install
-            env:
-              CC: aarch64-linux-gnu-gcc
-              CXX: aarch64-linux-gnu-g++
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              npm_config_arch: arm64
-              npm_config_platform: linux
-          - if: ${{ matrix.npm_config_arch != 'aarch64' }}
-            run: npm install
+          - run: npm install
             env:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              npm_config_arch: ${{ matrix.npm_config_arch }}
-          - name: Stay on target
-            shell: pwsh
-            run: echo "target=${{ matrix.platform }}-${{ matrix.arch }}" >> $env:GITHUB_ENV
           - name: Build Package
-            run: npx vsce package --target ${{ env.target }}
+            run: npx vsce package
           - name: Upload Release Asset
             env:
               GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
