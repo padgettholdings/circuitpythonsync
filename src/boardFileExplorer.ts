@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import os from 'os';
+import * as os from 'os';
 import { getCurrentDriveConfig } from './extension';
 import { toNamespacedPath } from 'path';
-import * as strgs from './strings.js';
+import * as strgs from './strings';
 
 /*
 interface Entry {

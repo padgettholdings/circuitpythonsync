@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { QuickInputButton, ThemeIcon } from 'vscode';
-import * as strgs from './strings.js';
+import * as strgs from './strings';
 import * as axios from 'axios';
 import * as zl from 'zip-lib';
 import * as fs from 'fs';

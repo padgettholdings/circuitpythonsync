@@ -116,6 +116,7 @@ export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
 export const autoDetectNotUSB:string='Auto Detected but may not be CP';
 export const errListingDrv:string='Error listing drives:';
+export const errListingDrvBadBootPath:string='Error finding boot file when listing drives for path: ';
 export const pickDrvOrManual:string='Pick detected drive or select manually';
 export const cpDrvSel:string='CP Drive Select';
 export const pickDrvOrMount:string='Pick drive or mount point for CP';

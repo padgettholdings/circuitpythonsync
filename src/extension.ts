@@ -3,15 +3,15 @@
 import * as vscode from 'vscode';
 //import * as drivelist from 'drivelist';
 import * as drivelist from './drivelist'; // #74, use this for drive list
-import os, { devNull } from 'os';
+import * as os from 'os';
 //#19, get strings
-import * as strgs from './strings.js';
-import path, { win32 } from 'path';
+import * as strgs from './strings';
+//import path, { win32 } from 'path';
 import { fstat, writeFile,existsSync } from 'fs';
-import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
-import { LibraryMgmt } from './libraryMgmt.js';
-import { StubMgmt } from './stubMgmt.js';
-import { ProjectBundleMgmt } from './projectBundle.js';
+import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer';
+import { LibraryMgmt } from './libraryMgmt';
+import { StubMgmt } from './stubMgmt';
+import { ProjectBundleMgmt } from './projectBundle';
 
 import * as axios from 'axios';
 import * as fs from 'fs';
@@ -1953,7 +1953,7 @@ export async function activate(context: vscode.ExtensionContext) {
 								}
 							});
 						} catch (error) {
-							console.error(strgs.errListingDrv, error);
+							console.log(strgs.errListingDrvBadBootPath, drvPath);
 							continue;
 						}
 						//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
@@ -1994,7 +1994,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			  }
 			};
 		} catch (error) {
-			console.error(strgs.errListingDrv, error);
+			console.error(strgs.errListingDrv, error );
 		}		
 		//FAKE this is the "detected" drive
 		// const mappedDrive:drivePick={
@@ -2366,6 +2366,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(forceChoice!==undefined && forceChoice!=='') {
 			choices={label: forceChoice};	//force the choice to be set
 		}
+		// ####TEST#### see if vscode instance avail
+		//if(!vscode.workspace.workspaceFolders) {return;}
+		// ####TEST#####
 		while(!readyForTemplateProc){
 			if(!choices) {
 				choices=await vscode.window.showQuickPick(picks,
@@ -2722,57 +2725,72 @@ export async function activate(context: vscode.ExtensionContext) {
 	
 	// ** diff file **
 	const cmdFileDiffId ='circuitpythonsync.filediff';
-	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
-		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+	//const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
+	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (ctxFile:vscode.Uri|undefined) =>{
+		// Capture required modules in local variables to ensure they're available in this scope
+		const _vscode = vscode;
+		const _os = os;
+		const _strgs = strgs;
+		// ** this is per claude 3.7 sonnet thinking 4/9/25
+		let rootFolder:vscode.WorkspaceFolder|undefined;
+		//const ctxFile:vscode.Uri|undefined=undefined;
+		if(_vscode.workspace.workspaceFolders)	{			//if(!haveCurrentWorkspace) {
+			rootFolder=_vscode.workspace.workspaceFolders[0];
+		} else {
+			_vscode.window.showInformationMessage(_strgs.mustHaveWkspce);
 			return;
 		}
 		//also have to have drive mapping to try to compare to
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrvDiff);
+			_vscode.window.showInformationMessage(_strgs.mustSetDrvDiff);
 			return;
 		}
 		// ** the arg array should have a length >=1 if context driven, else can look at active editor
 		let fileUri:vscode.Uri;
-		if(args.length>0){
+		//if(args.length>0){
+		if(ctxFile!==undefined){
 			//[0]should be uri
-			fileUri=args[0] as vscode.Uri;
-		} else if(vscode.window.activeTextEditor){
-			fileUri=vscode.window.activeTextEditor.document.uri;
+			//fileUri=args[0] as vscode.Uri;
+			fileUri=ctxFile as vscode.Uri;
+		} else if(_vscode.window.activeTextEditor){
+			fileUri=_vscode.window.activeTextEditor.document.uri;
 		} else {
 			//just bail
-			vscode.window.showWarningMessage(strgs.diffContextWarning);
+			_vscode.window.showWarningMessage(_strgs.diffContextWarning);
 			return;
 		}
 		// ** switch to using glob pattern to search board
 		// first remove root from fileUri to just get path
-		if(!vscode.workspace.workspaceFolders){return;}	//won't happen
-		let leftFile:string=fileUri.fsPath.replace(vscode.workspace.workspaceFolders[0].uri.fsPath,'');
+		//const rootFolder=vscode.workspace.workspaceFolders.[0];
+		//if(!rootFolder) {return;}	//won't happen
+		//if(!vscode.workspace.workspaceFolders){return;}	//won't happen
+		//let leftFile:string=fileUri.fsPath.replace(vscode.workspace.workspaceFolders[0].uri.fsPath,'');
+		let leftFile:string=fileUri.fsPath.replace(rootFolder.uri.fsPath,'');
 		if(leftFile.startsWith('/') || leftFile.startsWith('\\')){
 			leftFile=leftFile.slice(1);
 		}
 		//now try to find file on board mapping
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (_os.platform()==='win32') {
 			baseUri='file:'+baseUri;
 		}
 		//now do rel pattern against the board
-		const relPat=new vscode.RelativePattern(vscode.Uri.parse(baseUri),leftFile);
+		const relPat=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri),leftFile);
 		let fles;
 		try{
-		fles=await vscode.workspace.findFiles(relPat);
+		fles=await _vscode.workspace.findFiles(relPat);
 		} catch(error){
-			const errMsg=strgs.couldNotReadCpDnld[0]+curDriveSetting+strgs.couldNotReadCpDnld[1];
-			await vscode.window.showErrorMessage(errMsg);
+			const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
+			await _vscode.window.showErrorMessage(errMsg);
 			return;
 		}
 		if(!fles || fles.length===0){
-			vscode.window.showErrorMessage(strgs.diffBoardFileNoExist);
+			_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
 			return;
 		}
 		// now compare files
-		vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],strgs.diffScreenHeader+leftFile);
+		_vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],_strgs.diffScreenHeader+leftFile);
 		return;
 		/*
 		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle
