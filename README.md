@@ -137,5 +137,7 @@
 # test release of bundled version
 - create release v0.1.15 - no version tag yet
 - create release v0.1.15-a with new workflow
+- create release v0.1.15-b to remove uneeded folders from bundle
+
 
 
