@@ -12,4 +12,7 @@ vsc-extension-quickstart.md
 out/**
 node_modules
 webpack.config.json
+.devcontainer/**
+.github/**
+
 
