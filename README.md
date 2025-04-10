@@ -131,4 +131,13 @@
 # Last baseline build of multi-platform before replace drivelist and bundling
 - create release v0.1.13 for all platforms
 
+# First release of single platform with drivelist replaced before bundling
+- create release v0.1.14 for all platforms - NO CI tag yet
+
+# test release of bundled version
+- create release v0.1.15 - no version tag yet
+- create release v0.1.15-a with new workflow
+- create release v0.1.15-b to remove uneeded folders from bundle
+
+
 

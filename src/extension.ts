@@ -1,16 +1,17 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as drivelist from 'drivelist';
-import os, { devNull } from 'os';
+//import * as drivelist from 'drivelist';
+import * as drivelist from './drivelist'; // #74, use this for drive list
+import * as os from 'os';
 //#19, get strings
-import * as strgs from './strings.js';
-import path, { win32 } from 'path';
+import * as strgs from './strings';
+//import path, { win32 } from 'path';
 import { fstat, writeFile,existsSync } from 'fs';
-import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer.js';
-import { LibraryMgmt } from './libraryMgmt.js';
-import { StubMgmt } from './stubMgmt.js';
-import { ProjectBundleMgmt } from './projectBundle.js';
+import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer';
+import { LibraryMgmt } from './libraryMgmt';
+import { StubMgmt } from './stubMgmt';
+import { ProjectBundleMgmt } from './projectBundle';
 
 import * as axios from 'axios';
 import * as fs from 'fs';
@@ -79,13 +80,19 @@ interface drivePick extends vscode.QuickPickItem {
 }
 
 //need cache of drives from drivelist, first define type
+// #63 - add other props from systeminfo
 interface drvlstDrive {
 	drvPath: string;
 	isUsb: boolean;
+	volumeLabel?: string;
+	isRemovable?: boolean;
 }
 
 //now the last drives queried
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+
+// ALSO need a cache of detected drives managed by the DriveList module
+//let detectedDrives: drivelist.detectedDrive[] = [];
 
 //interface for cpfiles parsed line
 // ** #37, add field to preserve orig line
@@ -446,7 +453,9 @@ async function refreshDrives() {
 				//add to array
 				const tmpDrv:drvlstDrive={
 					drvPath:drvPath,
-					isUsb: drv.isUSB ?? false
+					isUsb: drv.isUSB ?? false,
+					volumeLabel: drv.volumeLabel ?? '',
+					isRemovable: drv.isRemovable ?? false
 				};
 				tmpLastDrives.push(tmpDrv);
 			}
@@ -730,7 +739,7 @@ async function updateStatusBarItems() {
 			let gotValidDrive:boolean=true;
 			if(lastDrives){
 				let validDrive=lastDrives.find((value:drvlstDrive,index,ary) => {
-					return (curDriveSetting===value.drvPath && value.isUsb);
+					return (curDriveSetting===value.drvPath && value.volumeLabel?.toLowerCase()==='circuitpy');		// no longer using value.isUsb);
 				});
 				gotValidDrive=validDrive ? true : false;
 			} 
@@ -1772,12 +1781,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	//BUT can't do anything if no workspace
 	if(haveCurrentWorkspace) {
 		const connectCandidate=lastDrives.find((drv:drvlstDrive,index,ary) => {
-			return drv.isUsb;
+			return drv.isRemovable;		// no longer using drv.isUsb;
 		});
 		//if got a candidate, check it...
 		let connectDrvPath:string='';
 		if(connectCandidate) {
-			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy')) {
+			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy') || connectCandidate.volumeLabel?.toLowerCase()==='circuitpy') {
 				connectDrvPath=connectCandidate.drvPath;
 			} else {
 				// need to search for the boot file
@@ -1919,10 +1928,15 @@ export async function activate(context: vscode.ExtensionContext) {
 				//Issue #7, defer usb decision so can list possible but not usb detections
 				if(drvPath) {	// && drv.isUSB) {
 					//see if path contains circuitpy
-					if(drvPath.toLowerCase().includes('circuitpy')) {
+					// ** OR if label is circuitpy
+					if(drvPath.toLowerCase().includes('circuitpy') || drv.volumeLabel?.toLowerCase().includes('circuitpy')) {
+						detectedPath= drvPath;	// not using usb any more drv.isUSB ? drvPath : '';
+						detectedPathNotUsb='';	// !drv.isUSB ? drvPath : '';
+					} else if(drv.isRemovable) {
+						// call this one ok too but not usb
 						detectedPath= drv.isUSB ? drvPath : '';
 						detectedPathNotUsb= !drv.isUSB ? drvPath : '';
-					} else {
+					}else {
 						//not detected yet, see if boot_out.txt at path
 						//need to add file scheme in windows
 						let baseUri=drvPath;
@@ -1930,14 +1944,21 @@ export async function activate(context: vscode.ExtensionContext) {
 							baseUri='file:'+baseUri;
 						}
 						//**replace glob find files with dir read for performance
-						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-							if(value.length>0){
-								return value[0]===strgs_cpBootFile;
-							} else {
-								return false;
-							}
-						});
+						// ** need to detect error here in case of permissions issues
+						let foundBootFile:[string,vscode.FileType]|undefined=undefined;
+						try {
+							const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+							foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+								if(value.length>0){
+									return value[0]===strgs_cpBootFile;
+								} else {
+									return false;
+								}
+							});
+						} catch (error) {
+							console.log(strgs.errListingDrvBadBootPath, drvPath);
+							continue;
+						}
 						//let rel=new vscode.RelativePattern(vscode.Uri.parse(baseUri),'boot_out.txt');
 						//const fles=await vscode.workspace.findFiles(rel);
 						//vscode.workspace.findFiles(rel).then(fles => {
@@ -1976,7 +1997,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			  }
 			};
 		} catch (error) {
-			console.error(strgs.errListingDrv, error);
+			console.error(strgs.errListingDrv, error );
 		}		
 		//FAKE this is the "detected" drive
 		// const mappedDrive:drivePick={
@@ -2089,7 +2110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			let ans:string|undefined='No';
 			if(bootFileBoard && bootFileBoard.length>0) {
-				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, I'll pick",'No, cancel');
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, but I'll pick",'No, cancel');
 			} else {
 				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard, 'Yes','No, cancel');
 			}
@@ -2348,6 +2369,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(forceChoice!==undefined && forceChoice!=='') {
 			choices={label: forceChoice};	//force the choice to be set
 		}
+		// ####TEST#### see if vscode instance avail
+		//if(!vscode.workspace.workspaceFolders) {return;}
+		// ####TEST#####
 		while(!readyForTemplateProc){
 			if(!choices) {
 				choices=await vscode.window.showQuickPick(picks,
@@ -2704,57 +2728,72 @@ export async function activate(context: vscode.ExtensionContext) {
 	
 	// ** diff file **
 	const cmdFileDiffId ='circuitpythonsync.filediff';
-	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
-		if(!haveCurrentWorkspace) {
-			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+	//const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
+	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (ctxFile:vscode.Uri|undefined) =>{
+		// Capture required modules in local variables to ensure they're available in this scope
+		const _vscode = vscode;
+		const _os = os;
+		const _strgs = strgs;
+		// ** this is per claude 3.7 sonnet thinking 4/9/25
+		let rootFolder:vscode.WorkspaceFolder|undefined;
+		//const ctxFile:vscode.Uri|undefined=undefined;
+		if(_vscode.workspace.workspaceFolders)	{			//if(!haveCurrentWorkspace) {
+			rootFolder=_vscode.workspace.workspaceFolders[0];
+		} else {
+			_vscode.window.showInformationMessage(_strgs.mustHaveWkspce);
 			return;
 		}
 		//also have to have drive mapping to try to compare to
 		if(curDriveSetting==='') {
-			vscode.window.showInformationMessage(strgs.mustSetDrvDiff);
+			_vscode.window.showInformationMessage(_strgs.mustSetDrvDiff);
 			return;
 		}
 		// ** the arg array should have a length >=1 if context driven, else can look at active editor
 		let fileUri:vscode.Uri;
-		if(args.length>0){
+		//if(args.length>0){
+		if(ctxFile!==undefined){
 			//[0]should be uri
-			fileUri=args[0] as vscode.Uri;
-		} else if(vscode.window.activeTextEditor){
-			fileUri=vscode.window.activeTextEditor.document.uri;
+			//fileUri=args[0] as vscode.Uri;
+			fileUri=ctxFile as vscode.Uri;
+		} else if(_vscode.window.activeTextEditor){
+			fileUri=_vscode.window.activeTextEditor.document.uri;
 		} else {
 			//just bail
-			vscode.window.showWarningMessage(strgs.diffContextWarning);
+			_vscode.window.showWarningMessage(_strgs.diffContextWarning);
 			return;
 		}
 		// ** switch to using glob pattern to search board
 		// first remove root from fileUri to just get path
-		if(!vscode.workspace.workspaceFolders){return;}	//won't happen
-		let leftFile:string=fileUri.fsPath.replace(vscode.workspace.workspaceFolders[0].uri.fsPath,'');
+		//const rootFolder=vscode.workspace.workspaceFolders.[0];
+		//if(!rootFolder) {return;}	//won't happen
+		//if(!vscode.workspace.workspaceFolders){return;}	//won't happen
+		//let leftFile:string=fileUri.fsPath.replace(vscode.workspace.workspaceFolders[0].uri.fsPath,'');
+		let leftFile:string=fileUri.fsPath.replace(rootFolder.uri.fsPath,'');
 		if(leftFile.startsWith('/') || leftFile.startsWith('\\')){
 			leftFile=leftFile.slice(1);
 		}
 		//now try to find file on board mapping
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (_os.platform()==='win32') {
 			baseUri='file:'+baseUri;
 		}
 		//now do rel pattern against the board
-		const relPat=new vscode.RelativePattern(vscode.Uri.parse(baseUri),leftFile);
+		const relPat=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri),leftFile);
 		let fles;
 		try{
-		fles=await vscode.workspace.findFiles(relPat);
+		fles=await _vscode.workspace.findFiles(relPat);
 		} catch(error){
-			const errMsg=strgs.couldNotReadCpDnld[0]+curDriveSetting+strgs.couldNotReadCpDnld[1];
-			await vscode.window.showErrorMessage(errMsg);
+			const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
+			await _vscode.window.showErrorMessage(errMsg);
 			return;
 		}
 		if(!fles || fles.length===0){
-			vscode.window.showErrorMessage(strgs.diffBoardFileNoExist);
+			_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
 			return;
 		}
 		// now compare files
-		vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],strgs.diffScreenHeader+leftFile);
+		_vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],_strgs.diffScreenHeader+leftFile);
 		return;
 		/*
 		// ** issue #4, if drive no longer exists (like board unplugged) get error, handle

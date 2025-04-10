@@ -95,7 +95,7 @@ export const noFilesMKDN:string='**NO FILES EXIST THAT ARE TO BE COPIED**';
 export const enabledToCopyMKDN:string='Enabled to copy to ';  //+curDriveSetting'
 export const canCopyInsCurDriveMKDN:string[]=[
     'Can copy to ', //+curDriveSetting + 
-    ' BUT not USB drive!'
+    ' BUT may not be CP drive!'
 ];
 export const mustHaveWkspce:string='!! Must have open workspace !!';
 export const mustSetDrv:string='!! Must select drive before copy operation !!';
@@ -114,8 +114,9 @@ export const fndCPDrvInsPath:string[]=[
 ];
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
-export const autoDetectNotUSB:string='Auto Detected but NOT USB';
+export const autoDetectNotUSB:string='Auto Detected but may not be CP';
 export const errListingDrv:string='Error listing drives:';
+export const errListingDrvBadBootPath:string='Error finding boot file when listing drives for path: ';
 export const pickDrvOrManual:string='Pick detected drive or select manually';
 export const cpDrvSel:string='CP Drive Select';
 export const pickDrvOrMount:string='Pick drive or mount point for CP';

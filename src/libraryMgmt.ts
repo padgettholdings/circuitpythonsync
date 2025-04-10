@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { QuickInputButton, ThemeIcon } from 'vscode';
-import * as strgs from './strings.js';
+import * as strgs from './strings';
 import * as axios from 'axios';
 import * as zl from 'zip-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import {getLibPath, setupStubs} from './extension.js';
+import {getLibPath, setupStubs} from './extension';
 //import { timeStamp } from 'console';
 
 export class LibraryMgmt {
