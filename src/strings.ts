@@ -231,6 +231,7 @@ export const selLibQPtitle:string='Select libraries';
 export const selLibQPplaceholder:string='Check Libraries to Add or uncheck to Remove';
 export const selLibsNoLibFolder:string='No libraries folder found, create as "lib" before selecting?';      //yes or no
 export const selLibDelLibError:string='Error deleting the selected library folder: ';   //+err.message
+export const selLibAllCurLibsDel:string='All current libraries will be deleted (before new adds), continue?';
 export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
 export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
