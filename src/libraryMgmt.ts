@@ -263,6 +263,7 @@ export class LibraryMgmt {
                 pickItems.push({ label: lib, description: libMetadata[lib].version });
             }
             //filter out the current libs
+            // ** #95, will add them back at top, keep libContents for later possible delete
             let libContents: [string, vscode.FileType][]=[];
             if(libPath!=='') {
                 const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
@@ -272,6 +273,13 @@ export class LibraryMgmt {
                     pickItems=pickItems.filter(item => item.label !== libName.replace('.mpy',''));
                 }
             }
+            // #95, add current libs back to the top of the list
+            for(const [libName, libType] of libContents) {
+                const libNameNoExt=libName.replace('.mpy','');
+                let libNameVer= "unknown";
+                if (libNameNoExt in libMetadata) {libNameVer= libMetadata[libNameNoExt].version;}
+                pickItems.unshift({ label: libNameNoExt, description: libNameVer,picked:true });
+            }
             // now do the quickpick with the pick items
             const newLibs=await vscode.window.showQuickPick(pickItems, {
                 canPickMany: true,
@@ -279,10 +287,38 @@ export class LibraryMgmt {
                 ignoreFocusOut: true,
                 title: strgs.selLibQPtitle
             });
+            // #95, split into four steps:
+            //  - generate string array of new adds that may include current or is empty
+            //  - if any current libs are unselected, delete them from lib folder using string array
+            //  - **NO- pass in case remove deps ** remove remaining current libs from new adds since already in lib folder and dependencies will be removed
+            //  - if any remaining plus new pass to updateLibraries
+            let newLibsToAdd:string[]=[];
             if(newLibs) {
-                //add the new libs by passing optional parameter to the updateLibraries
-                let newLibsToAdd=newLibs.map(lib => lib.label);
+                newLibsToAdd=newLibs.map(lib => lib.label);
                 newLibsToAdd=[...new Set(newLibsToAdd)]; //remove duplicates just for safety
+            }
+            const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+            if(!wsRootFolder) {return;}
+            for(const [libName, libType] of libContents) {
+                const libNameNoExt=libName.replace('.mpy','');
+                if(!newLibsToAdd.some(item => item === libNameNoExt)) {
+                    const libFileUri=vscode.Uri.joinPath(wsRootFolder.uri,libPath,libName);
+                    try {
+                        if(libType===vscode.FileType.Directory) {
+                            await vscode.workspace.fs.delete(libFileUri,{recursive:true});
+                        } else {
+                            await vscode.workspace.fs.delete(libFileUri);
+                        }
+                    } catch (error) {
+                        vscode.window.showErrorMessage(strgs.selLibDelLibError+this.getErrorMessage(error));
+                    }
+                } else {
+                // since not there remove current lib from newLibsToAdd
+                    //newLibsToAdd=newLibsToAdd.filter(lib => lib !== libNameNoExt);
+                }
+            }
+            if(newLibsToAdd.length>0) {
+                //add the new libs by passing optional parameter to the updateLibraries
                 //and update the libraries with the new libs
                 try {
                     await this.updateLibraries(newLibsToAdd);
