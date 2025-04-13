@@ -139,5 +139,7 @@
 - create release v0.1.15-a with new workflow
 - create release v0.1.15-b to remove uneeded folders from bundle
 
+# Issues #93 (extension deps) and #95 (select libs show existing)
+- create release v0.1.16 for platform testing
 
 
