@@ -213,7 +213,9 @@ interface fileStates {
 	pyExists: boolean,
 	libExists: boolean,
 	noPyFiles: boolean,
-	filesNoExist: boolean
+	filesNoExist: boolean,
+	invalidPyFiles: boolean,
+	invalidLibFiles: boolean
 }
 
 //determine if files from cpFilesLine[] exist in either root or lib folder
@@ -221,11 +223,14 @@ interface fileStates {
 // ** assumes libraryFolderExists has been set
 // ** per #26, also looks in cplines to see if none of the non-lib files are .py, and whether any filenames no exist
 async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
+	// ** #95 - add flags for invalid py and lib entries, just to use in cpfiles mgmt.
 	let retVal:fileStates={
 		pyExists: false,
 		libExists: false,
 		noPyFiles: false,
-		filesNoExist: false
+		filesNoExist: false,
+		invalidPyFiles: false,
+		invalidLibFiles: false
 	};
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}
@@ -284,6 +289,8 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 					}
 				}
 			}
+			// ** #95 - got lib entry but not found in dir, so flag it
+			retVal.invalidLibFiles=true;
 		}
 	}
 	return retVal;
@@ -1260,11 +1267,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
-		if(!libFilesExist) {
+		// #95, at this point either lib files OR invalid in cpfiles, but that should continue
+		const cpLinesTest=await parseCpfiles();
+		const fileSources=await checkSources(cpLinesTest);
+		if(!fileSources.libExists && !fileSources.invalidLibFiles) {
 			vscode.window.showInformationMessage(strgs.noLibDir);
 			return;
 		}
-		//first read the current cpfile
+		//now  re-read the current cpfile, preserving comments
 		// ** #37, preserve the comments
 		const cpLines=await parseCpfiles(true);
 		//then get the current merged list
