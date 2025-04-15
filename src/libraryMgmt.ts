@@ -21,6 +21,8 @@ export class LibraryMgmt {
 		}
 		const iconCommand1:ThemeIcon=new ThemeIcon('library');
 
+        const iconCommand2:ThemeIcon=new ThemeIcon('question');
+
         interface cmdQuickItem extends vscode.QuickPickItem {
             commandName: string;
         }
@@ -37,10 +39,15 @@ export class LibraryMgmt {
                 iconPath:iconCommand1,
                 tooltip:strgs.updateLibQPSelTT,
                 commandName:"selectLibs"
+            };
+            const helpButton:cmdQuickInputButton={
+                iconPath:iconCommand2,
+                tooltip:'Help with Libraries',
+                commandName:"help"
             };    
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
             quickPick.title = strgs.updateLibQPtitle;
-            quickPick.buttons = [pickButton];
+            quickPick.buttons = [pickButton,helpButton];
             // see if there is a pending change and alter the QP if so
             if(this._libUpdateVerChg) {
                 quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
@@ -63,6 +70,11 @@ export class LibraryMgmt {
                     quickPick.hide();
                     quickPick.dispose();
                     vscode.commands.executeCommand(strgs.cmdSelectLibsPKG);
+                } else if (btn.commandName === 'help') {
+                    quickPick.hide();
+                    quickPick.dispose();
+                    // show the help page
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'section-3');
                 }
             });
             quickPick.onDidChangeSelection(async (items) => {
