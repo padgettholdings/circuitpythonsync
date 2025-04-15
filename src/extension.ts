@@ -928,7 +928,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		if(haveCurrentWorkspace) {
-			vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
+			//vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
 			// **#72 - show help doc
 			let helpDocLinkStr:string=helpDocLink ? "#"+helpDocLink : '';
 			const helpuri=vscode.Uri.parse(helpScheme+':'+'helpfile.md'+helpDocLinkStr);

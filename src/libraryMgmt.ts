@@ -74,7 +74,7 @@ export class LibraryMgmt {
                     quickPick.hide();
                     quickPick.dispose();
                     // show the help page
-                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'section-3');
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'library-support');
                 }
             });
             quickPick.onDidChangeSelection(async (items) => {
