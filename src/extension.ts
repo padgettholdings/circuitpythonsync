@@ -883,6 +883,30 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.registerTextDocumentContentProvider(vtScheme, vtProvider)
 	);
 
+	// **#72 - virt doc provider for help files
+	const helpScheme:string='cpshelp';
+	const helpProvider=new class implements vscode.TextDocumentContentProvider {
+		async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+			let retval='';
+			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources',uri.path);
+			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
+			try{
+				const docContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
+				retval=fromBinaryArray(docContentBytes);
+			} catch {
+				console.log('error loading help');
+				vscode.window.showErrorMessage('error loading help');
+				return '';
+			}
+		
+			return retval;
+		}
+	};
+	context.subscriptions.push(
+		vscode.workspace.registerTextDocumentContentProvider(helpScheme, helpProvider)
+	);
+
+
 
 
 
@@ -900,11 +924,26 @@ export async function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand(helloWorldId, () => {
+	const disposable = vscode.commands.registerCommand(helloWorldId, async (helpDocLink?:string) => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		if(haveCurrentWorkspace) {
 			vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
+			// **#72 - show help doc
+			let helpDocLinkStr:string=helpDocLink ? "#"+helpDocLink : '';
+			const helpuri=vscode.Uri.parse(helpScheme+':'+'helpfile.md'+helpDocLinkStr);
+			const helpdoc=await vscode.workspace.openTextDocument(helpuri);
+			const textEd=await vscode.window.showTextDocument(helpdoc,{preview:true});
+			//const close_other_editor_command_id = "workbench.action.closeEditorsInOtherGroups";
+			const markdown_preview_command_id = "markdown.showPreview";
+			//await vscode.commands.executeCommand(close_other_editor_command_id);
+			await vscode.commands.executeCommand(markdown_preview_command_id);
+			await vscode.window.showTextDocument(helpdoc);
+			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+			// vscode.commands.executeCommand(close_other_editor_command_id)
+			// .then(() => vscode.commands.executeCommand(markdown_preview_command_id))
+			// .then(() => {}, (e) => console.error(e));
+		
 		} else {
 			vscode.window.showInformationMessage('Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!');
 		}
