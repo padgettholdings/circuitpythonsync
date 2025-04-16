@@ -142,4 +142,6 @@
 # Issues #93 (extension deps) and #95 (select libs show existing)
 - create release v0.1.16 for platform testing
 
+# Issue #72 - help view with context links
+- create release v0.1.17 for testing initial viewing
 
