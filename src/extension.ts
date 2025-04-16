@@ -930,16 +930,17 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(haveCurrentWorkspace) {
 			//vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
 			// **#72 - show help doc
-			let helpDocLinkStr:string=helpDocLink ? "#"+helpDocLink : '';
+			let helpDocLinkStr:string=helpDocLink ? "\#"+helpDocLink : '';
 			const helpuri=vscode.Uri.parse(helpScheme+':'+'helpfile.md'+helpDocLinkStr);
-			const helpdoc=await vscode.workspace.openTextDocument(helpuri);
-			const textEd=await vscode.window.showTextDocument(helpdoc,{preview:true});
+			//const helpuri=vscode.Uri.joinPath(context.extensionUri,'resources','helpfile.md'+helpDocLinkStr);
+			//const helpdoc=await vscode.workspace.openTextDocument(helpuri);
+			//const textEd=await vscode.window.showTextDocument(helpdoc);
 			//const close_other_editor_command_id = "workbench.action.closeEditorsInOtherGroups";
 			const markdown_preview_command_id = "markdown.showPreview";
 			//await vscode.commands.executeCommand(close_other_editor_command_id);
-			await vscode.commands.executeCommand(markdown_preview_command_id);
-			await vscode.window.showTextDocument(helpdoc);
-			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+			await vscode.commands.executeCommand(markdown_preview_command_id,helpuri);
+			//await vscode.window.showTextDocument(helpdoc);
+			//await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 			// vscode.commands.executeCommand(close_other_editor_command_id)
 			// .then(() => vscode.commands.executeCommand(markdown_preview_command_id))
 			// .then(() => {}, (e) => console.error(e));
