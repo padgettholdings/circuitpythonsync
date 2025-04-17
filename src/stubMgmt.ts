@@ -27,6 +27,17 @@ export class StubMgmt {
         this._stubZipArchiveUri = vscode.workspace.workspaceFolders ? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, strgs.stubArchiveFolderName) : undefined;
         this._progInc=0;    //set to greater than 100 to stop progress
 
+        // #72, add help button to board select
+        const iconCommand2:ThemeIcon=new ThemeIcon('question');
+        interface cmdQuickInputButton extends QuickInputButton {
+			commandName: string;
+		}
+        const helpButton:cmdQuickInputButton={
+            iconPath:iconCommand2,
+            tooltip:'Help with Boards',
+            commandName: "help"
+        };
+
         if(!fs.existsSync(this._context.globalStorageUri.fsPath)){
             fs.mkdirSync(this._context.globalStorageUri.fsPath);
         }
@@ -68,9 +79,18 @@ export class StubMgmt {
             qpBoards.items=boardList;
             qpBoards.placeholder = 'pick board';    // strgs.boardListPlaceholder;
             qpBoards.title = 'select board model';  // strgs.boardListTitle;
+            qpBoards.buttons=[helpButton];
             if(boardFilter && boardFilter.length>0){
                 qpBoards.value=boardFilter; // set the initial value to filter on
             }
+            qpBoards.onDidTriggerButton((button) => {  
+                const btn=button as cmdQuickInputButton;
+                if (btn.commandName === 'help') {
+                    qpBoards.hide();
+                    // show the help page
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-support');
+                }
+            }); 
             qpBoards.onDidChangeSelection(async (items) => {
                 if (items.length === 0) {
                     return; // no selection
