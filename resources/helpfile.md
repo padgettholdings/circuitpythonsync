@@ -78,3 +78,45 @@ help text 3
 
 [Top](#welcome-to-circuitpython-sync)
 
+## Board Support
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+help text 4
+
+[Top](#welcome-to-circuitpython-sync)
+
+## Libs Copy Support
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+help text 5
+
+[Top](#welcome-to-circuitpython-sync)
+

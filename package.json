@@ -42,7 +42,7 @@
     "commands": [
       {
         "command": "circuitpythonsync.helloWorld",
-        "title": "Hello World",
+        "title": "Welcome and Help",
         "category": "CircuitPythonSync"
       },
       {

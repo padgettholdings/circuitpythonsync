@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { QuickInputButton, ThemeIcon } from 'vscode';
 //import * as drivelist from 'drivelist';
 import * as drivelist from './drivelist'; // #74, use this for drive list
 import * as os from 'os';
@@ -90,6 +91,12 @@ interface drvlstDrive {
 
 //now the last drives queried
 let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
+
+// **#72, quick pick command buttons
+const iconCommandHelp:ThemeIcon=new ThemeIcon('question');
+interface cmdQuickInputButton extends QuickInputButton {
+	commandName: string;
+}
 
 // ALSO need a cache of detected drives managed by the DriveList module
 //let detectedDrives: drivelist.detectedDrive[] = [];
@@ -1346,138 +1353,178 @@ export async function activate(context: vscode.ExtensionContext) {
 			};
 			picks.push(pick);
 		}
-		const pickOpt:vscode.QuickPickOptions={
-			canPickMany:true,
-			placeHolder: strgs.mngLibChecks,
-			title: strgs_mngLibChooseLibs
+		// const pickOpt:vscode.QuickPickOptions={
+		// 	canPickMany:true,
+		// 	placeHolder: strgs.mngLibChecks,
+		// 	title: strgs_mngLibChooseLibs
+		// };
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:'Help with Lib copies',
+			commandName:'help'
 		};
-		const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
-			{title:strgs_mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
-		);
-		if(newChoices){
-			let prsvDestWCmts:boolean=false;	//if true, use/remove comments to keep destinations
-			//the return is only the new picks, all others in cpfiles should be deleted
-			//just format the file again from cpLines and newChoices
-			// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
-			if(
-				cpLines.some((cpl) => {
-					return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
-				})
-			){
-				let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
-				if(ans==="No, cancel"){return;}
-				if(ans==="Preserve"){
-					prsvDestWCmts=true;
-				}
+		// const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
+		// 	{title:strgs_mngLibChooseLibs, placeHolder:strgs.mngLibChecks, canPickMany:true}
+		// );
+		const qpLibCopyChoices=vscode.window.createQuickPick<libSelPick>();
+		qpLibCopyChoices.items=picks;
+		qpLibCopyChoices.selectedItems=picks.filter(pick => pick.picked);
+		qpLibCopyChoices.title=strgs_mngLibChooseLibs;
+		qpLibCopyChoices.placeholder=strgs.mngLibChecks;
+		qpLibCopyChoices.canSelectMany=true;
+		qpLibCopyChoices.buttons=[helpButton];
+		qpLibCopyChoices.onDidTriggerButton((button) => {  
+			const btn=button as cmdQuickInputButton;
+			if (btn.commandName === 'help') {
+				qpLibCopyChoices.hide();
+				// show the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,'libs-copy-support');
 			}
-			// **ALSO, if all lib paths are taken out warn that entire library will be copied
-			if(newChoices.length===0){
-				let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
-				if(ans==="No"){return;}
-			}
-			//get the files only lines from cpLines
-			//  ** #37, ignore the comment lines which have no src
-			const cpLinesPy=cpLines.filter(lne => !lne.inLib && lne.src);
-			//now start constructing the new file
-			let newFileContents:string="";
-			for(const lne of cpLinesPy){
-				newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
-			}
-			//now add the selections from choices, ALL lib - these are either;
-			//	- new non-mapped selections
-			//	- previously selected mapped that pass through
-			//	- ** lines that were commented and are now selected...
-			//	-	WHICH can be either mapped or not, if mapped defer to question...
-			for(const nc of newChoices){
-				if(nc.description && nc.description.endsWith(strgs.pickCommentFlag) && nc.description.includes('->')){
-					//??? let below handle????
-				} else {
-					newFileContents+=nc.label+"\n";
-				}
-			}
-			// **look at cplines having mappings that may be flagged to preserve with comments
-			if(prsvDestWCmts){
-				const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
-				if(prsvList){
-					//just add cpline back with comment
-					// ** need the actual lib folder path
-					const libDir=await getLibPath();
-					for(const plne of prsvList){
-						newFileContents+="# "+libDir+"/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
+		}); 	
+		qpLibCopyChoices.onDidAccept(async () => {
+			// get the selected items
+			const newChoices=qpLibCopyChoices.selectedItems;
+			if(newChoices){
+				let prsvDestWCmts:boolean=false;	//if true, use/remove comments to keep destinations
+				//the return is only the new picks, all others in cpfiles should be deleted
+				//just format the file again from cpLines and newChoices
+				// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
+				if(
+					cpLines.some((cpl) => {
+						return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+					})
+				){
+					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					if(ans==="No, cancel"){
+						qpLibCopyChoices.hide();
+						return;
+					}
+					if(ans==="Preserve"){
+						prsvDestWCmts=true;
 					}
 				}
-			}
-			// ** #37, add back the comment lines EXCEPT the ones matching new choices
-			let removingDestMapComment:boolean=false;
-			let uncomMappedLines=Array<cpFileLine>(0);
-			for(const cmt of cpLinesComments){
-				// take off any dest mapping that is in comment, just match src
-				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
-				if(!newChoices.some(nc => cmtSrcOnly && nc.label===cmtSrcOnly)){
-					newFileContents+=cmt.origLine+'\n';
-				} else {
-					//if comment is being removed that has dest, flag to ask later
-					if(cmt.origLine && cmt.origLine.includes('->')){
-						removingDestMapComment=true;
-						uncomMappedLines.push(cmt);
+				// **ALSO, if all lib paths are taken out warn that entire library will be copied
+				if(newChoices.length===0){
+					let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
+					if(ans==="No"){
+						qpLibCopyChoices.hide();
+						return;
 					}
 				}
-			}
-			//if removed comment with dest map, ask
-			if(removingDestMapComment){
-				const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
-				if(ans==="No, cancel"){return;}
-				if(ans==="Preserve"){
-					//just add the orig line without comment back in
-					for(const cmt of uncomMappedLines){
-						if(cmt.origLine){
-							newFileContents+=cmt.origLine.slice(1).trim()+'\n';
-						}
+				//get the files only lines from cpLines
+				//  ** #37, ignore the comment lines which have no src
+				const cpLinesPy=cpLines.filter(lne => !lne.inLib && lne.src);
+				//now start constructing the new file
+				let newFileContents:string="";
+				for(const lne of cpLinesPy){
+					newFileContents+=lne.src+(lne.dest ? " -> "+lne.dest : "")+"\n";
+				}
+				//now add the selections from choices, ALL lib - these are either;
+				//	- new non-mapped selections
+				//	- previously selected mapped that pass through
+				//	- ** lines that were commented and are now selected...
+				//	-	WHICH can be either mapped or not, if mapped defer to question...
+				for(const nc of newChoices){
+					if(nc.description && nc.description.endsWith(strgs.pickCommentFlag) && nc.description.includes('->')){
+						//??? let below handle????
+					} else {
+						newFileContents+=nc.label+"\n";
 					}
-				} else {
-					//just do the source without the map from orig
-					for(const cmt of uncomMappedLines){
-						if(cmt.origLine){
-							newFileContents+=cmt.origLine.slice(1).trim().split('->')[0].trim()+'\n';
+				}
+				// **look at cplines having mappings that may be flagged to preserve with comments
+				if(prsvDestWCmts){
+					const prsvList=cpLines.filter(cpl => cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+					if(prsvList){
+						//just add cpline back with comment
+						// ** need the actual lib folder path
+						const libDir=await getLibPath();
+						for(const plne of prsvList){
+							newFileContents+="# "+libDir+"/"+plne.src+(plne.dest ? " -> "+plne.dest : "")+"\n";
 						}
 					}
 				}
-			}
-			//write cpfiles, creating if needed and making backup if orig not empty
-			const wrslt=await writeCpfiles(newFileContents);
-			if(wrslt){
-				//give error message
-				vscode.window.showErrorMessage(wrslt);
-				return;
-			}
-			// ** Per #22, if file written was not blank BUT no py files were included then
-			//	give a warning that only code.py or main.py will be copied, and option to edit
-			/* NOT NEEDED HERE, FILE WATCHER ON CPFILES WILL PICK UP CHANGES
-			if(newFileContents && cpLinesPy.length===0){
-				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
-				if(ans==="Yes"){
-					const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
-					if(!wsRootFolder) {return "";}
-					const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
-					const doc=await vscode.workspace.openTextDocument(cpFilePath);
-					vscode.window.showTextDocument(doc);
+				// ** #37, add back the comment lines EXCEPT the ones matching new choices
+				let removingDestMapComment:boolean=false;
+				let uncomMappedLines=Array<cpFileLine>(0);
+				for(const cmt of cpLinesComments){
+					// take off any dest mapping that is in comment, just match src
+					const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
+					if(!newChoices.some(nc => cmtSrcOnly && nc.label===cmtSrcOnly)){
+						newFileContents+=cmt.origLine+'\n';
+					} else {
+						//if comment is being removed that has dest, flag to ask later
+						if(cmt.origLine && cmt.origLine.includes('->')){
+							removingDestMapComment=true;
+							uncomMappedLines.push(cmt);
+						}
+					}
 				}
-			} else {
-				// ** Per #26, also give warning/edit opp if no python files in files only set
-				const cpLinesPyPy=cpLinesPy.filter(lne => lne.src.endsWith('.py'));
-				if(newFileContents && cpLinesPy.length>0 && cpLinesPyPy.length===0){
-					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+				//if removed comment with dest map, ask
+				if(removingDestMapComment){
+					const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					if(ans==="No, cancel"){
+						qpLibCopyChoices.hide();
+						return;
+					}
+					if(ans==="Preserve"){
+						//just add the orig line without comment back in
+						for(const cmt of uncomMappedLines){
+							if(cmt.origLine){
+								newFileContents+=cmt.origLine.slice(1).trim()+'\n';
+							}
+						}
+					} else {
+						//just do the source without the map from orig
+						for(const cmt of uncomMappedLines){
+							if(cmt.origLine){
+								newFileContents+=cmt.origLine.slice(1).trim().split('->')[0].trim()+'\n';
+							}
+						}
+					}
+				}
+				//write cpfiles, creating if needed and making backup if orig not empty
+				const wrslt=await writeCpfiles(newFileContents);
+				if(wrslt){
+					//give error message
+					vscode.window.showErrorMessage(wrslt);
+					qpLibCopyChoices.hide();
+					return;
+				}
+				//if all the way to here, just hide
+				qpLibCopyChoices.hide();
+				// ** Per #22, if file written was not blank BUT no py files were included then
+				//	give a warning that only code.py or main.py will be copied, and option to edit
+				/* NOT NEEDED HERE, FILE WATCHER ON CPFILES WILL PICK UP CHANGES
+				if(newFileContents && cpLinesPy.length===0){
+					const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
 					if(ans==="Yes"){
 						const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 						if(!wsRootFolder) {return "";}
 						const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
 						const doc=await vscode.workspace.openTextDocument(cpFilePath);
 						vscode.window.showTextDocument(doc);
-					}	
+					}
+				} else {
+					// ** Per #26, also give warning/edit opp if no python files in files only set
+					const cpLinesPyPy=cpLinesPy.filter(lne => lne.src.endsWith('.py'));
+					if(newFileContents && cpLinesPy.length>0 && cpLinesPyPy.length===0){
+						const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+						if(ans==="Yes"){
+							const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+							if(!wsRootFolder) {return "";}
+							const cpFilePath:vscode.Uri=vscode.Uri.joinPath(wsRootFolder.uri,`.vscode/${strgs_cpfiles}`);
+							const doc=await vscode.workspace.openTextDocument(cpFilePath);
+							vscode.window.showTextDocument(doc);
+						}	
+					}
 				}
+				*/
 			}
-			*/
-		}
+		});
+		qpLibCopyChoices.onDidHide(() => {
+			qpLibCopyChoices.dispose();
+		});
+		qpLibCopyChoices.show();
 	});
 	context.subscriptions.push(cmdMngLibSettings);
 	
