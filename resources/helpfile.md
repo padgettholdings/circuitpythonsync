@@ -120,3 +120,24 @@ help text 5
 
 [Top](#welcome-to-circuitpython-sync)
 
+## Files Copy Support
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+help text 6
+
+[Top](#welcome-to-circuitpython-sync)
+
