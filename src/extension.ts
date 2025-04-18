@@ -13,6 +13,8 @@ import { BoardFileExplorer,BoardFileProvider } from './boardFileExplorer';
 import { LibraryMgmt } from './libraryMgmt';
 import { StubMgmt } from './stubMgmt';
 import { ProjectBundleMgmt } from './projectBundle';
+// **#72, new full quick pick with buttons that can be used in commands like showQuickPick
+import { showFullQuickPick,QuickPickParameters,shouldResume } from './fullQuickPick';
 
 import * as axios from 'axios';
 import * as fs from 'fs';
@@ -96,6 +98,10 @@ let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
 const iconCommandHelp:ThemeIcon=new ThemeIcon('question');
 interface cmdQuickInputButton extends QuickInputButton {
 	commandName: string;
+}
+// also need a narrowing test for buttons of this type for the full quick pick
+function isCmdQuickInputButton(button: any): button is cmdQuickInputButton {
+	return (button as cmdQuickInputButton).commandName !== undefined;
 }
 
 // ALSO need a cache of detected drives managed by the DriveList module
@@ -2398,6 +2404,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
 		}
+		// **#72, adding help
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:'Help with Project Templates',
+			commandName:'help'
+		};
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
 		// BUT if re-entered with forceChoice skip this...
 		// #88, also don't if no ask again set
@@ -2511,10 +2523,33 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ####TEST#####
 		while(!readyForTemplateProc){
 			if(!choices) {
-				choices=await vscode.window.showQuickPick(picks,
-					{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
-					canPickMany:false}
+				// ** #72, use full quick pick so can have button for help
+				const choicesWbutton=await showFullQuickPick(
+					{
+						title: strgs.projTemplateQPTitle,
+						placeholder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
+						buttons:[helpButton],
+						items:picks,
+						shouldResume: shouldResume
+					}
 				);
+				// choices=await vscode.window.showQuickPick(picks,
+				// 	{title: strgs.projTemplateQPTitle,placeHolder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
+				// 	canPickMany:false}
+				// );
+				if(choicesWbutton && isCmdQuickInputButton(choicesWbutton)){ 
+					if(choicesWbutton.commandName==='help'){
+						// ** #72, open the help page
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-template-support');
+						choices=undefined;	//get out of this loop
+						continue;
+					}
+				}
+				if(choicesWbutton && !isCmdQuickInputButton(choicesWbutton)){
+					choices=choicesWbutton as vscode.QuickPickItem;
+				} else {
+					choices=undefined;	//get out of this loop
+				}
 			}
 			// ** if no choice that is cancel, get out
 			if(!choices){return;}

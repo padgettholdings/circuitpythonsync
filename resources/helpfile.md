@@ -141,3 +141,24 @@ help text 6
 
 [Top](#welcome-to-circuitpython-sync)
 
+## Project Template Support
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+help text 7
+
+[Top](#welcome-to-circuitpython-sync)
+
