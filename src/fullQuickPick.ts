@@ -27,8 +27,7 @@ export interface QuickPickParameters<T extends QuickPickItem> {
 	shouldResume: () => Thenable<boolean>;
 }
 
-export async function showFullQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>(
-    { title,  items, activeItem, ignoreFocusOut, placeholder, buttons, shouldResume }: P) {
+export async function showFullQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title,  items, activeItem, ignoreFocusOut, placeholder, buttons, shouldResume }: P) {
     const disposables: Disposable[] = [];
     try {
         return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
@@ -47,7 +46,10 @@ export async function showFullQuickPick<T extends QuickPickItem, P extends Quick
                 input.onDidTriggerButton(item => {
                         resolve((item as any));     
                 }),
-                input.onDidChangeSelection(items => resolve(items[0])),
+                input.onDidChangeSelection(items => {
+                    input.hide();
+                    resolve(items[0]);
+                }),
                 input.onDidHide(() => {
                     (async () => {
                         reject(shouldResume && await shouldResume() ? InputFlowAction.resume : InputFlowAction.cancel);
