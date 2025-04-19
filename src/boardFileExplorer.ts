@@ -161,5 +161,9 @@ export class BoardFileExplorer {
 			const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
 			await vscode.commands.executeCommand(cmdName,boardUri);
 		});
-    }
+		// ** #72, add help
+		vscode.commands.registerCommand('boardExplorer.help', async () => {
+			vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-support');
+    	});
+	}
 }

@@ -116,7 +116,7 @@
       },
       {
         "command": "boardExplorer.refresh",
-        "title": "Refresh",
+        "title": "Board Refresh",
         "icon": "$(refresh)"
       },
       {
@@ -133,10 +133,15 @@
       },
       {
         "command": "boardExplorer.openBoardOS",
-        "title": "CP Open Board in OS",
+        "title": "Board Open in OS",
         "category": "CircuitPythonSync",
         "enablement": "config.circuitpythonsync.drivepath",
         "icon": "$(explorer-view-icon)"
+      },
+      {
+        "command": "boardExplorer.help",
+        "title": "Help",
+        "icon": "$(question)"
       }
     ],
     "menus": {
@@ -156,6 +161,10 @@
         {
           "command": "boardExplorer.openOS-wsl",
           "when": "false"
+        },
+        {
+          "command": "boardExplorer.help",
+          "when": "false"
         }
       ],
       "explorer/context": [
@@ -174,6 +183,11 @@
         {
           "command": "boardExplorer.openBoardOS",
           "when": "view ==boardExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "boardExplorer.help",
+          "when": "view == boardExplorer",
           "group": "navigation"
         }
       ],
