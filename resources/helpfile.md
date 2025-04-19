@@ -10,6 +10,7 @@
 * [Files Copy Support](#files-copy-support)
 * [Project Template Support](#project-template-support)
 * [CP Drive Mapping](#cp-drive-mapping)
+* [Board Downloading](#board-downloading)
 
 ## section 0
 help text top
@@ -185,6 +186,27 @@ help text 8
 help text 8
 
 help text 8
+
+[Top](#welcome-to-circuitpython-sync)
+
+## Board Downloading
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
+
+help text 9
 
 [Top](#welcome-to-circuitpython-sync)
 

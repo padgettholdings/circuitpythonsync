@@ -2369,57 +2369,88 @@ export async function activate(context: vscode.ExtensionContext) {
 				picked: onlyStdFolders
 			}
 		];
-		const choices=await vscode.window.showQuickPick(dnldConfigPicks,
-			{title: strgs.dnldCfgQpTitle,placeHolder: strgs.dnldCfgQpPlchld, canPickMany:true}
-		);
-		// ** if no choice that is cancel, get out
-		if(!choices){return;}
-		// process choices, updating tracking too, NOTE that uncheck is not returned, so is false
-		// AND picked prop is not set, so just pick showing in result means selected
-		// SO set all settings to false, let loop set true
-		allowOverwrite=false;
-		skipDotFiles=false;
-		onlyStdFolders=false;
-		for(const choice of choices){
-			if(choice.label===strgs.pickAllowOverwrite) { 
-				allowOverwrite=true;
+		// ** #72, adding help
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:'Help with Board Download',
+			commandName:'help'
+		};
+		const qpBoardDnldChoices=vscode.window.createQuickPick();
+		qpBoardDnldChoices.items=dnldConfigPicks;
+		qpBoardDnldChoices.title=strgs.dnldCfgQpTitle;
+		qpBoardDnldChoices.placeholder=strgs.dnldCfgQpPlchld;
+		qpBoardDnldChoices.buttons=[helpButton];
+		qpBoardDnldChoices.canSelectMany=true;
+		qpBoardDnldChoices.selectedItems=dnldConfigPicks.filter(item => item.picked);
+		// const choices=await vscode.window.showQuickPick(dnldConfigPicks,
+		// 	{title: strgs.dnldCfgQpTitle,placeHolder: strgs.dnldCfgQpPlchld, canPickMany:true}
+		// );
+		qpBoardDnldChoices.onDidTriggerButton((button) => {  
+			const btn=button as cmdQuickInputButton;
+			if (btn.commandName === 'help') {
+				qpBoardDnldChoices.hide();
+				// show the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-downloading');
 			}
-			if(choice.label===strgs.pickSkipDots){
-				skipDotFiles=true;
+		}); 	
+		qpBoardDnldChoices.onDidAccept(async () => {
+			const choices=qpBoardDnldChoices.selectedItems;
+			// ** if no choice that is cancel, get out
+			if(!choices){
+				qpBoardDnldChoices.hide();	
+				return;
 			}
-			if(choice.label===strgs.pickStdFoldersOnly){
-				onlyStdFolders=true;
+			// process choices, updating tracking too, NOTE that uncheck is not returned, so is false
+			// AND picked prop is not set, so just pick showing in result means selected
+			// SO set all settings to false, let loop set true
+			allowOverwrite=false;
+			skipDotFiles=false;
+			onlyStdFolders=false;
+			for(const choice of choices){
+				if(choice.label===strgs.pickAllowOverwrite) { 
+					allowOverwrite=true;
+				}
+				if(choice.label===strgs.pickSkipDots){
+					skipDotFiles=true;
+				}
+				if(choice.label===strgs.pickStdFoldersOnly){
+					onlyStdFolders=true;
+				}
 			}
-		}
-		confirmDnldOverwrite=allowOverwrite;
-		confirmDnldSkipDots=skipDotFiles;
-		confirmDnldStdFoldersOnly=onlyStdFolders;
-		//now ready to download to workspace (have to check to resolve transpiler)
-		const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
-		if(!wsRootFolderUri) {return;}	//should never
-		//####FIXED#### the cpProjTemplate should be only the default!!
-		for(const dirEntry of dirContents){
-			if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
-					&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplateDefault.some(tmpl => tmpl.folderName===dirEntry[0])))) {
-				const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
-				const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
-				try {
-					await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:allowOverwrite});
-				} catch(error) {
-					const fse=error as vscode.FileSystemError;
-					if(fse.code==='FileExists'){
-						// ** tell user can't copy over but will skip and continue
-						vscode.window.showWarningMessage(strgs.dnldWarnOverwrite+dirEntry[0]);
-					} else {
-						// ** tell user other error occurred, aborting
-						vscode.window.showErrorMessage(strgs.dnldCopyError+fse.message);
-						return;
+			confirmDnldOverwrite=allowOverwrite;
+			confirmDnldSkipDots=skipDotFiles;
+			confirmDnldStdFoldersOnly=onlyStdFolders;
+			//now ready to download to workspace (have to check to resolve transpiler)
+			const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
+			if(!wsRootFolderUri) {return;}	//should never
+			//####FIXED#### the cpProjTemplate should be only the default!!
+			for(const dirEntry of dirContents){
+				if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
+						&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplateDefault.some(tmpl => tmpl.folderName===dirEntry[0])))) {
+					const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
+					const destUri=vscode.Uri.joinPath(wsRootFolderUri,dirEntry[0]);
+					try {
+						await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:allowOverwrite});
+					} catch(error) {
+						const fse=error as vscode.FileSystemError;
+						if(fse.code==='FileExists'){
+							// ** tell user can't copy over but will skip and continue
+							vscode.window.showWarningMessage(strgs.dnldWarnOverwrite+dirEntry[0]);
+						} else {
+							// ** tell user other error occurred, aborting
+							vscode.window.showErrorMessage(strgs.dnldCopyError+fse.message);
+							qpBoardDnldChoices.hide();
+							return;
+						}
 					}
 				}
 			}
-		}
-
-
+			qpBoardDnldChoices.hide();
+		});
+		qpBoardDnldChoices.onDidHide(() => {
+			qpBoardDnldChoices.dispose();
+		});
+		qpBoardDnldChoices.show();
 	});
 	context.subscriptions.push(dndBoardCmd);
 
@@ -2559,7 +2590,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						placeholder: strgs.projTemplateQPPlaceholder+(projTemplatePath ? `(from ${projTemplatePath})`: '(from default)'),
 						buttons:[helpButton],
 						items:picks,
-						shouldResume: shouldResume
+						shouldResume: shouldResume		//shouldResume
 					}
 				);
 				// choices=await vscode.window.showQuickPick(picks,
@@ -2571,7 +2602,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						// ** #72, open the help page
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-template-support');
 						choices=undefined;	//get out of this loop
-						continue;
+						return;
 					}
 				}
 				if(choicesWbutton && !isCmdQuickInputButton(choicesWbutton)){
