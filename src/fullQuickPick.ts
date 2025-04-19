@@ -27,7 +27,8 @@ export interface QuickPickParameters<T extends QuickPickItem> {
 	shouldResume: () => Thenable<boolean>;
 }
 
-export async function showFullQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title,  items, activeItem, ignoreFocusOut, placeholder, buttons, shouldResume }: P) {
+export async function showFullQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>(
+    { title,  items, activeItem, ignoreFocusOut, placeholder, buttons, shouldResume }: P) {
     const disposables: Disposable[] = [];
     try {
         return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {

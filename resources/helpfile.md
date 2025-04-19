@@ -5,6 +5,11 @@
 * [Section 1](#section-1)
 * [Section 2](#section-2)
 * [Library Support](#library-support)
+* [Board Support](#board-support)
+* [Libs Copy Support](#libs-copy-support)
+* [Files Copy Support](#files-copy-support)
+* [Project Template Support](#project-template-support)
+* [CP Drive Mapping](#cp-drive-mapping)
 
 ## section 0
 help text top
@@ -159,6 +164,27 @@ help text 7
 help text 7
 
 help text 7
+
+[Top](#welcome-to-circuitpython-sync)
+
+## CP Drive Mapping
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
+
+help text 8
 
 [Top](#welcome-to-circuitpython-sync)
 

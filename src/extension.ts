@@ -2015,7 +2015,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(!haveCurrentWorkspace) {
 			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
 			return;
-		} 
+		}
+		// **#72, adding help
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:'Help with Drive Mapping',
+			commandName:'help'
+		};
 		// TBD- get drivelist, but for now fake it
 		/*
 		let picks: drivePick[]= [
@@ -2170,10 +2176,33 @@ export async function activate(context: vscode.ExtensionContext) {
 		// 	placeHolder:'Pick detected drive or select manually',
 		// 	title: 'CP Drive Select'
 		// });
-		const result=await vscode.window.showQuickPick<drivePick>(picks,{
-			placeHolder:strgs.pickDrvOrManual,
-			title: strgs.cpDrvSel
-		});
+		// ** #72, use full quick pick so can have button for help
+		let result:drivePick|undefined=undefined;
+		const resultWbutton=await showFullQuickPick(
+			{
+				items:picks,
+				title:strgs.cpDrvSel,
+				placeholder:strgs.pickDrvOrManual,
+				buttons:[helpButton],
+				shouldResume: shouldResume
+			}
+		);
+		// const result=await vscode.window.showQuickPick<drivePick>(picks,{
+		// 	placeHolder:strgs.pickDrvOrManual,
+		// 	title: strgs.cpDrvSel
+		// });
+		if(resultWbutton && isCmdQuickInputButton(resultWbutton)){ 
+			if(resultWbutton.commandName==='help'){
+				// ** #72, open the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,'cp-drive-mapping');
+				return;	
+			}
+		}
+		if(resultWbutton && !isCmdQuickInputButton(resultWbutton)){
+			result=resultWbutton as drivePick;
+		} else {
+			result=undefined;	//get out of this loop
+		}
 		//if(result) {vscode.window.showInformationMessage(result.label);};
 		//if no choice just get out
 		if(!result){return;}
