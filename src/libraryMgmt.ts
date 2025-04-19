@@ -292,65 +292,102 @@ export class LibraryMgmt {
                 if (libNameNoExt in libMetadata) {libNameVer= libMetadata[libNameNoExt].version;}
                 pickItems.unshift({ label: libNameNoExt, description: libNameVer,picked:true });
             }
+            // ** #72, change to createQuickPick for help button
+            const helpButton:cmdQuickInputButton={
+                iconPath:iconCommand2,
+                tooltip:'Help with Libraries',
+                commandName:'help'
+            };
+            const qpLibSelLibs = vscode.window.createQuickPick();
+            qpLibSelLibs.title = strgs.selLibQPtitle;
+            qpLibSelLibs.buttons = [helpButton];
+            qpLibSelLibs.canSelectMany = true;
+            qpLibSelLibs.placeholder = strgs.selLibQPplaceholder;
+            qpLibSelLibs.ignoreFocusOut = true;
+            qpLibSelLibs.items = pickItems;
+            qpLibSelLibs.selectedItems = pickItems.filter(item => item.picked);
             // now do the quickpick with the pick items
-            const newLibs=await vscode.window.showQuickPick(pickItems, {
-                canPickMany: true,
-                placeHolder: strgs.selLibQPplaceholder,
-                ignoreFocusOut: true,
-                title: strgs.selLibQPtitle
-            });
-            if(newLibs===undefined) {return;}       // if esc just bail.  none selected is length 0
-            // #95, split into five steps:
-            //  - check to see if all current libs were deleted, if so warn
-            //  - generate string array of new adds that may include current or is empty
-            //  - if any current libs are unselected, delete them from lib folder using string array
-            //  - **NO- pass in case remove deps ** remove remaining current libs from new adds since already in lib folder and dependencies will be removed
-            //  - if any remaining plus new pass to updateLibraries
-            let newLibsToAdd:string[]=[];
-            if(newLibs && newLibs.length>0) {
-                newLibsToAdd=newLibs.map(lib => lib.label);
-                newLibsToAdd=[...new Set(newLibsToAdd)]; //remove duplicates just for safety
-            }
-            if(libContents.length>0 && !libContents.some(([libName,libType]) => {
-                return newLibsToAdd.some(lib => lib.replace('.mpy','') === libName.replace('.mpy',''));
-            })){
-                const ans=await vscode.window.showWarningMessage(strgs.selLibAllCurLibsDel, 'Yes','No');
-                if(ans!=='Yes') {
+            // const newLibs=await vscode.window.showQuickPick(pickItems, {
+            //     canPickMany: true,
+            //     placeHolder: strgs.selLibQPplaceholder,
+            //     ignoreFocusOut: true,
+            //     title: strgs.selLibQPtitle
+            // });
+            qpLibSelLibs.onDidTriggerButton((button) => {  
+                const btn=button as cmdQuickInputButton;
+                if (btn.commandName === 'help') {
+                    qpLibSelLibs.hide();
+                    // show the help page
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'library-support');
+                }
+            }); 	
+            qpLibSelLibs.onDidAccept(async () => {
+                const newLibs=qpLibSelLibs.selectedItems;
+                if(newLibs===undefined) {
+                    qpLibSelLibs.hide();
+                    return;
+                }       // if esc just bail.  none selected is length 0
+                // #95, split into five steps:
+                //  - check to see if all current libs were deleted, if so warn
+                //  - generate string array of new adds that may include current or is empty
+                //  - if any current libs are unselected, delete them from lib folder using string array
+                //  - **NO- pass in case remove deps ** remove remaining current libs from new adds since already in lib folder and dependencies will be removed
+                //  - if any remaining plus new pass to updateLibraries
+                let newLibsToAdd:string[]=[];
+                if(newLibs && newLibs.length>0) {
+                    newLibsToAdd=newLibs.map(lib => lib.label);
+                    newLibsToAdd=[...new Set(newLibsToAdd)]; //remove duplicates just for safety
+                }
+                if(libContents.length>0 && !libContents.some(([libName,libType]) => {
+                    return newLibsToAdd.some(lib => lib.replace('.mpy','') === libName.replace('.mpy',''));
+                })){
+                    const ans=await vscode.window.showWarningMessage(strgs.selLibAllCurLibsDel, 'Yes','No');
+                    if(ans!=='Yes') {
+                        qpLibSelLibs.hide();
+                        return;
+                    }
+                }
+                const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+                if(!wsRootFolder) {
+                    qpLibSelLibs.hide();
                     return;
                 }
-            }
-            const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
-            if(!wsRootFolder) {return;}
-            for(const [libName, libType] of libContents) {
-                const libNameNoExt=libName.replace('.mpy','');
-                if(!newLibsToAdd.some(item => item === libNameNoExt)) {
-                    const libFileUri=vscode.Uri.joinPath(wsRootFolder.uri,libPath,libName);
-                    try {
-                        if(libType===vscode.FileType.Directory) {
-                            await vscode.workspace.fs.delete(libFileUri,{recursive:true});
-                        } else {
-                            await vscode.workspace.fs.delete(libFileUri);
+                for(const [libName, libType] of libContents) {
+                    const libNameNoExt=libName.replace('.mpy','');
+                    if(!newLibsToAdd.some(item => item === libNameNoExt)) {
+                        const libFileUri=vscode.Uri.joinPath(wsRootFolder.uri,libPath,libName);
+                        try {
+                            if(libType===vscode.FileType.Directory) {
+                                await vscode.workspace.fs.delete(libFileUri,{recursive:true});
+                            } else {
+                                await vscode.workspace.fs.delete(libFileUri);
+                            }
+                        } catch (error) {
+                            vscode.window.showErrorMessage(strgs.selLibDelLibError+this.getErrorMessage(error));
                         }
-                    } catch (error) {
-                        vscode.window.showErrorMessage(strgs.selLibDelLibError+this.getErrorMessage(error));
+                    } else {
+                    // since not there remove current lib from newLibsToAdd
+                        //newLibsToAdd=newLibsToAdd.filter(lib => lib !== libNameNoExt);
                     }
-                } else {
-                // since not there remove current lib from newLibsToAdd
-                    //newLibsToAdd=newLibsToAdd.filter(lib => lib !== libNameNoExt);
                 }
-            }
-            // ** #95, will always need to call updateLibraries, even if just to clear stubs
-            if(true) {        //if(newLibsToAdd.length>0) {
-                //add the new libs by passing optional parameter to the updateLibraries
-                //and update the libraries with the new libs
-                try {
-                    await this.updateLibraries(newLibsToAdd);
-                } catch (error) {
-                    //report the error, will get out
-                    vscode.window.showErrorMessage(strgs.updateLibGeneralError+this.getErrorMessage(error));
-                    this.stopLibUpdateProgress();
+                // ** #95, will always need to call updateLibraries, even if just to clear stubs
+                if(true) {        //if(newLibsToAdd.length>0) {
+                    //add the new libs by passing optional parameter to the updateLibraries
+                    //and update the libraries with the new libs
+                    try {
+                        await this.updateLibraries(newLibsToAdd);
+                    } catch (error) {
+                        //report the error, will get out
+                        vscode.window.showErrorMessage(strgs.updateLibGeneralError+this.getErrorMessage(error));
+                        this.stopLibUpdateProgress();
+                    }
                 }
-            }
+                qpLibSelLibs.hide();
+            });
+            qpLibSelLibs.onDidHide(() => { 
+                qpLibSelLibs.dispose();
+            });
+            qpLibSelLibs.show();
         });
         context.subscriptions.push(selectLibsCmd);
 
