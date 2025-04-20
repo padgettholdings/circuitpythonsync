@@ -3545,6 +3545,27 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(fileListWatchChg);
 		context.subscriptions.push(fileListWatchDelete);
 	}
+
+	// **#72, offer help at startup with options to not ask again
+	if(haveCurrentWorkspace){
+		// get the current setting for not showing help
+		const doNotShowWelcome=vscode.workspace.getConfiguration('circuitpythonsync').get('doNotShowWelcome',false);
+		if(!doNotShowWelcome){
+			const ans=await vscode.window.showInformationMessage('Would you like to see the help file?',
+				{modal:true,detail:'You can always run the Welcome command or click the help button in command title bars to get help'},'Yes','Yes but not again for this project','No and never for my user');
+			if(ans && ans.toLowerCase().startsWith('yes')){
+				vscode.commands.executeCommand(strgs.cmdHelloPKG);
+				if(ans === 'Yes but not again for this project'){
+					// ** #72, set the config to not show help again in setting.json
+					await vscode.workspace.getConfiguration('circuitpythonsync').update('doNotShowWelcome',true, vscode.ConfigurationTarget.Workspace);
+				}
+			} else if(ans && ans.toLowerCase().startsWith('no')){
+				// ** #72, set the config to not show help again for the user
+				await vscode.workspace.getConfiguration('circuitpythonsync').update('doNotShowWelcome',true, vscode.ConfigurationTarget.Global);
+			}
+			// note that if cancel nothing shows but nothing changes
+		}
+	}
 }
 
 // This method is called when your extension is deactivated

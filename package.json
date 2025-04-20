@@ -265,6 +265,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "circuitpythonsync.doNotShowWelcome": {
+          "type": "boolean",
+          "default": false,
+          "description": "Do not show the welcome help message again." 
         }
       }
     }
