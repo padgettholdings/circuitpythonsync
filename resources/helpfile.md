@@ -35,7 +35,9 @@ help text top
 
 ## section 1
 
-![CPS toolbar](cpstoolbar.png)
+![CPS toolbar](cpstoolbarsmall.png)
+
+
 
 help text 1
 

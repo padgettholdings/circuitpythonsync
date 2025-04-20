@@ -18,6 +18,7 @@ import { showFullQuickPick,QuickPickParameters,shouldResume } from './fullQuickP
 
 import * as axios from 'axios';
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 //import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
@@ -896,6 +897,18 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.registerTextDocumentContentProvider(vtScheme, vtProvider)
 	);
 
+	function encodePngToBase64Node(filePath: string): string {
+		try {
+			const fileBuffer = fs.readFileSync(filePath);
+			const base64String = fileBuffer.toString('base64');
+			const mimeType = 'image/png';
+			return `data:${mimeType};base64,${base64String}`;
+		} catch (error) {
+			console.error('Error reading or encoding the file:', error);
+			throw error;
+		}
+	}
+	
 	// **#72 - virt doc provider for help files
 	const helpScheme:string='cpshelp';
 	const helpProvider=new class implements vscode.TextDocumentContentProvider {
@@ -906,6 +919,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			try{
 				const docContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
 				retval=fromBinaryArray(docContentBytes);
+				// ** #72 - find image tags in markdown and convert to data URI
+				const imgTagRE=/!\[.*?\]\((.*?)\)/g;
+				retval=retval.replace(imgTagRE,(match, p1) =>  {
+					const imgPath=vscode.Uri.joinPath(context.extensionUri,'resources',p1);
+					const imgData=encodePngToBase64Node(imgPath.fsPath);
+					return match.replace(p1,imgData);
+				});
 			} catch {
 				console.log('error loading help');
 				vscode.window.showErrorMessage('error loading help');
