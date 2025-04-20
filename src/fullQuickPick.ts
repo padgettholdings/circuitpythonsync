@@ -30,7 +30,7 @@ export interface QuickPickParameters<T extends QuickPickItem> {
 export async function showFullQuickPick<T extends QuickPickItem, P extends QuickPickParameters<T>>({ title,  items, activeItem, ignoreFocusOut, placeholder, buttons, shouldResume }: P) {
     const disposables: Disposable[] = [];
     try {
-        return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never)>((resolve, reject) => {
+        return await new Promise<T | (P extends { buttons: (infer I)[] } ? I : never) | undefined>((resolve, reject) => {
             const input = window.createQuickPick<T>();
             input.title = title;
             input.ignoreFocusOut = ignoreFocusOut ?? false;
@@ -51,10 +51,11 @@ export async function showFullQuickPick<T extends QuickPickItem, P extends Quick
                     resolve(items[0]);
                 }),
                 input.onDidHide(() => {
-                    (async () => {
-                        reject(shouldResume && await shouldResume() ? InputFlowAction.resume : InputFlowAction.cancel);
-                    })()
-                        .catch(reject);
+                    resolve(undefined);
+                    // (async () => {
+                    //     reject(shouldResume && await shouldResume() ? InputFlowAction.resume : InputFlowAction.cancel);
+                    // })()
+                    //     .catch(reject);
                 })
             );
             // if (this.current) {
