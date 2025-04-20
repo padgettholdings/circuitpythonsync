@@ -2852,6 +2852,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		// 	return;
 		// }
 		// loop getting new entries until cancel or done
+		// **#72, adding help
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:'Help with Project Templates',
+			commandName:'help'
+		};
 		let readyForReturn:boolean=false;
 		while(!readyForReturn){
 			const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
@@ -2883,10 +2889,34 @@ export async function activate(context: vscode.ExtensionContext) {
 				});
 				picks.push(...existingPicks);
 			}
-			const choice=await vscode.window.showQuickPick(picks,
-				{title: strgs.projAddTemplateLinkTitle,placeHolder: strgs.projAddTemplateLinkPlaceholder,
-				canPickMany:false}
+			// ** #72, use full quick pick so can have button for help
+			const choiceWbutton=await showFullQuickPick(
+				{
+					title: strgs.projAddTemplateLinkTitle,
+					placeholder: strgs.projAddTemplateLinkPlaceholder,
+					buttons:[helpButton],
+					items:picks,
+					shouldResume: shouldResume		//shouldResume
+				}
 			);
+			// const choice=await vscode.window.showQuickPick(picks,
+			// 	{title: strgs.projAddTemplateLinkTitle,placeHolder: strgs.projAddTemplateLinkPlaceholder,
+			// 	canPickMany:false}
+			// );
+			let choice:vscode.QuickPickItem | undefined=undefined;
+			if(choiceWbutton && isCmdQuickInputButton(choiceWbutton)){ 
+				if(choiceWbutton.commandName==='help'){
+					// ** #72, open the help page
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-template-support');
+					choice=undefined;	//get out of this loop
+					return;
+				}
+			}
+			if(choiceWbutton && !isCmdQuickInputButton(choiceWbutton)){
+				choice=choiceWbutton as vscode.QuickPickItem;
+			} else {
+				choice=undefined;	//get out of this loop
+			}
 			// ** if no choice that is cancel, get out
 			if(!choice){
 				readyForReturn=true;
