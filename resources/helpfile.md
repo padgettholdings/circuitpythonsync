@@ -35,6 +35,8 @@ help text top
 
 ## section 1
 
+![CPS toolbar](cpstoolbar.png)
+
 help text 1
 
 help text 1
