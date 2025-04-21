@@ -163,7 +163,7 @@ export class BoardFileExplorer {
 		});
 		// ** #72, add help
 		vscode.commands.registerCommand('boardExplorer.help', async () => {
-			vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-support');
+			vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpBoardSupport);
     	});
 	}
 }

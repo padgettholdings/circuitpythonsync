@@ -53,7 +53,7 @@ export class ProjectBundleMgmt {
             // ** #72, quick input command button and input box
             const helpButton:cmdQuickInputButton={
                 iconPath:iconCommandHelp,
-                tooltip:'Help with Project Bundle',
+                tooltip:strgs.helpTooltipMap.get(strgs.helpProjectBundleSupport),
                 commandName:'help'
             };
             const projectBundleQuickInput = vscode.window.createInputBox();
@@ -65,7 +65,7 @@ export class ProjectBundleMgmt {
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'help') {
                     projectBundleQuickInput.hide();
-                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-bundle-support');
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpProjectBundleSupport);
                 }
             });
             projectBundleQuickInput.onDidAccept(async () => {

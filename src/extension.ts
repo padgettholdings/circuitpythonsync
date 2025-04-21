@@ -965,9 +965,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Display a message box to the user
 		if(haveCurrentWorkspace) {
 			//vscode.window.showInformationMessage('Hello from CircuitPythonSync- workspace active!');
+			//#####TEST#### create a webview panel to get resource path
+			// const panel = vscode.window.createWebviewPanel('circuitpythonsync', 'CircuitPythonSync', vscode.ViewColumn.One, { enableScripts: true });
+			// const imageUri=vscode.Uri.joinPath(context.extensionUri, 'resources', 'cpstoolbarsmall.png');
+			// const wvref=panel.webview.asWebviewUri(imageUri);
+			//######TEST#####
 			// **#72 - show help doc
 			let helpDocLinkStr:string=helpDocLink ? "\#"+helpDocLink : '';
-			const helpuri=vscode.Uri.parse(helpScheme+':'+'helpfile.md'+helpDocLinkStr);
+			const helpuri=vscode.Uri.parse(helpScheme+':'+strgs.helpFilename+helpDocLinkStr);
 			//const helpuri=vscode.Uri.joinPath(context.extensionUri,'resources','helpfile.md'+helpDocLinkStr);
 			//const helpdoc=await vscode.workspace.openTextDocument(helpuri);
 			//const textEd=await vscode.window.showTextDocument(helpdoc);
@@ -1386,7 +1391,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// };
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with Lib copies',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpLibsCopySupport),
 			commandName:'help'
 		};
 		// const newChoices=await vscode.window.showQuickPick<libSelPick>(picks,
@@ -1404,7 +1409,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (btn.commandName === 'help') {
 				qpLibCopyChoices.hide();
 				// show the help page
-				vscode.commands.executeCommand(strgs.cmdHelloPKG,'libs-copy-support');
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
 			}
 		}); 	
 		qpLibCopyChoices.onDidAccept(async () => {
@@ -1612,7 +1617,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// };
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with File copies',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpFilesCopySupport),
 			commandName:'help'
 		};
 		// const newChoices=await vscode.window.showQuickPick<fileSelPick>(picks,
@@ -1630,7 +1635,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (btn.commandName === 'help') {
 				qpFileCopyChoices.hide();
 				// show the help page
-				vscode.commands.executeCommand(strgs.cmdHelloPKG,'files-copy-support');
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 			}
 		});
 		qpFileCopyChoices.onDidAccept(async () => {
@@ -2042,7 +2047,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// **#72, adding help
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with Drive Mapping',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpDriveMapping),
 			commandName:'help'
 		};
 		// TBD- get drivelist, but for now fake it
@@ -2217,7 +2222,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if(resultWbutton && isCmdQuickInputButton(resultWbutton)){ 
 			if(resultWbutton.commandName==='help'){
 				// ** #72, open the help page
-				vscode.commands.executeCommand(strgs.cmdHelloPKG,'cp-drive-mapping');
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpDriveMapping);
 				return;	
 			}
 		}
@@ -2392,7 +2397,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** #72, adding help
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with Board Download',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpDownloading),
 			commandName:'help'
 		};
 		const qpBoardDnldChoices=vscode.window.createQuickPick();
@@ -2410,7 +2415,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (btn.commandName === 'help') {
 				qpBoardDnldChoices.hide();
 				// show the help page
-				vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-downloading');
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpDownloading);
 			}
 		}); 	
 		qpBoardDnldChoices.onDidAccept(async () => {
@@ -2487,7 +2492,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// **#72, adding help
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with Project Templates',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpProjectTemplateSupport),
 			commandName:'help'
 		};
 		// ** DON'T need drive mapping yet...BUT if do, warn that downloading is better...
@@ -2620,7 +2625,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				if(choicesWbutton && isCmdQuickInputButton(choicesWbutton)){ 
 					if(choicesWbutton.commandName==='help'){
 						// ** #72, open the help page
-						vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-template-support');
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpProjectTemplateSupport);
 						choices=undefined;	//get out of this loop
 						return;
 					}
@@ -2875,7 +2880,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// **#72, adding help
 		const helpButton:cmdQuickInputButton={
 			iconPath:iconCommandHelp,
-			tooltip:'Help with Project Templates',
+			tooltip:strgs.helpTooltipMap.get(strgs.helpProjectTemplateSupport),
 			commandName:'help'
 		};
 		let readyForReturn:boolean=false;
@@ -2927,7 +2932,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(choiceWbutton && isCmdQuickInputButton(choiceWbutton)){ 
 				if(choiceWbutton.commandName==='help'){
 					// ** #72, open the help page
-					vscode.commands.executeCommand(strgs.cmdHelloPKG,'project-template-support');
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpProjectTemplateSupport);
 					choice=undefined;	//get out of this loop
 					return;
 				}

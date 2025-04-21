@@ -305,3 +305,25 @@ export const projectBundleTempDirNotInitErr:string='Project bundle temp director
 export const projectBundleNoFindCPinZipErr:string='Did not find CircuitPython code folder in project bundle.';
 export const projectBundleOverwriteConfirm:string='Some bundle content will overwrite existing, continue?';
 export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
+// ** help related
+export const helpFilename:string='helpfile.md';
+// these are the keys which match the anchor links in the help file
+export const helpBoardSupport:string='board-support';
+export const helpLibsCopySupport:string='libs-copy-support';
+export const helpFilesCopySupport:string='files-copy-support';
+export const helpDriveMapping:string='cp-drive-mapping';
+export const helpDownloading:string='board-downloading';
+export const helpProjectTemplateSupport:string='project-template-support';
+export const helpLibrarySupport:string='library-support';
+export const helpProjectBundleSupport:string='project-bundle-support';
+// do tooltips as a map from anchor keys
+export const helpTooltipMap:Map<string,string>=new Map([
+    [helpBoardSupport,'Help with Boards'],
+    [helpLibsCopySupport,'Help with Lib copies'],
+    [helpFilesCopySupport,'Help with File copies'],
+    [helpDriveMapping,'Help with Drive Mapping'],
+    [helpDownloading,'Help with Board Download'],
+    [helpProjectTemplateSupport,'Help with Project Templates'],
+    [helpLibrarySupport,'Help with Libraries'],
+    [helpProjectBundleSupport,'Help with Project Bundle']
+]);
