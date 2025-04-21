@@ -307,6 +307,7 @@ export const projectBundleOverwriteConfirm:string='Some bundle content will over
 export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
 // ** help related
 export const helpFilename:string='helpfile.md';
+export const helpFileLoadErr:string='** ERROR loading help file **';
 // these are the keys which match the anchor links in the help file
 export const helpBoardSupport:string='board-support';
 export const helpLibsCopySupport:string='libs-copy-support';

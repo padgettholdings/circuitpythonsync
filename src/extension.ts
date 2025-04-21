@@ -931,7 +931,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				});
 			} catch {
 				console.log('error loading help');
-				vscode.window.showErrorMessage('error loading help');
+				vscode.window.showErrorMessage(strgs.helpFileLoadErr);
 				return '';
 			}
 		
@@ -1178,12 +1178,15 @@ export async function activate(context: vscode.ExtensionContext) {
 				copyFullLibFolder=true;
 		}
 		if(copyFullLibFolder && confirmFullLibCopy){
-				const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","Yes, don't ask again");
+				const confAns=await vscode.window.showWarningMessage(strgs.warnEntireLib,"Yes","No, cancel","Yes, don't ask again","Help");
 				if(!confAns || confAns==="No, cancel"){
 					return;
 				}
 				if(confAns==="Yes, don't ask again") {
 					confirmFullLibCopy=false;
+				} else if (confAns==="Help") {
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
+					return;
 				}
 		}
 		//now ready to copy... rules:
@@ -1425,22 +1428,31 @@ export async function activate(context: vscode.ExtensionContext) {
 						return (cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 					})
 				){
-					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel","Help");
 					if(ans==="No, cancel"){
 						qpLibCopyChoices.hide();
 						return;
 					}
 					if(ans==="Preserve"){
 						prsvDestWCmts=true;
+					} else if (ans==="Help") {
+						qpLibCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
+						return;
 					}
 				}
 				// **ALSO, if all lib paths are taken out warn that entire library will be copied
 				if(newChoices.length===0){
-					let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No");
+					let ans=await vscode.window.showWarningMessage(strgs.cnfrmEntireLib,"Yes","No","Help");
 					if(ans==="No"){
 						qpLibCopyChoices.hide();
 						return;
+					} else if (ans==="Help") {
+						qpLibCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
+						return;
 					}
+	
 				}
 				//get the files only lines from cpLines
 				//  ** #37, ignore the comment lines which have no src
@@ -1492,9 +1504,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 				//if removed comment with dest map, ask
 				if(removingDestMapComment){
-					const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel","Help");
 					if(ans==="No, cancel"){
 						qpLibCopyChoices.hide();
+						return;
+					} else if (ans==="Help") {
+						qpLibCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
 						return;
 					}
 					if(ans==="Preserve"){
@@ -1651,22 +1667,30 @@ export async function activate(context: vscode.ExtensionContext) {
 						return (!cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
 					})
 				){
-					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel","Help");
 					if(ans==="No, cancel"){
 						qpFileCopyChoices.hide();
 						return;
-					}
+					} else if (ans==="Help") {
+						qpFileCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
+					}	
 					if(ans==="Preserve"){
 						prsvDestWCmts=true;
 					}
 				}
 				// **ALSO, if no .py files are selected, warn that only code.py/main.py will be copied
 				if(newChoices.length===0 || (!newChoices.some(chc => chc.src.endsWith('.py')))){
-					let ans=await vscode.window.showWarningMessage(strgs.cnfrmNoPyFiles,"Yes","No");
+					let ans=await vscode.window.showWarningMessage(strgs.cnfrmNoPyFiles,"Yes","No","Help");
 					if(ans==="No"){
 						qpFileCopyChoices.hide();
 						return;
-					}
+					} else if (ans==="Help") {
+						qpFileCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
+					}	
 				}
 				//now start constructing the new file
 				let newFileContents:string="";
@@ -1721,9 +1745,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 				//if removed comment with dest map, ask
 				if(removingDestMapComment){
-					const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel");
+					const ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel","Help");
 					if(ans==="No, cancel"){
 						qpFileCopyChoices.hide();
+						return;
+					} else if (ans==="Help") {
+						qpFileCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
 					}
 					if(ans==="Preserve"){
@@ -3468,42 +3496,57 @@ export async function activate(context: vscode.ExtensionContext) {
 			let toastShown=false;
 			//first check for no lib files and give warning
 			if(!origCpLines.some(lne => lne.inLib)){
-				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No");
+				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No","Help");
 				toastShown=true;
 				if(ans==="Yes"){
 					triggerEdit=true;
+				} else if (ans==="Help") {
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
+					return;
 				}
 			}
 			//then if didn't ask about library (that is, there were some), see if there are no code files
 			if(!toastShown && cpLinesPy.length===0){
-				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No");
+				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No","Help");
 				toastShown=true;
 				if(ans==="Yes"){
 					triggerEdit=true;
+				} else if (ans==="Help") {
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+					return;
 				}
 			} else {
 				// ** Per #26, also give warning/edit opp if no python files in files only set, and some no exist
 				//  ALSO these conditions are from checkSources now
 				//  ** try to show just one message, so offer a combined if so
 				if(!toastShown && fileSources.noPyFiles && !fileSources.filesNoExist){
-					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No");
+					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
-					}	
+					} else if (ans==="Help") {
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
+					}
 				}
 				if(!toastShown && fileSources.filesNoExist && !fileSources.noPyFiles){
-					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No");
+					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
+					} else if (ans==="Help") {
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
 					}
 				}
 				if(!toastShown && fileSources.filesNoExist && fileSources.noPyFiles){
-					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No");
+					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
+					} else if (ans==="Help") {
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
 					}
 				}
 			}
