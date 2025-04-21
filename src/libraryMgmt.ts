@@ -42,7 +42,7 @@ export class LibraryMgmt {
             };
             const helpButton:cmdQuickInputButton={
                 iconPath:iconCommand2,
-                tooltip:'Help with Libraries',
+                tooltip:strgs.helpTooltipMap.get(strgs.helpLibrarySupport),
                 commandName:"help"
             };    
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
@@ -74,7 +74,7 @@ export class LibraryMgmt {
                     quickPick.hide();
                     quickPick.dispose();
                     // show the help page
-                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'library-support');
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
                 }
             });
             quickPick.onDidChangeSelection(async (items) => {
@@ -295,7 +295,7 @@ export class LibraryMgmt {
             // ** #72, change to createQuickPick for help button
             const helpButton:cmdQuickInputButton={
                 iconPath:iconCommand2,
-                tooltip:'Help with Libraries',
+                tooltip:strgs.helpTooltipMap.get(strgs.helpLibrarySupport),
                 commandName:'help'
             };
             const qpLibSelLibs = vscode.window.createQuickPick();
@@ -318,7 +318,7 @@ export class LibraryMgmt {
                 if (btn.commandName === 'help') {
                     qpLibSelLibs.hide();
                     // show the help page
-                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'library-support');
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
                 }
             }); 	
             qpLibSelLibs.onDidAccept(async () => {

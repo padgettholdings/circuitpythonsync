@@ -34,7 +34,7 @@ export class StubMgmt {
 		}
         const helpButton:cmdQuickInputButton={
             iconPath:iconCommand2,
-            tooltip:'Help with Boards',
+            tooltip:strgs.helpTooltipMap.get(strgs.helpBoardSupport),
             commandName: "help"
         };
 
@@ -88,7 +88,7 @@ export class StubMgmt {
                 if (btn.commandName === 'help') {
                     qpBoards.hide();
                     // show the help page
-                    vscode.commands.executeCommand(strgs.cmdHelloPKG,'board-support');
+                    vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpBoardSupport);
                 }
             }); 
             qpBoards.onDidChangeSelection(async (items) => {
