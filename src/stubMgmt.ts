@@ -132,11 +132,15 @@ export class StubMgmt {
                 // ** #73, if drive not mapped ask if want to map it
                 const curDriveMap = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confDrivepathPKG}`,'');
                 if(!curDriveMap){
-                    const ans=await vscode.window.showInformationMessage('Do you want to map the CP board drive?', 'Yes','No');
+                    const ans=await vscode.window.showInformationMessage('Do you want to map the CP board drive?', 'Yes','No','Help');
                     if(ans==='Yes'){
                         // call the select board command
                         vscode.commands.executeCommand(strgs.cmdSetDirPKG);
-                    }                   
+                    } else if(ans==='Help'){
+                        // show the help page
+                        vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpDriveMapping);
+                        return;
+                    }         
                 }
             });
             qpBoards.onDidHide(() => {

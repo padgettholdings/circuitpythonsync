@@ -142,6 +142,8 @@ export class ProjectBundleMgmt {
                         }
                         projectBundleArchiveFile=projectBundleArchiveFileUri.fsPath;  // this is the fspath to the archive zip file
                     } else {
+                        // can hide the quick pick since download may take a bit
+                        projectBundleQuickInput.hide();
                         // doing a url...
                         // try to get the id from the url, if not use the date
                         // example:
@@ -154,9 +156,13 @@ export class ProjectBundleMgmt {
                         // check to see if file already exists, offer to skip re-download
                         let skipDownload=false;
                         if(fs.existsSync(projectBundleArchiveFile)){
-                            const ans=await vscode.window.showWarningMessage(strgs.projectBundleDnldExistsSkipQues,'Yes','No, download again');
+                            const ans=await vscode.window.showWarningMessage(strgs.projectBundleDnldExistsSkipQues,'Yes','No, download again','Help');
                             if(ans==='Yes'){
                                 skipDownload=true;
+                            } else if(ans==='Help'){
+                                projectBundleQuickInput.hide();
+                                vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpProjectBundleSupport);
+                                return;
                             }
                         }
                         if (!skipDownload) {

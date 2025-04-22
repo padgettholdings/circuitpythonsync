@@ -106,7 +106,7 @@ export class LibraryMgmt {
                         return;
                     }
                     if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
-                        const ans=await vscode.window.showInformationMessage(strgs.libTagOrCPVerChgConfirm[0]+this._libTag+strgs.libTagOrCPVerChgConfirm[1]+this._cpVersion, 'Yes','No');
+                        const ans=await vscode.window.showInformationMessage(strgs.libTagOrCPVerChgConfirm[0]+this._libTag+strgs.libTagOrCPVerChgConfirm[1]+this._cpVersion, 'Yes','No',"Help");
                         if(ans==='Yes') {
                             //save the new settings
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
@@ -122,6 +122,10 @@ export class LibraryMgmt {
                                 vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
                                 this.stopLibUpdateProgress();
                             }
+                        } else if(ans==='Help'){
+                            // show the help page
+                            vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
+                            return;
                         }
                     } else {
                         //await this.updateLibraries();   // **NO** will need to do full setup and update
