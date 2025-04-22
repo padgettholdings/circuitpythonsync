@@ -101,8 +101,8 @@ export const mustHaveWkspce:string='!! Must have open workspace !!';
 export const mustSetDrv:string='!! Must select drive before copy operation !!';
 export const mustSetDrvDnld:string='!! Must select drive before download !!';
 export const mustSetDrvDiff:string='!! Must select drive before diff operation !!';
-export const noFilesSpecd:string='!! No files specified to copy exist !!';
-export const noLibSpecd:string='!! No libraries specified to copy exist !!';
+export const noFilesSpecd:string='!! No files specified to copy exist !! Showing help...';
+export const noLibSpecd:string='!! No libraries specified to copy exist !! Showing help...';
 export const warnEntireLib:string='WARNING! Entire lib folder will be copied, continue?';
 export const noLibDir:string='!! No libraries yet created !';
 export const destMapsDel:string='Destination mappings can be preserved or deleted, or cancel all?';
@@ -294,6 +294,7 @@ export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP ta
 export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message
 export const libBundleZipTempFilesToKeep:string='5';  //number of temp files to keep of each py type- MUST BE NUMBER
 // ** project bundle related
+export const projectBundleUrlTitle:string='Enter Project Bundle URL';
 export const enterProjectBundleUrl:string='Enter a valid URL to the bundle, or just Enter for local file';
 export const projectBundleUrlPlaceholder:string='URL must be https://, or Enter to pick file, or ESC to cancel';
 export const projectBundleArchiveFolderName:string='projectBundleArchive';
@@ -304,3 +305,26 @@ export const projectBundleTempDirNotInitErr:string='Project bundle temp director
 export const projectBundleNoFindCPinZipErr:string='Did not find CircuitPython code folder in project bundle.';
 export const projectBundleOverwriteConfirm:string='Some bundle content will overwrite existing, continue?';
 export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
+// ** help related
+export const helpFilename:string='helpfile.md';
+export const helpFileLoadErr:string='** ERROR loading help file **';
+// these are the keys which match the anchor links in the help file
+export const helpBoardSupport:string='board-support';
+export const helpLibsCopySupport:string='libs-copy-support';
+export const helpFilesCopySupport:string='files-copy-support';
+export const helpDriveMapping:string='cp-drive-mapping';
+export const helpDownloading:string='board-downloading';
+export const helpProjectTemplateSupport:string='project-template-support';
+export const helpLibrarySupport:string='library-support';
+export const helpProjectBundleSupport:string='project-bundle-support';
+// do tooltips as a map from anchor keys
+export const helpTooltipMap:Map<string,string>=new Map([
+    [helpBoardSupport,'Help with Boards'],
+    [helpLibsCopySupport,'Help with Lib copies'],
+    [helpFilesCopySupport,'Help with File copies'],
+    [helpDriveMapping,'Help with Drive Mapping'],
+    [helpDownloading,'Help with Board Download'],
+    [helpProjectTemplateSupport,'Help with Project Templates'],
+    [helpLibrarySupport,'Help with Libraries'],
+    [helpProjectBundleSupport,'Help with Project Bundle']
+]);
