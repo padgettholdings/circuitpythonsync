@@ -1015,6 +1015,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//see if no valid files to copy
 		if(!pyFilesExist) {
 			vscode.window.showInformationMessage(strgs.noFilesSpecd);
+			vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 			return;
 		}
 		//copy rules:
@@ -1165,6 +1166,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//see if no valid lib to copy do msg and get out
 		if(!libFilesExist) {
 			vscode.window.showInformationMessage(strgs.noLibSpecd);
+			vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
 			return;
 		}
 		//#16, add confirmation if entire library is to be copied
@@ -1916,7 +1918,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			// ** #68, if not only no arch folders but also missing lib and py files, just bail
 			if(libraryFolderExists || pyFilesExist){
-				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Install or Update Libraries later'},'Yes','No');
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Install or Update Libraries later'},'Yes','No','Help');
 				if(ans==='Yes'){
 					try {
 						await libMgmtSys.setupLibSources();
@@ -1933,6 +1935,9 @@ export async function activate(context: vscode.ExtensionContext) {
 						stubMgmtSys.stopStubUpdateProgress();
 						
 					}
+				} else if(ans==='Help'){
+					// show the help page for libraries
+					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
 				}
 			}
 		} else {
@@ -2335,9 +2340,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			let ans:string|undefined='No';
 			if(bootFileBoard && bootFileBoard.length>0) {
-				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, but I'll pick",'No, cancel');
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard + ` (boot_file shows ${bootFileBoard})`, 'Yes, this one',"Yes, but I'll pick",'No, cancel','Help');
 			} else {
-				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard, 'Yes','No, cancel');
+				ans=await vscode.window.showInformationMessage(strgs.pickDrvAskSelBoard, 'Yes','No, cancel','Help');
 			}
 			if(ans && ans.startsWith('Yes')){
 				// call the select board command, passing bootFileBoard if set
@@ -2346,6 +2351,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				} else {
 					vscode.commands.executeCommand(strgs.cmdSelectBoardPKG);
 				}
+			} else if(ans==='Help'){
+				// show the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpBoardSupport);
 			}
 		}
 		
@@ -2527,7 +2535,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// BUT if re-entered with forceChoice skip this...
 		// #88, also don't if no ask again set
 		if(curDriveSetting!=='' && (forceChoice===undefined || forceChoice==='')  && !noAskDnldAgain) { 
-			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes',"No,don't ask again",'No');
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskDnld,'Yes',"No,don't ask again",'No','Help');
 			if(ans==='Yes'){
 				// #88, set don't ask again since responded.
 				noAskDnldAgain=true;
@@ -2535,7 +2543,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				return;
 			} else if (ans==="No,don't ask again"){
 				noAskDnldAgain=true;
-			}			
+			} else if(ans==='Help'){
+				// show the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpDownloading);
+				return;
+			}	
 		}
 		// ** #57, allow for "looping" back to main QP if pick alternate template
 		let readyForTemplateProc:boolean=false;
@@ -2858,7 +2870,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//###TBD### ask if want to init libraries and stubs?
 		if(libMgmtSys && stubMgmtSys &&
 			(!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) ){
-			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskLibStub,'Yes','No');
+			const ans=await vscode.window.showInformationMessage(strgs.projTemplateAskLibStub,'Yes','No','Help');
 			if(ans==='Yes'){
 				try {
 					await libMgmtSys.setupLibSources();
@@ -2872,6 +2884,9 @@ export async function activate(context: vscode.ExtensionContext) {
 					//report the error but continue
 					vscode.window.showErrorMessage(strgs.installStubsGeneralError+getErrorMessage(error));				
 				}
+			} else if(ans==='Help'){
+				// show the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
 			}
 		}
 	});
