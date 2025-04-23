@@ -1933,8 +1933,13 @@ export async function activate(context: vscode.ExtensionContext) {
 						
 					}
 				} else if(ans==='Help'){
+					// still need to init the lib and cp tags
+					libMgmtSys.setLibCPtagVers();
 					// show the help page for libraries
 					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibrarySupport);
+				} else {
+					// still need to init the lib and cp tags
+					libMgmtSys.setLibCPtagVers();
 				}
 			}
 		} else {
