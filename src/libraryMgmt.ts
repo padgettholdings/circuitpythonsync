@@ -51,17 +51,21 @@ export class LibraryMgmt {
             // see if there is a pending change and alter the QP if so
             if(this._libUpdateVerChg) {
                 quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                 quickPick.items = [
                     { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
-                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                    { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                    { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                 ];
             } else {
                 quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
+                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                 quickPick.items = [
                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                    { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                 ];
             }
             quickPick.onDidTriggerButton((button) => {  
@@ -88,6 +92,14 @@ export class LibraryMgmt {
                     // ** in the case where a new project was created and the settings are all blank in the settings.json,
                     // need to call the setupLibSources to get the settings and do the setup
                     if(libTag==='' || cpVersion==='' || cpVersionFull==='') {
+                        // #64, need to take into account that the _libtag and _cpversion may have changed in the UI
+                        //  so save them to the settings if so, not really a version change since nothing was there.
+                        if(this._libTag!=='') {
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
+                        }
+                        if(this._cpVersion!=='') {
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
+                        }
                         try {
                             await this.setupLibSources();
                             this._libUpdateVerChg=false;
@@ -147,10 +159,11 @@ export class LibraryMgmt {
                             // skip if same as current and use original prompt in QP, still have to rebuild
                             if(value===this._libTag  && !this._libUpdateVerChg) {
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
@@ -160,10 +173,11 @@ export class LibraryMgmt {
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibNewTagQPItemMiddle.label, description: value, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -176,10 +190,11 @@ export class LibraryMgmt {
                             const latestTag=await this.getLatestBundleTag();
                             if(latestTag===this._libTag &&  !this._libUpdateVerChg){
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
@@ -189,10 +204,11 @@ export class LibraryMgmt {
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    const descCPVer=(this._cpVersion!=='') ? this._cpVersion : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -200,6 +216,12 @@ export class LibraryMgmt {
                                     quickPick.dispose();
                                 }
                             }
+                        } else if (value===undefined) {
+                            //if ESC just get back to the QP
+                            // have to reset the references
+                            quickPick.placeholder=quickPick.placeholder;
+                            quickPick.items = quickPick.items;
+                            quickPick.show();
                         }
                     });
                 } else if (items[0].commandName === 'cpversion') {
@@ -209,9 +231,10 @@ export class LibraryMgmt {
                             //check to see if changed
                             if(value===this._cpVersion && !this._libUpdateVerChg) {
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                    { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
                                     { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
                                 ];
                                 quickPick.show();
@@ -222,9 +245,10 @@ export class LibraryMgmt {
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                                    const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
-                                        { label: strgs.updateCpNewVerQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                        { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
                                         { label: strgs.updateCpNewVerQPItemBottom.label, description: value, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
@@ -233,6 +257,9 @@ export class LibraryMgmt {
                                     quickPick.dispose();
                                 }
                             }
+                        } else if (value===undefined) {
+                            //if ESC just get back to the QP
+                            quickPick.show();
                         }
                     });
                 }
@@ -440,6 +467,17 @@ export class LibraryMgmt {
     */
 
     // ** public methods **
+    // ** need a public method to set the instance vars for libtag, cpversion, and cpfullversion
+    public setLibCPtagVers():[string,string,string] {
+        let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+        this._libTag = libTag;
+        let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+        this._cpVersion = cpVersion;
+        let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+        this._cpVersionFull = cpVersionFull;
+        return [libTag,cpVersion,cpVersionFull];
+    }
+
     // **** the setup that is called after the constructor or when tag changed ****
     public async setupLibSources() {
         // ** set context key so update command is not available until setup is done
@@ -456,12 +494,14 @@ export class LibraryMgmt {
         this._progInc=5;
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
-        let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
-        this._libTag = libTag;
-        let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
-        this._cpVersion = cpVersion;
-        let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
-        this._cpVersionFull = cpVersionFull;
+        // just call the helper above
+        let [libTag,cpVersion,cpVersionFull]=this.setLibCPtagVers();
+        // let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+        // this._libTag = libTag;
+        // let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+        // this._cpVersion = cpVersion;
+        // let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+        // this._cpVersionFull = cpVersionFull;
         //if lib or cp version configs are not defined, set from latest and check for conflicts in cp versions
         if(this._libTag===''){
             const latestTag=await this.getLatestBundleTag();
