@@ -68,6 +68,10 @@ export class LibraryMgmt {
                     { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                 ];
             }
+            // ** #64, save copy of placeholder and items so can reset if ESC
+            //let origPlaceholder=quickPick.placeholder;
+            //let origItems=quickPick.items;
+            //
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'selectLibs') {
@@ -259,6 +263,9 @@ export class LibraryMgmt {
                             }
                         } else if (value===undefined) {
                             //if ESC just get back to the QP
+                            // have to reset the references
+                            quickPick.placeholder=quickPick.placeholder;
+                            quickPick.items = quickPick.items;
                             quickPick.show();
                         }
                     });
