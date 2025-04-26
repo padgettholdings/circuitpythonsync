@@ -16,6 +16,15 @@ export class LibraryMgmt {
         const workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : vscode.Uri.file(os.homedir());
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,strgs.workspaceLibArchiveFolder);
 
+        // need a temp place to put the CP release json file
+        const tempUriBase=this._context.globalStorageUri; //NOTE this may not initially exist
+        this._tempCPReleaseDir = path.join(tempUriBase.fsPath, 'tempCPReleaseJson');
+        // create the temp dir if it doesn't exist
+        if (!fs.existsSync(this._tempCPReleaseDir)) {
+            fs.mkdirSync(this._tempCPReleaseDir, { recursive: true });
+        }
+
+
         interface cmdQuickInputButton extends QuickInputButton {
 			commandName: string;
 		}
@@ -261,6 +270,23 @@ export class LibraryMgmt {
                                     quickPick.dispose();
                                 }
                             }
+                        } else if (value!==undefined && value===''){
+                            // #####TEST##### try to get latest full version file
+                            // use simple date tag as cache key
+                            const currentDTtag=new Date().toISOString().split('T')[0].replace(/[^0-9]/g,'');
+                            //####TBD#### compare filename in cache dir with currentDTtag, if not match delete it and ...
+                            // get the latest release file
+                            const releaseFile=path.join(this._tempCPReleaseDir,currentDTtag+'.json');
+                            try {
+                                await this.getCPreleaseJson(releaseFile);
+                            } catch (error) {
+                                vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                                return;
+                            }
+                            //and just go back to the QP
+                            quickPick.placeholder=quickPick.placeholder;
+                            quickPick.items = quickPick.items;
+                            quickPick.show();                            
                         } else if (value===undefined) {
                             //if ESC just get back to the QP
                             // have to reset the references
@@ -546,6 +572,13 @@ export class LibraryMgmt {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
         }
 
+        // also need a temp place to put the CP release json file
+        // this._tempCPReleaseDir = path.join(tempUriBase.fsPath, 'tempCPReleaseJson');
+        // // create the temp dir if it doesn't exist
+        // if (!fs.existsSync(this._tempCPReleaseDir)) {
+        //     fs.mkdirSync(this._tempCPReleaseDir, { recursive: true });
+        // }
+
         // #67 cleanup temp orig bundles
         // NOTE: uses URI methods to avoid any platform issues
         await this.cleanupTempBundles(Number(strgs.libBundleZipTempFilesToKeep));
@@ -730,6 +763,7 @@ export class LibraryMgmt {
 
     // ** private properties **
     private _tempBundlesDir: string = '';
+    private _tempCPReleaseDir: string = '';
     private _context: vscode.ExtensionContext;
     private _libArchiveUri:vscode.Uri;
     private _libTag: string = '';
@@ -915,6 +949,29 @@ export class LibraryMgmt {
         return await r.data.tag_name;
     }
     
+    private async getCPreleaseJson(cacheDest:string): Promise<string> {
+        try {
+            const response = await axios.default.get(
+                'https://api.github.com/repos/adafruit/circuitpython/releases',
+                { 
+                    headers: {
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    responseType: 'json'
+                }
+            ).then((response) => {
+                fs.writeFileSync(cacheDest, JSON.stringify(response.data), {
+                    encoding: "utf8",
+                });
+                console.log(strgs.stubsPyPiMetadataDnldLog, cacheDest);
+            });
+        } catch (error) {
+            console.error(strgs.stubsPyPiMetadataDnldErrorLog, error);
+            throw error;
+        }
+        return 'done';
+    }
     
     private async getOrigBundle(libTag: string, pyLibFmt: string): Promise<string> {
         //    try {
