@@ -283,6 +283,14 @@ export class LibraryMgmt {
                                 vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
                                 return;
                             }
+                            // read the json
+                            const releaseMetadata = JSON.parse(fs.readFileSync(releaseFile, 'utf8'));
+                            // extract array of tag_names from the json object
+                            const tagNames = releaseMetadata.map((item: { tag_name: string; }) => item.tag_name);
+                            // ####TEST pat match ######
+                            const testVerPartial:string='9.2';
+                            const verMatchList=tagNames.filter((item: string) => item.startsWith(testVerPartial) && !item.includes('-'));
+
                             //and just go back to the QP
                             quickPick.placeholder=quickPick.placeholder;
                             quickPick.items = quickPick.items;
@@ -952,7 +960,7 @@ export class LibraryMgmt {
     private async getCPreleaseJson(cacheDest:string): Promise<string> {
         try {
             const response = await axios.default.get(
-                'https://api.github.com/repos/adafruit/circuitpython/releases',
+                'https://api.github.com/repos/adafruit/circuitpython/releases?per_page=100',
                 { 
                     headers: {
                         "Accept": "application/vnd.github+json",
