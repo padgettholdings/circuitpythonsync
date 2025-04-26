@@ -243,6 +243,8 @@ export class LibraryMgmt {
                             //quickPick.items[1].description = value;
                             //check to see if changed
                             if(value===this._cpVersion && !this._libUpdateVerChg) {
+                                // no change, just make sure libtag set right and go back to top
+                                // ####TBD#### change to full version, when to set base version????
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
                                 quickPick.items = [
@@ -252,6 +254,8 @@ export class LibraryMgmt {
                                 ];
                                 quickPick.show();
                             } else {
+                                // At this point may be full version or a search for latest in a major/minor... may not be a change?????
+                                // ####TBD#### change to full version, when to set base version????
                                 const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + value, 'Yes','No');
                                 if(ans==='Yes') {
                                     this._cpVersion = value;
@@ -277,23 +281,61 @@ export class LibraryMgmt {
                             //####TBD#### compare filename in cache dir with currentDTtag, if not match delete it and ...
                             // get the latest release file
                             const releaseFile=path.join(this._tempCPReleaseDir,currentDTtag+'.json');
-                            try {
-                                await this.getCPreleaseJson(releaseFile);
-                            } catch (error) {
-                                vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
-                                return;
+                            if(!fs.existsSync(releaseFile)) {
+                                // clean up any old files
+
+                                try {
+                                    await this.getCPreleaseJson(releaseFile);
+                                } catch (error) {
+                                    vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                                    return;
+                                }
                             }
                             // read the json
                             const releaseMetadata = JSON.parse(fs.readFileSync(releaseFile, 'utf8'));
                             // extract array of tag_names from the json object
                             const tagNames = releaseMetadata.map((item: { tag_name: string; }) => item.tag_name);
                             // ####TEST pat match ######
-                            const testVerPartial:string='9.2';
-                            const verMatchList=tagNames.filter((item: string) => item.startsWith(testVerPartial) && !item.includes('-'));
-
+                            const testVerPartial:string='8.2';
+                            let verMatchList:string[]=tagNames.filter((item: string) => item.startsWith(testVerPartial) && !item.includes('-'));
+                            if(!verMatchList || verMatchList.length===0) {
+                                vscode.window.showErrorMessage('Invalid or outdated version request for "'+testVerPartial+'".  Try again or look up a valid version at https://circuitpython.org/');
+                                quickPick.hide();
+                                quickPick.dispose();
+                                return;
+                            }
+                            //sort the version list with the latest first
+                            verMatchList.sort((a, b) => {
+                                // Remove any pre-release identifiers (anything after a hyphen)
+                                const aClean = a.split('-')[0];
+                                const bClean = b.split('-')[0];
+                                
+                                // Split versions into components and convert to numbers
+                                const aParts = aClean.split('.').map(Number);
+                                const bParts = bClean.split('.').map(Number);
+                                
+                                // Ensure arrays have same length by padding with zeros
+                                while (aParts.length < 3) {aParts.push(0);}
+                                while (bParts.length < 3) {bParts.push(0);}
+                                
+                                // Compare major versions first
+                                if (aParts[0] !== bParts[0]) {
+                                    return bParts[0] - aParts[0]; // Descending order
+                                }
+                                
+                                // If major versions are the same, compare minor versions
+                                if (aParts[1] !== bParts[1]) {
+                                    return bParts[1] - aParts[1]; // Descending order
+                                }
+                                
+                                // If minor versions are the same, compare patch versions
+                                return bParts[2] - aParts[2]; // Descending order
+                            });
+                            let newCPVersionFull=verMatchList[0];
                             //and just go back to the QP
                             quickPick.placeholder=quickPick.placeholder;
                             quickPick.items = quickPick.items;
+                            quickPick.items[2].description = newCPVersionFull;
                             quickPick.show();                            
                         } else if (value===undefined) {
                             //if ESC just get back to the QP
