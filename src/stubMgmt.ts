@@ -558,6 +558,16 @@ export class StubMgmt {
 
     // ** provide access to stubs archive folder exists as a way to see if setup is done
     public stubsArchiveExists(): boolean {
-        return this._stubZipArchiveUri ? fs.existsSync(this._stubZipArchiveUri.fsPath) : false;
+        // ** #64, managing full cp version now, so check actual file too
+        // but can short circuit if stub archive folder not there, meaning setup not done
+        if(!this._stubZipArchiveUri){return false;}  //should not happen
+        const archExists= fs.existsSync(this._stubZipArchiveUri.fsPath);
+        if(!archExists){
+            return false;
+        }
+        // ** #64, check for the actual stub archive file
+        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+        const stubTarExists= fs.existsSync(stubZipArchiveTarUri.fsPath);
+        return stubTarExists;
     }
 }
