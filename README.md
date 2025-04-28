@@ -146,3 +146,5 @@
 - create release v0.1.17 for testing initial viewing
 - create release v0.1.17-a with all help functions for final testing.
 
+# Issue #64 - track full cp version number vs just base, plus related bugs
+- create release v0.1.18 for full testing
