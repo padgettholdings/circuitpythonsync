@@ -526,7 +526,7 @@ export class StubMgmt {
                 // remove stub directories that are not the current version 
                 const stubsDirContents=await vscode.workspace.fs.readDirectory(this._stubsDirUri);
                 for(const stubDir of stubsDirContents){
-                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
+                    if(stubDir[1]===vscode.FileType.Directory && !stubDir[0].endsWith(this._cpVersionFull)){         //!== 'circuitpython_stubs-'+this._cpVersionFull){
                         const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
                     }
@@ -565,9 +565,21 @@ export class StubMgmt {
         if(!archExists){
             return false;
         }
-        // ** #64, check for the actual stub archive file
+        // ** #64, check for the actual stub archive file, if doesn't exist then setup not done
+        // must have current cp version
+        this._cpVersionFull = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
         const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
         const stubTarExists= fs.existsSync(stubZipArchiveTarUri.fsPath);
-        return stubTarExists;
+        if(!stubTarExists){
+            return false;
+        }
+        // ** #64, finally check for the stubs dir in global storage, but use current cp full version!!
+        const cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
+        const stubsDirExists= fs.existsSync(cpVersionFullStubUri.fsPath);
+        if(!stubsDirExists){
+            return false;
+        }
+        // all passed, good to go
+        return true;
     }
 }
