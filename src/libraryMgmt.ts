@@ -532,27 +532,30 @@ export class LibraryMgmt {
 
         // ** #71, reset global lib tag and cp ver vars if config changes
         // NOTE that the full version is not used here, only the tag and base version
+        // ** #64, now managing the full version in the settings so do it too
         vscode.workspace.onDidChangeConfiguration((e) => {  
             if(e.affectsConfiguration(`circuitpythonsync.${strgs.confCurlibPKG}`) || 
-                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ) {
+                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
+                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPfullverPKG}`)) {
                 const confCurlibPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                 const confCPbaseverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
-                //const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
+                const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
                 // handle two conditions:
                 // - if the configs are blank, set the instances to blank
                 // - if the configs are different from the instance, swap and set the version chg flag, 
+                // - and set the base version from the full version if there
                 //      THEN run the lib install
-                if(confCurlibPKG === '' && confCPbaseverPKG === '' ) {
+                if(confCurlibPKG === '' && (confCPbaseverPKG === '' || confCPfullverPKG === '')) {
                     this._libTag='';
                     this._cpVersion='';
-                    //this._cpVersionFull='';
+                    this._cpVersionFull='';
                     this._libUpdateVerChg=false;  //reset flag so setup will run
                     return;     //get out because likely config is gone
                 }
-                if(this._libTag!==confCurlibPKG || this._cpVersion!==confCPbaseverPKG ) {
+                if(this._libTag!==confCurlibPKG || (this._cpVersion!==confCPbaseverPKG || this._cpVersionFull!==confCPfullverPKG)) {
                     this._libTag=confCurlibPKG;
-                    this._cpVersion=confCPbaseverPKG;
-                    //this._cpVersionFull=confCPfullverPKG;
+                    this._cpVersion=confCPfullverPKG.split('.')[0];
+                    this._cpVersionFull=confCPfullverPKG;
                     this._libUpdateVerChg=true;  //set flag to true so update will do setup
                     // now run the setup to update the libraries
                     vscode.commands.executeCommand(strgs.cmdLibUpdatePKG);
@@ -827,7 +830,7 @@ export class LibraryMgmt {
         // ** done with updating the libraries
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
         this.stopLibUpdateProgress();
-        vscode.window.showInformationMessage(strgs.updateLibUpdatedMsg[0] + this._libTag + strgs.updateLibUpdatedMsg[1] + this._cpVersion);
+        vscode.window.showInformationMessage(strgs.updateLibUpdatedMsg[0] + this._libTag + strgs.updateLibUpdatedMsg[1] + this._cpVersionFull);
     }
 
     // ** provide access to libarchive folder exists as a way to see if installed
@@ -1058,7 +1061,12 @@ export class LibraryMgmt {
         const releaseFile=path.join(this._tempCPReleaseDir,currentDTtag+'.json');
         if(!fs.existsSync(releaseFile)) {
             // clean up any old files
-
+            const oldfls=fs.readdirSync(this._tempCPReleaseDir);
+            for(const oldfl of oldfls) {
+                if(oldfl!==currentDTtag+'.json') {
+                    fs.unlinkSync(path.join(this._tempCPReleaseDir,oldfl));
+                }
+            }
             try {
                 await this.getCPreleaseJson(releaseFile);
             } catch (error) {
