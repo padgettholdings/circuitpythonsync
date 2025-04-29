@@ -17,6 +17,13 @@ interface ibox {
 // workspace config setting for current drive path, fixed to prefix with 'circuitpythonsync.'
 //  CAN CHANGE HERE TO CHANGE AND RECOMPILE IN CODE, BUT package.json will need to be changed also
 export const confDrivepathPKG:string ='drivepath';
+export const confCPFilesNamePKG:string ='cpfilestxt';
+export const confCPFilesNameBakPkg:string ='cpfilesbak';
+export const confCPBootFilenamePKG:string='cpbootfile';
+export const confCPTemplatePathPKG:string='cptemplatepath';
+export const confCPTemplatePathListPKG:string='cptemplatepaths';
+// for the help at start
+export const confNoShowHelpPKG:string='doNotShowWelcome';
 // these are for the lib and stub mgmt settings, fixed to prefix with 'circuitpythonsync.'
 export const confCurlibPKG:string ='curlibtag';
 export const confCPbaseverPKG:string ='cpbaseversion';
