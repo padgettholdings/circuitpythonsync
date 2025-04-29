@@ -533,9 +533,10 @@ export class LibraryMgmt {
         // ** #71, reset global lib tag and cp ver vars if config changes
         // NOTE that the full version is not used here, only the tag and base version
         // ** #64, now managing the full version in the settings so do it too
+        // ** DO NOT trigger on base version since it may not be set until after full version
         vscode.workspace.onDidChangeConfiguration((e) => {  
             if(e.affectsConfiguration(`circuitpythonsync.${strgs.confCurlibPKG}`) || 
-                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
+                    //e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
                     e.affectsConfiguration(`circuitpythonsync.${strgs.confCPfullverPKG}`)) {
                 const confCurlibPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                 const confCPbaseverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
@@ -552,7 +553,8 @@ export class LibraryMgmt {
                     this._libUpdateVerChg=false;  //reset flag so setup will run
                     return;     //get out because likely config is gone
                 }
-                if(this._libTag!==confCurlibPKG || (this._cpVersion!==confCPbaseverPKG || this._cpVersionFull!==confCPfullverPKG)) {
+                // ** #64, can't let this run open... only if version change flag NOT set
+                if( !this._libUpdateVerChg && (this._libTag!==confCurlibPKG || this._cpVersionFull!==confCPfullverPKG)) {
                     this._libTag=confCurlibPKG;
                     this._cpVersion=confCPfullverPKG.split('.')[0];
                     this._cpVersionFull=confCPfullverPKG;
