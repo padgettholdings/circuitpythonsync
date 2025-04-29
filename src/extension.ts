@@ -1853,7 +1853,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** #22, also use default py files if not included in cpFileLines
 		if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 			//just put in default py files to check and no lib
-			cpFileLines=[
+			// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+			const cpFileLinesDfltPy=[
 				{
 					src:'code.py', dest:'',	inLib:false
 				},
@@ -1861,6 +1862,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					src: 'main.py',	dest: '', inLib: false
 				}
 			];
+			cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 		}
 		//now check sources
 		const fileSources=await checkSources(cpFileLines);
@@ -3207,7 +3209,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** #22, also use default py files if not included in cpFileLines
 		if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 			//just put in default py files to check and no lib
-			cpFileLines=[
+			// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+			const cpFileLinesDfltPy=[
 				{
 					src:'code.py', dest:'',	inLib:false
 				},
@@ -3215,6 +3218,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					src: 'main.py',	dest: '', inLib: false
 				}
 			];
+			cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 		}
 		//now check sources
 		const fileSources=await checkSources(cpFileLines);
@@ -3377,7 +3381,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 				//just put in default py files to check and no lib
-				cpFileLines=[
+			// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+				const cpFileLinesDfltPy=[
 					{
 						src:'code.py', dest:'',	inLib:false
 					},
@@ -3385,6 +3390,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						src: 'main.py',	dest: '', inLib: false
 					}
 				];
+				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
@@ -3414,7 +3420,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 				//just put in default py files to check and no lib
-				cpFileLines=[
+			// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+				const cpFileLinesDfltPy=[
 					{
 						src:'code.py', dest:'',	inLib:false
 					},
@@ -3422,6 +3429,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						src: 'main.py',	dest: '', inLib: false
 					}
 				];
+				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
@@ -3589,7 +3597,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			// ** #22, also use default py files if not included in cpFileLines
 			if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
 				//just put in default py files to check and no lib
-				cpFileLines=[
+			// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+				const cpFileLinesDfltPy=[
 					{
 						src:'code.py', dest:'',	inLib:false
 					},
@@ -3597,6 +3606,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						src: 'main.py',	dest: '', inLib: false
 					}
 				];
+				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
