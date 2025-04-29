@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CP",
-  "version": "0.1.17-a",
+  "version": "0.1.18-a",
   "publisher": "standsi",
   "license": "MIT",
   "repository": {
@@ -67,7 +67,7 @@
       },
       {
         "command": "circuitpythonsync.libupdate",
-        "title": "CP Install or Update Libraries",
+        "title": "CP Install or Update Libraries and Stubs",
         "enablement": "!circuitpythonsync.updatinglibs",
         "category": "CircuitPythonSync"
       },

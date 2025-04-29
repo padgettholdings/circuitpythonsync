@@ -198,7 +198,7 @@ export const diffScreenHeader:string='Workspace to Board compare file: ';   //+l
 //library and stubs related
 export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
 export const workspaceLibArchiveFolder:string='libArchive';
-export const updateLibQPtitle:string='Install or Update Libraries';
+export const updateLibQPtitle:string='Install or Update Libraries and Stubs';
 export const updateLibQPSelTT:string='Select Libraries for Board';
 export const updateLibQPSelPlaceholder:string='';   //'Accept or change the library tag and CircuitPython version';
 export const updateLibQPItemTop:qpitem={label:'Click to update with current bundle settings',description:'[Or click tag and/or version to modify]'}; //{label:'Enter or click here to update with current settings',description:'Or click library tag or CP version to change'};
@@ -234,7 +234,7 @@ export const selLibDelLibError:string='Error deleting the selected library folde
 export const selLibAllCurLibsDel:string='All current libraries will be deleted (before new adds), continue?';
 export const setupLibProgressMsg:string='Check and load lib files...';
 export const setupLibNoWSError:string='No workspace is open, cannot init library management';
-export const setupLibDnldError:string='Error downloading the original lib bundle zip files';
+export const setupLibDnldError:string='Error downloading the original lib bundle zip files - try another bundle version';
 export const setupLibExtractError:string='Error extracting the lib folders from the original bundle zip files';
 export const setupLibGeneralError:string='Error setting up the libraries: ';    //+err.message
 export const updateLibProgressMsg:string="Updating Libraries...";
@@ -249,9 +249,9 @@ export const updateLibUpdatedMsg:string[]=[
     ' and CP version: ' //+cpVersion+
 ];
 export const updateLibGeneralError:string='Error updating the libraries: ';    //+err.message
-export const libCmdsReadyNeedSettingsError:string='Before selecting libraries run Install or Update Libraries to fetch bundle.';
-export const libCmdsReadyVerChgError:string='Before selecting libraries run Install or Update Libraries due to pending version change.';
-export const libCmdsReadyNoSourceError:string='Before selecting libraries run Install or Update Libraries';
+export const libCmdsReadyNeedSettingsError:string='Before selecting libraries run Install or Update Libraries and Stubs to fetch bundle.';
+export const libCmdsReadyVerChgError:string='Before selecting libraries run Install or Update Libraries and Stubs due to pending version change.';
+export const libCmdsReadyNoSourceError:string='Before selecting libraries run Install or Update Libraries and Stubs';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
 export const libDnldBundleExistsLog:string='File already exists:';
 export const libDnldBundleExistsRtn:string='file already exists';

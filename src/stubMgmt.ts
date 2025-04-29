@@ -73,11 +73,12 @@ export class StubMgmt {
             }
             let boardFilter:string=(boardFilterName && boardFilterName!==undefined) ? boardFilterName : '';
             // should have all the stubs now
+            // ** #64, note that for older versions there are no board definitions, so not it in placeholder
             const boardList = await this.getBoardList();
             // ** #90, convert to standard quick pick so have access to filter
             const qpBoards=vscode.window.createQuickPick<vscode.QuickPickItem>();
             qpBoards.items=boardList;
-            qpBoards.placeholder = 'pick board';    // strgs.boardListPlaceholder;
+            qpBoards.placeholder = boardList.length>0 ?  'pick board' : "NO BOARD DEFS IN THIS VERSION OF CP";    // strgs.boardListPlaceholder;
             qpBoards.title = 'select board model';  // strgs.boardListTitle;
             qpBoards.buttons=[helpButton];
             if(boardFilter && boardFilter.length>0){
@@ -241,7 +242,12 @@ export class StubMgmt {
     }
 
     //create board stub extraPath, making board.pyi if needed in the stub
+    // ** #64, bug fix, versions before 9.x don't have board definitions, look for it before trying to fixup
     private async  createBoardStubExtraPath(boardStubBaseUri: vscode.Uri,boardName:string):Promise<string>{
+        // ** #64, bug fix, versions before 9.x don't have board definitions, look for it before trying to fixup
+        if(!fs.existsSync(boardStubBaseUri.fsPath)){
+            return "";  // this indicates no board definitions for this version
+        }
         const boardStubUri = vscode.Uri.joinPath(boardStubBaseUri,boardName + '/board.pyi');
         if (!fs.existsSync(boardStubUri.fsPath)) {
             fs.copyFileSync(vscode.Uri.joinPath(boardStubBaseUri,boardName+'/__init__.pyi').fsPath, boardStubUri.fsPath);
@@ -373,8 +379,11 @@ export class StubMgmt {
             const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
             extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
             const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(cpVersionFullStubUri, 'board_definitions'),boardName);
-            extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
-            extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            // ** #64, bug fix, if no board definitions then don't add to extra paths
+            if(boardStubExtraPath){
+                extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            }
         }
         await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
     }
@@ -461,7 +470,15 @@ export class StubMgmt {
                 // ###TBD### clean up any old stubs directories
                 // remove stub directories that are not the current version 
                 const stubsDirContents=await vscode.workspace.fs.readDirectory(this._stubsDirUri);
-                for(const stubDir of stubsDirContents){
+                for(let stubDir of stubsDirContents){
+                    // ** #64, bug fix, normalize all dirs to 'circuitpython_stubs-<version>' format not 'circuitpython-stubs-<version>.*'
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0].startsWith('circuitpython-stubs')){ 
+                        const origStubDir=stubDir[0];
+                        stubDir[0]=stubDir[0].replace('circuitpython-stubs','circuitpython_stubs');
+                        const stubDirOrigUri = vscode.Uri.joinPath(this._stubsDirUri,origStubDir);
+                        const stubDirNewUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
+                        vscode.workspace.fs.rename(stubDirOrigUri,stubDirNewUri,{overwrite:true});
+                    }
                     if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
                         const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
@@ -526,7 +543,15 @@ export class StubMgmt {
                 // remove stub directories that are not the current version 
                 const stubsDirContents=await vscode.workspace.fs.readDirectory(this._stubsDirUri);
                 for(const stubDir of stubsDirContents){
-                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
+                    // ** #64, bug fix, normalize all dirs to 'circuitpython_stubs-<version>' format not 'circuitpython-stubs-<version>.*'
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0].startsWith('circuitpython-stubs')){ 
+                        const origStubDir=stubDir[0];
+                        stubDir[0]=stubDir[0].replace('circuitpython-stubs','circuitpython_stubs');
+                        const stubDirOrigUri = vscode.Uri.joinPath(this._stubsDirUri,origStubDir);
+                        const stubDirNewUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
+                        vscode.workspace.fs.rename(stubDirOrigUri,stubDirNewUri,{overwrite:true});
+                    }
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){ 
                         const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
                     }
@@ -558,6 +583,28 @@ export class StubMgmt {
 
     // ** provide access to stubs archive folder exists as a way to see if setup is done
     public stubsArchiveExists(): boolean {
-        return this._stubZipArchiveUri ? fs.existsSync(this._stubZipArchiveUri.fsPath) : false;
+        // ** #64, managing full cp version now, so check actual file too
+        // but can short circuit if stub archive folder not there, meaning setup not done
+        if(!this._stubZipArchiveUri){return false;}  //should not happen
+        const archExists= fs.existsSync(this._stubZipArchiveUri.fsPath);
+        if(!archExists){
+            return false;
+        }
+        // ** #64, check for the actual stub archive file, if doesn't exist then setup not done
+        // must have current cp version
+        this._cpVersionFull = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+        const stubTarExists= fs.existsSync(stubZipArchiveTarUri.fsPath);
+        if(!stubTarExists){
+            return false;
+        }
+        // ** #64, finally check for the stubs dir in global storage, but use current cp full version!!
+        const cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
+        const stubsDirExists= fs.existsSync(cpVersionFullStubUri.fsPath);
+        if(!stubsDirExists){
+            return false;
+        }
+        // all passed, good to go
+        return true;
     }
 }

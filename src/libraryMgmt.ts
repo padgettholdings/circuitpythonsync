@@ -16,6 +16,15 @@ export class LibraryMgmt {
         const workspaceUri = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : vscode.Uri.file(os.homedir());
         this._libArchiveUri=vscode.Uri.joinPath(workspaceUri,strgs.workspaceLibArchiveFolder);
 
+        // need a temp place to put the CP release json file
+        const tempUriBase=this._context.globalStorageUri; //NOTE this may not initially exist
+        this._tempCPReleaseDir = path.join(tempUriBase.fsPath, 'tempCPReleaseJson');
+        // create the temp dir if it doesn't exist
+        if (!fs.existsSync(this._tempCPReleaseDir)) {
+            fs.mkdirSync(this._tempCPReleaseDir, { recursive: true });
+        }
+
+
         interface cmdQuickInputButton extends QuickInputButton {
 			commandName: string;
 		}
@@ -51,19 +60,27 @@ export class LibraryMgmt {
             // see if there is a pending change and alter the QP if so
             if(this._libUpdateVerChg) {
                 quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                 quickPick.items = [
                     { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
-                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                    { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                    { label: strgs.updateLibNewTagQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                    { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                 ];
             } else {
                 quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
+                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                 quickPick.items = [
                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                    { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                 ];
             }
+            // ** #64, save copy of placeholder and items so can reset if ESC
+            //let origPlaceholder=quickPick.placeholder;
+            //let origItems=quickPick.items;
+            //
             quickPick.onDidTriggerButton((button) => {  
                 const btn=button as cmdQuickInputButton;
                 if (btn.commandName === 'selectLibs') {
@@ -88,6 +105,18 @@ export class LibraryMgmt {
                     // ** in the case where a new project was created and the settings are all blank in the settings.json,
                     // need to call the setupLibSources to get the settings and do the setup
                     if(libTag==='' || cpVersion==='' || cpVersionFull==='') {
+                        // #64, need to take into account that the _libtag and _cpversion may have changed in the UI
+                        //  so save them to the settings if so, not really a version change since nothing was there.
+                        // ** #64, also include full version tag
+                        if(this._libTag!=='') {
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
+                        }
+                        if(this._cpVersion!=='') {
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
+                        }
+                        if(this._cpVersionFull!=='') {
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPfullverPKG}`,this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
+                        }
                         try {
                             await this.setupLibSources();
                             this._libUpdateVerChg=false;
@@ -101,15 +130,18 @@ export class LibraryMgmt {
                         return;
                     }
                     //first make sure new cp lib version matches full version, if not error, manually update
-                    if(this._cpVersion !== cpVersionFull.split('.')[0]) {
-                        vscode.window.showErrorMessage(strgs.libBaseNoMatchFullVer);
-                        return;
-                    }
-                    if(this._libTag!==libTag || this._cpVersion!==cpVersion) {
-                        const ans=await vscode.window.showInformationMessage(strgs.libTagOrCPVerChgConfirm[0]+this._libTag+strgs.libTagOrCPVerChgConfirm[1]+this._cpVersion, 'Yes','No',"Help");
+                    // ** #64 - not needed any more since full vesion is being managed
+                    // if(this._cpVersion !== cpVersionFull.split('.')[0]) {
+                    //     vscode.window.showErrorMessage(strgs.libBaseNoMatchFullVer);
+                    //     return;
+                    // }
+                    if(this._libTag!==libTag || this._cpVersionFull!==cpVersionFull) {
+                        const ans=await vscode.window.showInformationMessage(strgs.libTagOrCPVerChgConfirm[0]+this._libTag+strgs.libTagOrCPVerChgConfirm[1]+this._cpVersionFull, 'Yes','No',"Help");
                         if(ans==='Yes') {
                             //save the new settings
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
+                            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPfullverPKG}`,this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
+                            this._cpVersion=this._cpVersionFull.split('.')[0];
                             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPbaseverPKG}`,this._cpVersion,vscode.ConfigurationTarget.Workspace);
                             //do the setup
                             try {
@@ -147,10 +179,11 @@ export class LibraryMgmt {
                             // skip if same as current and use original prompt in QP, still have to rebuild
                             if(value===this._libTag  && !this._libUpdateVerChg) {
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
@@ -160,10 +193,11 @@ export class LibraryMgmt {
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibNewTagQPItemMiddle.label, description: value, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -176,10 +210,11 @@ export class LibraryMgmt {
                             const latestTag=await this.getLatestBundleTag();
                             if(latestTag===this._libTag &&  !this._libUpdateVerChg){
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
@@ -189,10 +224,11 @@ export class LibraryMgmt {
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                    const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -200,32 +236,67 @@ export class LibraryMgmt {
                                     quickPick.dispose();
                                 }
                             }
+                        } else if (value===undefined) {
+                            //if ESC just get back to the QP
+                            // have to reset the references
+                            quickPick.placeholder=quickPick.placeholder;
+                            quickPick.items = quickPick.items;
+                            quickPick.show();
                         }
                     });
                 } else if (items[0].commandName === 'cpversion') {
-                    vscode.window.showInputBox({ prompt: strgs.cpVerChgInputBox.prompt,value:this._cpVersion }).then(async (value) => {
+                    vscode.window.showInputBox({ prompt: strgs.cpVerChgInputBox.prompt,value:this._cpVersionFull }).then(async (value) => {
                         if (value) {    //need to check if valid version
                             //quickPick.items[1].description = value;
                             //check to see if changed
-                            if(value===this._cpVersion && !this._libUpdateVerChg) {
+                            if(value===this._cpVersionFull && !this._libUpdateVerChg) {
+                                // no change, just make sure libtag set right and go back to top
+                                // ####TBD#### change to full version, when to set base version????
+                                // just make sure base version follows full
+                                this._cpVersion=this._cpVersionFull.split('.')[0];
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
+                                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersion, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
                                 ];
                                 quickPick.show();
                             } else {
-                                const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + value, 'Yes','No');
+                                // At this point may be full version or a search for latest in a major/minor...
+                                //  may not be a change????? Yes, has to be a change
+                                // ####TBD#### change to full version, when to set base version????
+                                // lookup the version query string to ask about change
+                                let newCPVersionFull:string='';
+                                try {
+                                    newCPVersionFull=await this.getCPversion(value);
+                                } catch (error) {
+                                    vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                                    quickPick.hide();
+                                    quickPick.dispose();
+                                    return;
+                                }
+                                if(!newCPVersionFull || newCPVersionFull==='') {
+                                    vscode.window.showErrorMessage('Invalid or outdated version request for "'+value+'".  Try again or look up a valid version at https://circuitpython.org/');
+                                    quickPick.placeholder=quickPick.placeholder;
+                                    quickPick.items = quickPick.items;
+                                    quickPick.show();
+                                    //quickPick.hide();
+                                    //quickPick.dispose();
+                                    return;
+                                }
+                                const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + newCPVersionFull, 'Yes','No');
                                 if(ans==='Yes') {
-                                    this._cpVersion = value;
+                                    this._cpVersionFull = newCPVersionFull;
+                                    this._cpVersion = this._cpVersionFull.split('.')[0];
                                     this._libUpdateVerChg=true;
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                                    const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
                                     quickPick.items = [
                                         { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
-                                        { label: strgs.updateCpNewVerQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                        { label: strgs.updateCpNewVerQPItemBottom.label, description: value, commandName: 'cpversion' }
+                                        { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                                        { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -233,6 +304,70 @@ export class LibraryMgmt {
                                     quickPick.dispose();
                                 }
                             }
+                        } else if (value!==undefined && value===''){
+                            // get latest version of CP and ask if want to change
+                            const latestCPTag=await this.getLatestCPTag();
+                            const ans=await vscode.window.showInformationMessage(strgs.cpVerChgConfirm + latestCPTag, 'Yes','No');
+                            if(ans==='Yes') {
+                                this._cpVersionFull = latestCPTag;
+                                this._cpVersion = this._cpVersionFull.split('.')[0];
+                                this._libUpdateVerChg=true;
+                                //quickPick.items[0].description = value;
+                                quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                                const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                                quickPick.items = [
+                                    { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
+                                    { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                                    { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
+                                ];                    
+                                quickPick.show();
+                                return;
+                            } else {
+                                quickPick.placeholder=quickPick.placeholder;
+                                quickPick.items = quickPick.items;
+                                quickPick.show();
+                                //quickPick.hide();
+                                //quickPick.dispose();
+                                return;
+                            }
+                            /*
+                            // #####TEST##### try to get latest full version file
+                            // ####TEST####
+                            const testValue='9.2.7';
+                            let newCPVersionFull:string='';
+                            try {
+                                newCPVersionFull=await this.getCPversion(testValue);
+                            } catch (error) {
+                                vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                                quickPick.hide();
+                                quickPick.dispose();
+                                return;
+                            }
+                            if(!newCPVersionFull || newCPVersionFull==='') {
+                                vscode.window.showErrorMessage('Invalid or outdated version request for "'+testValue+'".  Try again or look up a valid version at https://circuitpython.org/');
+                                quickPick.placeholder=quickPick.placeholder;
+                                quickPick.items = quickPick.items;
+                                quickPick.show();
+                                //quickPick.hide();
+                                //quickPick.dispose();
+                                return;
+                            }
+                            //and just go back to the QP
+                            quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
+                            const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                            quickPick.items = [
+                                { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
+                                { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
+                                { label: strgs.updateCpNewVerQPItemBottom.label, description: newCPVersionFull, commandName: 'cpversion' }
+                            ];                    
+                            quickPick.show();   
+                            */                         
+                        } else if (value===undefined) {
+                            //if ESC just get back to the QP
+                            // have to reset the references
+                            quickPick.placeholder=quickPick.placeholder;
+                            quickPick.items = quickPick.items;
+                            quickPick.show();
                         }
                     });
                 }
@@ -397,27 +532,32 @@ export class LibraryMgmt {
 
         // ** #71, reset global lib tag and cp ver vars if config changes
         // NOTE that the full version is not used here, only the tag and base version
+        // ** #64, now managing the full version in the settings so do it too
+        // ** DO NOT trigger on base version since it may not be set until after full version
         vscode.workspace.onDidChangeConfiguration((e) => {  
             if(e.affectsConfiguration(`circuitpythonsync.${strgs.confCurlibPKG}`) || 
-                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ) {
+                    //e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
+                    e.affectsConfiguration(`circuitpythonsync.${strgs.confCPfullverPKG}`)) {
                 const confCurlibPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                 const confCPbaseverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
-                //const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
+                const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
                 // handle two conditions:
                 // - if the configs are blank, set the instances to blank
                 // - if the configs are different from the instance, swap and set the version chg flag, 
+                // - and set the base version from the full version if there
                 //      THEN run the lib install
-                if(confCurlibPKG === '' && confCPbaseverPKG === '' ) {
+                if(confCurlibPKG === '' && (confCPbaseverPKG === '' || confCPfullverPKG === '')) {
                     this._libTag='';
                     this._cpVersion='';
-                    //this._cpVersionFull='';
+                    this._cpVersionFull='';
                     this._libUpdateVerChg=false;  //reset flag so setup will run
                     return;     //get out because likely config is gone
                 }
-                if(this._libTag!==confCurlibPKG || this._cpVersion!==confCPbaseverPKG ) {
+                // ** #64, can't let this run open... only if version change flag NOT set
+                if( !this._libUpdateVerChg && (this._libTag!==confCurlibPKG || this._cpVersionFull!==confCPfullverPKG)) {
                     this._libTag=confCurlibPKG;
-                    this._cpVersion=confCPbaseverPKG;
-                    //this._cpVersionFull=confCPfullverPKG;
+                    this._cpVersion=confCPfullverPKG.split('.')[0];
+                    this._cpVersionFull=confCPfullverPKG;
                     this._libUpdateVerChg=true;  //set flag to true so update will do setup
                     // now run the setup to update the libraries
                     vscode.commands.executeCommand(strgs.cmdLibUpdatePKG);
@@ -440,6 +580,17 @@ export class LibraryMgmt {
     */
 
     // ** public methods **
+    // ** need a public method to set the instance vars for libtag, cpversion, and cpfullversion
+    public setLibCPtagVers():[string,string,string] {
+        let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+        this._libTag = libTag;
+        let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+        this._cpVersion = cpVersion;
+        let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+        this._cpVersionFull = cpVersionFull;
+        return [libTag,cpVersion,cpVersionFull];
+    }
+
     // **** the setup that is called after the constructor or when tag changed ****
     public async setupLibSources() {
         // ** set context key so update command is not available until setup is done
@@ -456,12 +607,14 @@ export class LibraryMgmt {
         this._progInc=5;
         const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
         // get the libtag and cp version settings
-        let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
-        this._libTag = libTag;
-        let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
-        this._cpVersion = cpVersion;
-        let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
-        this._cpVersionFull = cpVersionFull;
+        // just call the helper above
+        let [libTag,cpVersion,cpVersionFull]=this.setLibCPtagVers();
+        // let libTag:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
+        // this._libTag = libTag;
+        // let cpVersion:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`,'');
+        // this._cpVersion = cpVersion;
+        // let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
+        // this._cpVersionFull = cpVersionFull;
         //if lib or cp version configs are not defined, set from latest and check for conflicts in cp versions
         if(this._libTag===''){
             const latestTag=await this.getLatestBundleTag();
@@ -498,6 +651,13 @@ export class LibraryMgmt {
         if (!fs.existsSync(this._tempBundlesDir)) {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
         }
+
+        // also need a temp place to put the CP release json file
+        // this._tempCPReleaseDir = path.join(tempUriBase.fsPath, 'tempCPReleaseJson');
+        // // create the temp dir if it doesn't exist
+        // if (!fs.existsSync(this._tempCPReleaseDir)) {
+        //     fs.mkdirSync(this._tempCPReleaseDir, { recursive: true });
+        // }
 
         // #67 cleanup temp orig bundles
         // NOTE: uses URI methods to avoid any platform issues
@@ -672,7 +832,7 @@ export class LibraryMgmt {
         // ** done with updating the libraries
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
         this.stopLibUpdateProgress();
-        vscode.window.showInformationMessage(strgs.updateLibUpdatedMsg[0] + this._libTag + strgs.updateLibUpdatedMsg[1] + this._cpVersion);
+        vscode.window.showInformationMessage(strgs.updateLibUpdatedMsg[0] + this._libTag + strgs.updateLibUpdatedMsg[1] + this._cpVersionFull);
     }
 
     // ** provide access to libarchive folder exists as a way to see if installed
@@ -683,6 +843,7 @@ export class LibraryMgmt {
 
     // ** private properties **
     private _tempBundlesDir: string = '';
+    private _tempCPReleaseDir: string = '';
     private _context: vscode.ExtensionContext;
     private _libArchiveUri:vscode.Uri;
     private _libTag: string = '';
@@ -868,7 +1029,96 @@ export class LibraryMgmt {
         return await r.data.tag_name;
     }
     
+    private async getCPreleaseJson(cacheDest:string): Promise<string> {
+        try {
+            const response = await axios.default.get(
+                'https://api.github.com/repos/adafruit/circuitpython/releases?per_page=100',
+                { 
+                    headers: {
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    responseType: 'json'
+                }
+            ).then((response) => {
+                fs.writeFileSync(cacheDest, JSON.stringify(response.data), {
+                    encoding: "utf8",
+                });
+                console.log(strgs.stubsPyPiMetadataDnldLog, cacheDest);
+            });
+        } catch (error) {
+            console.error(strgs.stubsPyPiMetadataDnldErrorLog, error);
+            throw error;
+        }
+        return 'done';
+    }
     
+    // get the latest CP version from the adafruit github release list matching pattern
+    private async getCPversion(verPat:string): Promise<string> {
+        let newCPVersionFull:string='';
+        // use simple date tag as cache key
+        const currentDTtag=new Date().toISOString().split('T')[0].replace(/[^0-9]/g,'');
+        //####TBD#### compare filename in cache dir with currentDTtag, if not match delete it and ...
+        // get the latest release file
+        const releaseFile=path.join(this._tempCPReleaseDir,currentDTtag+'.json');
+        if(!fs.existsSync(releaseFile)) {
+            // clean up any old files
+            const oldfls=fs.readdirSync(this._tempCPReleaseDir);
+            for(const oldfl of oldfls) {
+                if(oldfl!==currentDTtag+'.json') {
+                    fs.unlinkSync(path.join(this._tempCPReleaseDir,oldfl));
+                }
+            }
+            try {
+                await this.getCPreleaseJson(releaseFile);
+            } catch (error) {
+                //vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                //return newCPVersionFull;
+                throw error;
+            }
+        }
+        // read the json
+        const releaseMetadata = JSON.parse(fs.readFileSync(releaseFile, 'utf8'));
+        // extract array of tag_names from the json object
+        const tagNames = releaseMetadata.map((item: { tag_name: string; }) => item.tag_name);
+        // ####TEST pat match ######
+        const testVerPartial:string=verPat;
+        let verMatchList:string[]=tagNames.filter((item: string) => item.startsWith(testVerPartial) && !item.includes('-'));
+        if(!verMatchList || verMatchList.length===0) {
+            //vscode.window.showErrorMessage('Invalid or outdated version request for "'+testVerPartial+'".  Try again or look up a valid version at https://circuitpython.org/');
+            return newCPVersionFull;
+        }
+        //sort the version list with the latest first
+        verMatchList.sort((a, b) => {
+            // Remove any pre-release identifiers (anything after a hyphen)
+            const aClean = a.split('-')[0];
+            const bClean = b.split('-')[0];
+            
+            // Split versions into components and convert to numbers
+            const aParts = aClean.split('.').map(Number);
+            const bParts = bClean.split('.').map(Number);
+            
+            // Ensure arrays have same length by padding with zeros
+            while (aParts.length < 3) {aParts.push(0);}
+            while (bParts.length < 3) {bParts.push(0);}
+            
+            // Compare major versions first
+            if (aParts[0] !== bParts[0]) {
+                return bParts[0] - aParts[0]; // Descending order
+            }
+            
+            // If major versions are the same, compare minor versions
+            if (aParts[1] !== bParts[1]) {
+                return bParts[1] - aParts[1]; // Descending order
+            }
+            
+            // If minor versions are the same, compare patch versions
+            return bParts[2] - aParts[2]; // Descending order
+        });
+        newCPVersionFull=verMatchList[0];
+        return newCPVersionFull;
+    }
+
     private async getOrigBundle(libTag: string, pyLibFmt: string): Promise<string> {
         //    try {
         const res = await this.downloadOrigBundle(libTag, pyLibFmt);
