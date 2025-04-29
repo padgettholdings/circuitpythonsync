@@ -67,7 +67,7 @@
       },
       {
         "command": "circuitpythonsync.libupdate",
-        "title": "CP Install or Update Libraries",
+        "title": "CP Install or Update Libraries and Stubs",
         "enablement": "!circuitpythonsync.updatinglibs",
         "category": "CircuitPythonSync"
       },
