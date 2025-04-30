@@ -984,7 +984,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			// .then(() => {}, (e) => console.error(e));
 		
 		} else {
-			vscode.window.showInformationMessage('Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!');
+			vscode.window.showInformationMessage(strgs.helloWorldNoWkspc);
 		}
 	});
 	context.subscriptions.push(disposable);
@@ -1917,7 +1917,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			// ** #68, if not only no arch folders but also missing lib and py files, just bail
 			if(libraryFolderExists || pyFilesExist){
-				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Install or Update Libraries later'},'Yes','No','Help');
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:strgs.extActivateAskLibStubsDetail},'Yes','No','Help');
 				if(ans==='Yes'){
 					try {
 						await libMgmtSys.setupLibSources();
@@ -2016,7 +2016,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
 					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],
-						{modal:true,detail:'You can alway run Set Drive later'},'Yes','No');
+						{modal:true,detail:strgs.fndCPDrvInsPathDetail},'Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
@@ -2701,7 +2701,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				let newTemplatePath:string=newTemplate.label;
 				// check to see if want to go to add new template path/link, flag command to return to make project
 				if(newTemplate.label===strgs.projTemplateAddMngQPitemAdd){
-					vscode.commands.executeCommand('circuitpythonsync.addtemplatelink',true);
+					vscode.commands.executeCommand(strgs.cmdAddTemplateLinkPKG,true);
 					return;   // get out of this command, flag will return to make project
 				}
 				if(newTemplate.label===strgs.projTemplateAddMngQPitemDflt) {
@@ -2916,7 +2916,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	
 
 	// ** #57, command to add new links for templates **
-	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
+	const cmdAddNewTemplateLinkId:string=strgs.cmdAddTemplateLinkPKG;
 	const addNewTemplateLinkCmd=vscode.commands.registerCommand(cmdAddNewTemplateLinkId, async (fromMakeProject:boolean) => {
 		//if no workspace do nothing but notify
 		// if(!haveCurrentWorkspace) {
@@ -3061,7 +3061,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(addNewTemplateLinkCmd);
 	
 	// ** diff file **
-	const cmdFileDiffId ='circuitpythonsync.filediff';
+	const cmdFileDiffId =strgs.cmdFileDiffPKG;
 	//const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
 	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (ctxFile:vscode.Uri|undefined) =>{
 		// Capture required modules in local variables to ensure they're available in this scope
@@ -3649,8 +3649,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		// get the current setting for not showing help
 		const doNotShowWelcome=vscode.workspace.getConfiguration('circuitpythonsync').get(strgs.confNoShowHelpPKG,false);
 		if(!doNotShowWelcome){
-			const ans=await vscode.window.showInformationMessage('Would you like to see the help file?',
-				{modal:true,detail:'You can always run the Welcome command or click the help button in command title bars to get help'},'Yes','Yes but not again for this project','No and never for my user');
+			const ans=await vscode.window.showInformationMessage(strgs.welcomeHelpAskMsg,
+				{modal:true,detail:strgs.welcomeHelpAskDetail},'Yes','Yes but not again for this project','No and never for my user');
 			if(ans && ans.toLowerCase().startsWith('yes')){
 				vscode.commands.executeCommand(strgs.cmdHelloPKG);
 				if(ans === 'Yes but not again for this project'){
