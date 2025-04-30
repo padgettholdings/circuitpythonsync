@@ -216,6 +216,12 @@ export const libTagOrCPVerChgConfirm:string[]=[
     'Library tag or CP version changed, do you want to update to tag ', //+libTag+
     ', CP ' //+cpVersion+
 ];
+export const libTempCPRelJsonDir:string='tempCPReleaseJson';
+export const libCpReleaseJsonUrl:string='https://api.github.com/repos/adafruit/circuitpython/releases?per_page=100';
+export const libTempOrigBundlesDir:string='tempOrigBundles';
+export const libOnlyZipTempDir:string='libOnlyTemp';
+export const libStubsDir:string="libstubs";
+export const libExtractLibTempDir:string="libDepsCopy";
 export const libTagChgInputBox:ibox={prompt:'Enter the library tag or blank for latest',placeHolder:'Enter with blank input to go to latest version.'};
 export const libTagChgConfirm:string='Are you sure you want Library tag changed to: ';  //+value of new libtag
 export const updateLibNewTagQPplaceholder:string="";    //"Accept to save changed settings and update libraries";
@@ -225,6 +231,11 @@ export const updateLibNewTagQPItemBottom:qpitem={label:'CircuitPython Version'};
 export const libTagLatestChgConfirm:string='Are you sure you want Library tag changed to latest version: '; //+ latestTag
 export const cpVerChgInputBox:ibox={prompt:'Enter the CircuitPython version'};
 export const cpVerChgConfirm:string='Are you sure you want CP version changed to: ';  // + value of new cp version
+export const cpVerRelJsonFetchError:string='Error getting cp release json: '; //+err.message
+export const cpVerInvalidError:string[]=[
+    'Invalid or outdated version request for "', //+cpVersion+
+    '".  Try again or look up a valid version at https://circuitpython.org/'
+];
 export const updateCpNewVerQPplaceholder:string=''; //"Accept to save changed settings and update libraries";
 export const updateCpNewVerQPItemTop:qpitem={label:'Click to update with NEW bundle settings',description:'[Or click tag and/or version to modify]'};  //{label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
 export const updateCpNewVerQPItemMiddle:qpitem={label:'Library Tag'};
@@ -280,6 +291,10 @@ export const boardButtonSetTTMKDN:string[]=[
     '**',   //+board.label
     '** selected, click to change'
 ];
+export const boardSelQPplaceholderNormal:string='Pick board';
+export const boardSelQPplaceholderNoneAvail:string='NO BOARD DEFS IN THIS VERSION OF CP';
+export const boardSelQPtitle:string='Select board model';
+export const boardSelAskMapDrive:string='Do you want to map the CP board drive?';   // yes, no, help
 export const boardButtonNotSetTTMKDN:string='Click to Select CP board';
 export const boardListSelectedQPItem:qpitem={label:'DNU',description:'Current selection'};
 export const stubsTarGzExtractError:string='Error during extraction of ';   // ${tarGzPath}

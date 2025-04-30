@@ -78,8 +78,8 @@ export class StubMgmt {
             // ** #90, convert to standard quick pick so have access to filter
             const qpBoards=vscode.window.createQuickPick<vscode.QuickPickItem>();
             qpBoards.items=boardList;
-            qpBoards.placeholder = boardList.length>0 ?  'pick board' : "NO BOARD DEFS IN THIS VERSION OF CP";    // strgs.boardListPlaceholder;
-            qpBoards.title = 'select board model';  // strgs.boardListTitle;
+            qpBoards.placeholder = boardList.length>0 ?  strgs.boardSelQPplaceholderNormal : strgs.boardSelQPplaceholderNoneAvail;    // strgs.boardListPlaceholder;
+            qpBoards.title = strgs.boardSelQPtitle;  // strgs.boardListTitle;
             qpBoards.buttons=[helpButton];
             if(boardFilter && boardFilter.length>0){
                 qpBoards.value=boardFilter; // set the initial value to filter on
@@ -133,7 +133,7 @@ export class StubMgmt {
                 // ** #73, if drive not mapped ask if want to map it
                 const curDriveMap = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confDrivepathPKG}`,'');
                 if(!curDriveMap){
-                    const ans=await vscode.window.showInformationMessage('Do you want to map the CP board drive?', 'Yes','No','Help');
+                    const ans=await vscode.window.showInformationMessage(strgs.boardSelAskMapDrive, 'Yes','No','Help');
                     if(ans==='Yes'){
                         // call the select board command
                         vscode.commands.executeCommand(strgs.cmdSetDirPKG);

@@ -18,7 +18,7 @@ export class LibraryMgmt {
 
         // need a temp place to put the CP release json file
         const tempUriBase=this._context.globalStorageUri; //NOTE this may not initially exist
-        this._tempCPReleaseDir = path.join(tempUriBase.fsPath, 'tempCPReleaseJson');
+        this._tempCPReleaseDir = path.join(tempUriBase.fsPath, strgs.libTempCPRelJsonDir);
         // create the temp dir if it doesn't exist
         if (!fs.existsSync(this._tempCPReleaseDir)) {
             fs.mkdirSync(this._tempCPReleaseDir, { recursive: true });
@@ -271,13 +271,13 @@ export class LibraryMgmt {
                                 try {
                                     newCPVersionFull=await this.getCPversion(value);
                                 } catch (error) {
-                                    vscode.window.showErrorMessage('error getting cp release json: '+this.getErrorMessage(error));
+                                    vscode.window.showErrorMessage(strgs.cpVerRelJsonFetchError+this.getErrorMessage(error));
                                     quickPick.hide();
                                     quickPick.dispose();
                                     return;
                                 }
                                 if(!newCPVersionFull || newCPVersionFull==='') {
-                                    vscode.window.showErrorMessage('Invalid or outdated version request for "'+value+'".  Try again or look up a valid version at https://circuitpython.org/');
+                                    vscode.window.showErrorMessage(strgs.cpVerInvalidError[0]+value+strgs.cpVerInvalidError[1]);
                                     quickPick.placeholder=quickPick.placeholder;
                                     quickPick.items = quickPick.items;
                                     quickPick.show();
@@ -646,7 +646,7 @@ export class LibraryMgmt {
         const cpVersionFmt = `${cpVersion}.x-mpy`;
         // need temp space to download the zips
         const tempUriBase=this._context.globalStorageUri; //NOTE this may not initially exist
-        this._tempBundlesDir = path.join(tempUriBase.fsPath, 'tempOrigBundles');
+        this._tempBundlesDir = path.join(tempUriBase.fsPath, strgs.libTempOrigBundlesDir);
         // create the temp dir if it doesn't exist
         if (!fs.existsSync(this._tempBundlesDir)) {
             fs.mkdirSync(this._tempBundlesDir, { recursive: true });
@@ -684,7 +684,7 @@ export class LibraryMgmt {
                 return;
             }
             //now extract the lib folders from the full bundles and create the lib only zips
-            const libOnlyZipTempDir = path.join(this._tempBundlesDir, 'libOnlyTemp');
+            const libOnlyZipTempDir = path.join(this._tempBundlesDir, strgs.libOnlyZipTempDir);
             if (!fs.existsSync(libOnlyZipTempDir)) {
                 fs.mkdirSync(libOnlyZipTempDir, { recursive: true });
             }
@@ -751,7 +751,7 @@ export class LibraryMgmt {
         }
         if(libNeeds.length===0) {
             // #95, if no libs at all, get rid of the libstubs folder
-            const libStubsUri = vscode.Uri.joinPath(this._libArchiveUri,"libstubs");
+            const libStubsUri = vscode.Uri.joinPath(this._libArchiveUri,strgs.libStubsDir);
             if(fs.existsSync(libStubsUri.fsPath)) {
                 vscode.workspace.fs.delete(libStubsUri,{recursive:true});
             }
@@ -781,7 +781,7 @@ export class LibraryMgmt {
         //first the stubs, can replace the whole libstuds folder
         let libStubsNeeds = libNeeds.concat(libMetaDeps);
         libStubsNeeds=[...new Set(libStubsNeeds)]; //remove duplicates
-        const libExtractTarget: string = vscode.Uri.joinPath(this._libArchiveUri,"libstubs").fsPath;
+        const libExtractTarget: string = vscode.Uri.joinPath(this._libArchiveUri,strgs.libStubsDir).fsPath;
         let libOnlyZipFile: string = vscode.Uri.joinPath(this._libArchiveUri,`${strgs.libBundleFilePrefix}-py-${this._libTag}-lib.zip`).fsPath;
         try {
             await this.ziplibextractneeds(libStubsNeeds, libOnlyZipFile, libExtractTarget);
@@ -794,7 +794,7 @@ export class LibraryMgmt {
         this._progInc=30;
         //now the actual lib files- only add/update the dependencies- **NO**, have to do all libs
         const libExtractTargetLib: string = vscode.Uri.joinPath(wsRootFolder.uri,libPath).fsPath;
-        const libExtractLibTemp:string = path.join(this._tempBundlesDir,"libDepsCopy");
+        const libExtractLibTemp:string = path.join(this._tempBundlesDir,strgs.libExtractLibTempDir);
         const cpVersionFmt = `${this._cpVersion}.x-mpy`;
         libOnlyZipFile = vscode.Uri.joinPath(this._libArchiveUri,`${strgs.libBundleFilePrefix}-${cpVersionFmt}-${this._libTag}-lib.zip`).fsPath;
         let libAllNeeds = libNeeds.concat(libMetaDeps);
@@ -1032,7 +1032,7 @@ export class LibraryMgmt {
     private async getCPreleaseJson(cacheDest:string): Promise<string> {
         try {
             const response = await axios.default.get(
-                'https://api.github.com/repos/adafruit/circuitpython/releases?per_page=100',
+                strgs.libCpReleaseJsonUrl,
                 { 
                     headers: {
                         "Accept": "application/vnd.github+json",
