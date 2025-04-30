@@ -50,6 +50,8 @@ export const cmdLibUpdatePKG:string='circuitpythonsync.libupdate';
 export const cmdSelectLibsPKG:string='circuitpythonsync.selectlibs';
 export const cmdSelectBoardPKG:string='circuitpythonsync.selectboard';
 export const cmdLoadProjectBundlePKG:string='circuitpythonsync.loadProjectBundle';
+export const cmdAddTemplateLinkPKG:string='circuitpythonsync.addtemplatelink';
+export const cmdFileDiffPKG:string='circuitpythonsync.filediff';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -93,6 +95,7 @@ export function getCpBootMsgs(strgs_cpBootFile:string):[strgs_cpBootNoFindMKDN:s
 }
 
 //various messages
+export const helloWorldNoWkspc:string = 'Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!';
 export const mngLibChecks:string = 'Check or uncheck desired files and folders';
 export const mngFileChecks:string = 'Check or uncheck desired files';
 export const btnFilesTTPrefixMKDN:string="***Files***-";
@@ -119,6 +122,7 @@ export const fndCPDrvInsPath:string[]=[
     'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
     '".  Do you want to map it?'
 ];
+export const fndCPDrvInsPathDetail:string='You can alway run Set Drive later';
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
 export const autoDetectNotUSB:string='Auto Detected but may not be CP';
@@ -204,6 +208,7 @@ export const diffScreenHeader:string='Workspace to Board compare file: ';   //+l
 
 //library and stubs related
 export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
+export const extActivateAskLibStubsDetail:string='You can always run Install or Update Libraries later';
 export const workspaceLibArchiveFolder:string='libArchive';
 export const updateLibQPtitle:string='Install or Update Libraries and Stubs';
 export const updateLibQPSelTT:string='Select Libraries for Board';
@@ -330,6 +335,8 @@ export const projectBundleGetSettingsQues:string='Project bundle loaded, do you 
 // ** help related
 export const helpFilename:string='helpfile.md';
 export const helpFileLoadErr:string='** ERROR loading help file **';
+export const welcomeHelpAskMsg:string='Would you like to see the help file?';
+export const welcomeHelpAskDetail:string='You can always run the Welcome command or click the help button in command title bars to get help';
 // these are the keys which match the anchor links in the help file
 export const helpBoardSupport:string='board-support';
 export const helpLibsCopySupport:string='libs-copy-support';
