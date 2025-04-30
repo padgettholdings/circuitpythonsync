@@ -597,7 +597,7 @@ async function getProjTemplateText(): Promise<string> {
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
 	// ** #57, make path global so that can use in make project quick pick
 	//  **This picks up the current/last setting, which may be changed in the UI, and this will be called again
-	projTemplatePath=cpsyncSettings.get('cptemplatepath','');
+	projTemplatePath=cpsyncSettings.get(strgs.confCPTemplatePathPKG,'');
 	//projTemplatePath='file:/home/stan/testextensions/mynewcpproject.txt';
 	//if empty, return empty
 	if(!projTemplatePath) {return retVal;}
@@ -691,7 +691,7 @@ async function getProjTemplateText(): Promise<string> {
 	if(!retVal || retVal.length===0){
 		projTemplatePath='';
 		// this had to be a reset since would not be here if was originally blank, so reset config
-		await cpsyncSettings.update('cptemplatepath',projTemplatePath,vscode.ConfigurationTarget.Global);
+		await cpsyncSettings.update(strgs.confCPTemplatePathPKG,projTemplatePath,vscode.ConfigurationTarget.Global);
 	}
 	return retVal;
 }
@@ -815,29 +815,29 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** try to get config settings that override defaults
 	const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
-	const strgs_cpfilesTry=cpsyncSettings.get('cpfilestxt');
+	const strgs_cpfilesTry=cpsyncSettings.get(strgs.confCPFilesNamePKG);
 	if(strgs_cpfilesTry){
 		//got setting, put use as active
 		strgs_cpfiles=strgs_cpfilesTry as string;
 	}
 	// set current into global
-	cpsyncSettings.update('cpfilestxt',strgs_cpfiles,true);
+	cpsyncSettings.update(strgs.confCPFilesNamePKG,strgs_cpfiles,true);
 	
-	const strgs_cpfilesbakTry=cpsyncSettings.get('cpfilesbak');
+	const strgs_cpfilesbakTry=cpsyncSettings.get(strgs.confCPFilesNameBakPkg);
 	if(strgs_cpfilesbakTry){
 		//got setting, put use as active
 		strgs_cpfilesbak=strgs_cpfilesbakTry as string;
 	}
 	//set current into global
-	cpsyncSettings.update('cpfilesbak',strgs_cpfilesbak,true);
+	cpsyncSettings.update(strgs.confCPFilesNameBakPkg,strgs_cpfilesbak,true);
 	
-	const strgs_cpBootFileTry=cpsyncSettings.get('cpbootfile');
+	const strgs_cpBootFileTry=cpsyncSettings.get(strgs.confCPBootFilenamePKG);
 	if(strgs_cpBootFileTry){
 		//got setting, put use as active
 		strgs_cpBootFile=strgs_cpBootFileTry as string;
 	}
 	//did not find so set current into global
-	cpsyncSettings.update('cpbootfile',strgs_cpBootFile,true);
+	cpsyncSettings.update(strgs.confCPBootFilenamePKG,strgs_cpBootFile,true);
 	
 	//vscode.window.showInformationMessage(`active cpfiles setting is: ${strgs_cpfiles}`);
 	//vscode.window.showInformationMessage(`active cpfilesbak setting is: ${strgs_cpfilesbak}`);
@@ -987,7 +987,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			// .then(() => {}, (e) => console.error(e));
 		
 		} else {
-			vscode.window.showInformationMessage('Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!');
+			vscode.window.showInformationMessage(strgs.helloWorldNoWkspc);
 		}
 	});
 	context.subscriptions.push(disposable);
@@ -1920,7 +1920,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!stubMgmtSys.stubsArchiveExists() || !libMgmtSys.libArchiveExists() ) {
 			// ** #68, if not only no arch folders but also missing lib and py files, just bail
 			if(libraryFolderExists || pyFilesExist){
-				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:'You can always run Install or Update Libraries later'},'Yes','No','Help');
+				const ans=await vscode.window.showInformationMessage(strgs.extActivateAskLibStubs,{modal:true, detail:strgs.extActivateAskLibStubsDetail},'Yes','No','Help');
 				if(ans==='Yes'){
 					try {
 						await libMgmtSys.setupLibSources();
@@ -2019,7 +2019,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
 					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],
-						{modal:true,detail:'You can alway run Set Drive later'},'Yes','No');
+						{modal:true,detail:strgs.fndCPDrvInsPathDetail},'Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
@@ -2579,7 +2579,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// determine if there are personal template paths, if so can provision a pick to go choose
 		//  ** always show option, just may not have links **
 		const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
-		const projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
+		const projTemplatePaths:string[]=cpsyncSettings.get(strgs.confCPTemplatePathListPKG,[]);
 		let pickTemplates:vscode.QuickPickItem[]=[];
 		picks.push(
 			{
@@ -2607,7 +2607,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		} else {
 			// might have deleted list after load, so set back to default
 			projTemplatePath='';
-			await cpsyncSettings.update('cptemplatepath',projTemplatePath, vscode.ConfigurationTarget.Global);
+			await cpsyncSettings.update(strgs.confCPTemplatePathPKG,projTemplatePath, vscode.ConfigurationTarget.Global);
 			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
 			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 			try{
@@ -2704,14 +2704,14 @@ export async function activate(context: vscode.ExtensionContext) {
 				let newTemplatePath:string=newTemplate.label;
 				// check to see if want to go to add new template path/link, flag command to return to make project
 				if(newTemplate.label===strgs.projTemplateAddMngQPitemAdd){
-					vscode.commands.executeCommand('circuitpythonsync.addtemplatelink',true);
+					vscode.commands.executeCommand(strgs.cmdAddTemplateLinkPKG,true);
 					return;   // get out of this command, flag will return to make project
 				}
 				if(newTemplate.label===strgs.projTemplateAddMngQPitemDflt) {
 					// ** reset to default
 					newTemplatePath='';
 				}
-				await cpsyncSettings.update('cptemplatepath',newTemplatePath, vscode.ConfigurationTarget.Global);
+				await cpsyncSettings.update(strgs.confCPTemplatePathPKG,newTemplatePath, vscode.ConfigurationTarget.Global);
 				// ** now re-read the template into the project array
 				let templateContent:string='';
 				// ** #57, get the override project template text from file or URL in setting
@@ -2919,7 +2919,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	
 
 	// ** #57, command to add new links for templates **
-	const cmdAddNewTemplateLinkId:string='circuitpythonsync.addtemplatelink';
+	const cmdAddNewTemplateLinkId:string=strgs.cmdAddTemplateLinkPKG;
 	const addNewTemplateLinkCmd=vscode.commands.registerCommand(cmdAddNewTemplateLinkId, async (fromMakeProject:boolean) => {
 		//if no workspace do nothing but notify
 		// if(!haveCurrentWorkspace) {
@@ -2936,7 +2936,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let readyForReturn:boolean=false;
 		while(!readyForReturn){
 			const cpsyncSettings=vscode.workspace.getConfiguration('circuitpythonsync');
-			let projTemplatePaths:string[]=cpsyncSettings.get('cptemplatepaths',[]);
+			let projTemplatePaths:string[]=cpsyncSettings.get(strgs.confCPTemplatePathListPKG,[]);
 			let picks:vscode.QuickPickItem[]=[
 				{
 				label: strgs.projAddTemplateLinkitemUrl
@@ -3018,7 +3018,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					vscode.window.showWarningMessage(strgs.projAddTemplateLinkUrlDup);
 				}
 				// ** set the new template path in the config, get method will use it
-				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+				await cpsyncSettings.update(strgs.confCPTemplatePathListPKG,projTemplatePaths, vscode.ConfigurationTarget.Global);
 
 				//projTemplatePath=newTemplateUrl;	// ** NO, don't change since won't update array
 			} else if (choice.label===strgs.projAddTemplateLinkitemPath){
@@ -3038,7 +3038,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					vscode.window.showWarningMessage(strgs.projAddTemplateLinkPathDup);
 				}
 				// ** set the new template path in the config, get method will use it
-				await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+				await cpsyncSettings.update(strgs.confCPTemplatePathListPKG,projTemplatePaths, vscode.ConfigurationTarget.Global);
 				// ** set the new template path in the config, get method will use it
 				//projTemplatePath=newTemplatePath[0].fsPath;	// ** NO, don't change since won't update array
 			} else if (choice.label.startsWith('$(trash)')) {
@@ -3048,7 +3048,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				if(index>-1) {
 					projTemplatePaths.splice(index,1);
 					// ** set the new template path in the config, get method will use it
-					await cpsyncSettings.update('cptemplatepaths',projTemplatePaths, vscode.ConfigurationTarget.Global);
+					await cpsyncSettings.update(strgs.confCPTemplatePathListPKG,projTemplatePaths, vscode.ConfigurationTarget.Global);
 				} else {
 					vscode.window.showWarningMessage(strgs.projAddTemplateLinkDelErr);
 				}
@@ -3064,7 +3064,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(addNewTemplateLinkCmd);
 	
 	// ** diff file **
-	const cmdFileDiffId ='circuitpythonsync.filediff';
+	const cmdFileDiffId =strgs.cmdFileDiffPKG;
 	//const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
 	const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (ctxFile:vscode.Uri|undefined) =>{
 		// Capture required modules in local variables to ensure they're available in this scope
@@ -3650,19 +3650,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	// **#72, offer help at startup with options to not ask again
 	if(haveCurrentWorkspace){
 		// get the current setting for not showing help
-		const doNotShowWelcome=vscode.workspace.getConfiguration('circuitpythonsync').get('doNotShowWelcome',false);
+		const doNotShowWelcome=vscode.workspace.getConfiguration('circuitpythonsync').get(strgs.confNoShowHelpPKG,false);
 		if(!doNotShowWelcome){
-			const ans=await vscode.window.showInformationMessage('Would you like to see the help file?',
-				{modal:true,detail:'You can always run the Welcome command or click the help button in command title bars to get help'},'Yes','Yes but not again for this project','No and never for my user');
+			const ans=await vscode.window.showInformationMessage(strgs.welcomeHelpAskMsg,
+				{modal:true,detail:strgs.welcomeHelpAskDetail},'Yes','Yes but not again for this project','No and never for my user');
 			if(ans && ans.toLowerCase().startsWith('yes')){
 				vscode.commands.executeCommand(strgs.cmdHelloPKG);
 				if(ans === 'Yes but not again for this project'){
 					// ** #72, set the config to not show help again in setting.json
-					await vscode.workspace.getConfiguration('circuitpythonsync').update('doNotShowWelcome',true, vscode.ConfigurationTarget.Workspace);
+					await vscode.workspace.getConfiguration('circuitpythonsync').update(strgs.confNoShowHelpPKG,true, vscode.ConfigurationTarget.Workspace);
 				}
 			} else if(ans && ans.toLowerCase().startsWith('no')){
 				// ** #72, set the config to not show help again for the user
-				await vscode.workspace.getConfiguration('circuitpythonsync').update('doNotShowWelcome',true, vscode.ConfigurationTarget.Global);
+				await vscode.workspace.getConfiguration('circuitpythonsync').update(strgs.confNoShowHelpPKG,true, vscode.ConfigurationTarget.Global);
 			}
 			// note that if cancel nothing shows but nothing changes
 		}

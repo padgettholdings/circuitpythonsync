@@ -17,6 +17,13 @@ interface ibox {
 // workspace config setting for current drive path, fixed to prefix with 'circuitpythonsync.'
 //  CAN CHANGE HERE TO CHANGE AND RECOMPILE IN CODE, BUT package.json will need to be changed also
 export const confDrivepathPKG:string ='drivepath';
+export const confCPFilesNamePKG:string ='cpfilestxt';
+export const confCPFilesNameBakPkg:string ='cpfilesbak';
+export const confCPBootFilenamePKG:string='cpbootfile';
+export const confCPTemplatePathPKG:string='cptemplatepath';
+export const confCPTemplatePathListPKG:string='cptemplatepaths';
+// for the help at start
+export const confNoShowHelpPKG:string='doNotShowWelcome';
 // these are for the lib and stub mgmt settings, fixed to prefix with 'circuitpythonsync.'
 export const confCurlibPKG:string ='curlibtag';
 export const confCPbaseverPKG:string ='cpbaseversion';
@@ -43,6 +50,8 @@ export const cmdLibUpdatePKG:string='circuitpythonsync.libupdate';
 export const cmdSelectLibsPKG:string='circuitpythonsync.selectlibs';
 export const cmdSelectBoardPKG:string='circuitpythonsync.selectboard';
 export const cmdLoadProjectBundlePKG:string='circuitpythonsync.loadProjectBundle';
+export const cmdAddTemplateLinkPKG:string='circuitpythonsync.addtemplatelink';
+export const cmdFileDiffPKG:string='circuitpythonsync.filediff';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -86,6 +95,7 @@ export function getCpBootMsgs(strgs_cpBootFile:string):[strgs_cpBootNoFindMKDN:s
 }
 
 //various messages
+export const helloWorldNoWkspc:string = 'Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!';
 export const mngLibChecks:string = 'Check or uncheck desired files and folders';
 export const mngFileChecks:string = 'Check or uncheck desired files';
 export const btnFilesTTPrefixMKDN:string="***Files***-";
@@ -112,6 +122,7 @@ export const fndCPDrvInsPath:string[]=[
     'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
     '".  Do you want to map it?'
 ];
+export const fndCPDrvInsPathDetail:string='You can alway run Set Drive later';
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
 export const autoDetectNotUSB:string='Auto Detected but may not be CP';
@@ -197,6 +208,7 @@ export const diffScreenHeader:string='Workspace to Board compare file: ';   //+l
 
 //library and stubs related
 export const extActivateAskLibStubs:string='Would you like to initialize the library and board Python stubs?';
+export const extActivateAskLibStubsDetail:string='You can always run Install or Update Libraries later';
 export const workspaceLibArchiveFolder:string='libArchive';
 export const updateLibQPtitle:string='Install or Update Libraries and Stubs';
 export const updateLibQPSelTT:string='Select Libraries for Board';
@@ -209,6 +221,12 @@ export const libTagOrCPVerChgConfirm:string[]=[
     'Library tag or CP version changed, do you want to update to tag ', //+libTag+
     ', CP ' //+cpVersion+
 ];
+export const libTempCPRelJsonDir:string='tempCPReleaseJson';
+export const libCpReleaseJsonUrl:string='https://api.github.com/repos/adafruit/circuitpython/releases?per_page=100';
+export const libTempOrigBundlesDir:string='tempOrigBundles';
+export const libOnlyZipTempDir:string='libOnlyTemp';
+export const libStubsDir:string="libstubs";
+export const libExtractLibTempDir:string="libDepsCopy";
 export const libTagChgInputBox:ibox={prompt:'Enter the library tag or blank for latest',placeHolder:'Enter with blank input to go to latest version.'};
 export const libTagChgConfirm:string='Are you sure you want Library tag changed to: ';  //+value of new libtag
 export const updateLibNewTagQPplaceholder:string="";    //"Accept to save changed settings and update libraries";
@@ -218,6 +236,11 @@ export const updateLibNewTagQPItemBottom:qpitem={label:'CircuitPython Version'};
 export const libTagLatestChgConfirm:string='Are you sure you want Library tag changed to latest version: '; //+ latestTag
 export const cpVerChgInputBox:ibox={prompt:'Enter the CircuitPython version'};
 export const cpVerChgConfirm:string='Are you sure you want CP version changed to: ';  // + value of new cp version
+export const cpVerRelJsonFetchError:string='Error getting cp release json: '; //+err.message
+export const cpVerInvalidError:string[]=[
+    'Invalid or outdated version request for "', //+cpVersion+
+    '".  Try again or look up a valid version at https://circuitpython.org/'
+];
 export const updateCpNewVerQPplaceholder:string=''; //"Accept to save changed settings and update libraries";
 export const updateCpNewVerQPItemTop:qpitem={label:'Click to update with NEW bundle settings',description:'[Or click tag and/or version to modify]'};  //{label:'Enter or click here to update with NEW settings',description:'Or click library tag or CP version to change'};
 export const updateCpNewVerQPItemMiddle:qpitem={label:'Library Tag'};
@@ -273,6 +296,10 @@ export const boardButtonSetTTMKDN:string[]=[
     '**',   //+board.label
     '** selected, click to change'
 ];
+export const boardSelQPplaceholderNormal:string='Pick board';
+export const boardSelQPplaceholderNoneAvail:string='NO BOARD DEFS IN THIS VERSION OF CP';
+export const boardSelQPtitle:string='Select board model';
+export const boardSelAskMapDrive:string='Do you want to map the CP board drive?';   // yes, no, help
 export const boardButtonNotSetTTMKDN:string='Click to Select CP board';
 export const boardListSelectedQPItem:qpitem={label:'DNU',description:'Current selection'};
 export const stubsTarGzExtractError:string='Error during extraction of ';   // ${tarGzPath}
@@ -308,6 +335,8 @@ export const projectBundleGetSettingsQues:string='Project bundle loaded, do you 
 // ** help related
 export const helpFilename:string='helpfile.md';
 export const helpFileLoadErr:string='** ERROR loading help file **';
+export const welcomeHelpAskMsg:string='Would you like to see the help file?';
+export const welcomeHelpAskDetail:string='You can always run the Welcome command or click the help button in command title bars to get help';
 // these are the keys which match the anchor links in the help file
 export const helpBoardSupport:string='board-support';
 export const helpLibsCopySupport:string='libs-copy-support';
