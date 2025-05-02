@@ -7,7 +7,7 @@ To return to this help file while using the extension run the `Welcome and Help`
 ## Table of Contents ##
 * [Getting Started](#getting-started)
 * [Toolbar and Board Explorer](#toolbar-and-board-explorer)
-* [Section 2](#section-2)
+* [CircuitPython Language Support](#circuitpython-language-support)
 * [CP Drive Mapping](#cp-drive-mapping)
 * [Library Support](#library-support)
 * [Board Support](#board-support)
@@ -31,27 +31,30 @@ One of the key ways in which the extension "protects" the integrity of your proj
 
 ## Toolbar and Board Explorer
 
+There are several visual tools offered by the extension that support the development workflow.  The first is a toolbar consisting of 4 command/status buttons in the lower status bar of VS Code (usually toward the left side).  
+The buttons show status through icons and also tooltips for issues and settings.
+
 ![CPS toolbar](cpstoolbarsmall.png)
+
+From left to right the buttons are:
+* **Copy Files to board.**  The icon to the right of the arrow shows whether a valid board connection exists, augmented by a tool tip explaining the condition.  The button will also "light up" with a contrasting color when files are ready to be copied, such as after editing.  Clicking the button copies the files to the board if connected.  The files that are copied are either the default `code.py` or `main.py`, or a configured set using the command detailed below in [Files Copy Support](#files-copy-support).
+* **Copy Libraries to board.** Similar to the Files Copy, status is indicated by icons and a tooltip.  The button lights up if new libraries are added or libraries are removed.  Clicking the button copies either all the libraries under the Lib folder or those configured using the command detailed in [Libs Copy Support](#libs-copy-support).
+* **Map CP Drive.** Clicking this runs the command detailed in [CP Drive Mapping](#cp-drive-mapping).  The tooltip on the button shows the current mapping, if any.
+* **Select CP Board Type.**  Clicking this button brings up a list for choosing one CircuitPython qualified board model to support intellisense and validation during code development.  More details can be found below at [Board Support](#board-support).  The tooltip on the button shows the currently chosen board type.
+
+A companion tool called the Board Explorer shows a tree view of the contents of the CircuitPython drive if connected.  By default the tool shows up in the Primary sidebar explorer views (usually on the left side).
 
 ![CPS Board Explorer Primary](boardexplorerleft.png)
 
+Note that there are some action buttons that only show up when you float your mouse over the `BOARD EXPLORER` title.  However, the explorer is generally more useful if you open the secondary sidebar and drag the explorer to one of the tabs; the action buttons show up without needing to mouse over.
+
 ![CPS Board Explorer Secondary](boardexplorerright.png)
 
-help text 1
-
-help text 1
-
-help text 1
-
-help text 1
-
-help text 1
-
-help text 1
+In addition to showing the files and folders on the mapped board, the explorer enables file deletion (right click on a file), opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux), and the view refreshed when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
 
 [Top](#welcome-to-circuitpython-sync)
 
-## section 2
+## CircuitPython Language Support
 
 help text 2
 
