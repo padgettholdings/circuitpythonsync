@@ -56,41 +56,47 @@ In addition to showing the files and folders on the mapped board, the explorer e
 
 ## CircuitPython Language Support
 
-help text 2
+VS Code provides first-class python coding tools through the Microsoft-provided Python extensions Python and Pylance (these will be installed when you install this extension if you don't have them.)  These offer formatting, linting, intellisense, etc. for the Python language real-time during coding.  For example, if you fail to indent the first line after a def statement:
 
-help text 2
+![Basic Python validation](python0.png)
 
-help text 2
+This extension adds support for CircuitPython-specific built-in modules and libraries by downloading the latest CircuitPython bundle from Adafruit and extracting the built-in modules and libraries into a folder in your workspace.   The extension then configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the built-in modules and libraries.
 
-help text 2
+For example, using the built-in alarm module for sleeping will auto-complete the types of alarms available:
 
-help text 2
+![CP Built-ins](python1.png)
 
-help text 2
+If you are working with a sensor supported by a library in the standard bundle, the properties and methods of the library will also be available for auto-completion:  
 
-help text 2
+![Library Auto-complete](python2.png)
+
+Details of the library are also available in the hover tooltip:
+
+![Library Details](python3.png)
+
+The extension also downloads the latest CircuitPython board definition files from Adafruit and extracts them into a folder in your workspace.  The extension then configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the built-in modules and libraries.  For example, pin definitions are available for auto-completion:
+
+![Board Auto-complete](python4.png)
+
+Details of the board are also available in the hover tooltip:
+
+![Board Details](python5.png)
+
+While highly recommended, the CircuitPython language support is not required for the extension to support the basic workflow of copying files and libraries to the board.  More details on the CircuitPython language support can be found in the [Library Support](#library-support) and [Board Support](#board-support) sections below.
 
 [Top](#welcome-to-circuitpython-sync)
 
 ## CP Drive Mapping
 
-help text 8
+Configuring the attached board drive is a key step in the development workflow to enable code files and libraries to be uploaded to your board.  The drive set command can be run from the command palette or by clicking the `Map CP Drive` button on the toolbar.  The command will show a dialog with a list of available drives and a `Pick Manually` selection to select any file path.  The dialog will also show the current mapping if any.
 
-help text 8
+The extension queries the operating system for available drives and shows them in the dialog.  The list includes any removable drives that have the `boot_out.txt` file in the root of the drive.  This file is created by CircuitPython when the board is connected to the workstation and is used by the extension to identify the drive as a potential CircuitPython drive.  Then the "most likely" board drive(s) (listed as Auto Detected) has a disk label of `CIRCUITPY`.  For example on Windows the mapping command may show:
 
-help text 8
+![Drive Mapping](drivemap.png)
 
-help text 8
+Here the `D:` drive had the correct volume label, but an SD card mounted as the `F:` drive had a `boot_out.txt` file that had been used for testing.  In fact, any file directory can be selected by choosing the `Pick Manually` option and selecting a folder.  One use case for this feature is for making a copy of the development files and libraries on a removable drive and later copying to the board on a different workstation.
 
-help text 8
-
-help text 8
-
-help text 8
-
-help text 8
-
-help text 8
+For MacOS and Linux, the selected drive path will show as something like `/Volumes/CIRCUITPY` or `/media/username/CIRCUITPY`.  In all cases the proper string will be saved in the workspace settings so that the extension can find the drive again when you open the workspace.
 
 [Top](#welcome-to-circuitpython-sync)
 
