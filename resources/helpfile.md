@@ -130,23 +130,21 @@ The `Install or Update Libraries and Stubs` also downloads "stubs" for the Circu
 
 ## Board Support
 
-help text 4
+The extension offers language support for specific board definitions as well as the CircuitPython runtime built-in modules.  It does this by downloading "stubs" for the version of CP specified in the `Install or Update Libraries and Stubs` command or previously saved in the workspace settings.  These stubs are `.pyi` interface files (vs the entire source code) that are used by the python language services to provide intellisense and validation for the built-in modules and board definitions.  The downloaded compressed stubs are saved in a `stubArchive` folder in the workspace to preserve the version of the stubs used for the project; you can choose to include this folder in your source control repo, if not it can be re-downloaded when the repo is next pulled down.  The uncompressed stub directory is extracted to a global cache provided by VS Code; the directory can be somewhat large and you would not need to include it in your workspace.  The extension configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the built-in modules and libraries.  For example, the configuration in settings.json might look like:
 
-help text 4
+```json
+    "python.analysis.extraPaths": [
+        "c:\\user-app-data\\globalStorage\\extensionname\\stubs\\circuitpython_stubs-9.2.7"
+    ]
+```
 
-help text 4
+This enables language support for CP built-ins, such as `digitalio`, `analogio`, etc.  It also contains support for the basic `board` module with functions such as `I2C`, `SPI`, etc. common to all boards.  To get support for specific boards, run the `Select Board` toolbar button or command and choose from the list of boards supported in the version of CP you chose in the `Install or Update Libraries and Stubs` command.  
 
-help text 4
-
-help text 4
-
-help text 4
-
-help text 4
-
-help text 4
-
-help text 4
+```json
+    "python.analysis.extraPaths": [
+        "c:\\myuser\\myprojects\\simpleCp\\boardstubs\\adafruit_itsybitsy_m4_express"
+    ]
+```
 
 [Top](#welcome-to-circuitpython-sync)
 
