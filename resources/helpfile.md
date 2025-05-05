@@ -130,7 +130,7 @@ The `Install or Update Libraries and Stubs` also downloads "stubs" for the Circu
 
 ## Board Support
 
-The extension offers language support for specific board definitions as well as the CircuitPython runtime built-in modules.  It does this by downloading "stubs" for the version of CP specified in the `Install or Update Libraries and Stubs` command or previously saved in the workspace settings.  These stubs are `.pyi` interface files (vs the entire source code) that are used by the python language services to provide intellisense and validation for the built-in modules and board definitions.  The downloaded compressed stubs are saved in a `stubArchive` folder in the workspace to preserve the version of the stubs used for the project; you can choose to include this folder in your source control repo, if not it can be re-downloaded when the repo is next pulled down.  The uncompressed stub directory is extracted to a global cache provided by VS Code; the directory can be somewhat large and you would not need to include it in your workspace.  The extension configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the built-in modules and libraries.  For example, the configuration in settings.json might look like:
+The extension offers language support for specific board definitions as well as the CircuitPython board runtime built-in modules.  It does this by downloading "stubs" for the version of CP specified in the `Install or Update Libraries and Stubs` command or previously saved in the workspace settings.  These stubs are `.pyi` interface files (vs the entire source code) that are used by the python language services to provide intellisense and validation for the built-in modules and board definitions.  The downloaded compressed stubs are saved in a `stubArchive` folder in the workspace to preserve the version of the stubs used for the project; you can choose to include this folder in your source control repo, if not it can be re-downloaded when the repo is next pulled down.  The uncompressed stub directory is extracted to a global cache provided by VS Code; the directory can be somewhat large and you would not need to include it in your workspace.  The extension configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the built-in modules and libraries.  For example, the configuration in settings.json might look like:
 
 ```json
     "python.analysis.extraPaths": [
@@ -142,9 +142,24 @@ This enables language support for CP built-ins, such as `digitalio`, `analogio`,
 
 ```json
     "python.analysis.extraPaths": [
-        "c:\\myuser\\myprojects\\simpleCp\\boardstubs\\adafruit_itsybitsy_m4_express"
+        "c:\\user-app-data\\globalStorage\\extensionname\\stubs\\circuitpython_stubs-9.2.7\\board_definitions\\adafruit_feather_esp32s2",
+    ],
+```
+
+With this path pointing to the selected board definition folder, you will get intellisense and validation for the board definition.  For example, the `board` module will have all the pins available for the selected board.
+
+With all of the python extraPaths noted in this and the last section, a typical settings section might look like:
+
+```json
+    "python.analysis.extraPaths": [
+        "c:\\user-app-data\\globalStorage\\extensionname\\stubs\\circuitpython_stubs-9.2.7",
+        "c:\\user-app-data\\globalStorage\\extensionname\\stubs\\circuitpython_stubs-9.2.7\\board_definitions\\adafruit_feather_esp32s2",
+        "c:\\myuser\\myprojects\\simpleCp\\libArchive\\libstubs",
     ]
 ```
+
+Note that while the paths are specific to the workstation or remote server being used for development, the extension will automatically update the paths in the settings file if you change the workspace location or move the project to a different workstation.
+
 
 [Top](#welcome-to-circuitpython-sync)
 
