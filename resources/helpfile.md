@@ -212,23 +212,82 @@ Note that unlike the library copy, the files copy does not clear out any prior f
 
 ## Project Template Support
 
-help text 7
+As noted in the [Getting Started](#getting-started) section, the extension offers a method to create a new project or add features to an existing project using the `Make or Update Project from Templates` command.  Templates are plain text files with file-path delimited sections containing file contents.  A default template is included with the extension but you can create your own templates and apply them with the command.  The command will initially look like:
 
-help text 7
+![Proj Template Cmd](projtemplate1.png)
 
-help text 7
+The "Apply Template" section highlighted in green shows the actions that can be done using the template noted in the placeholder above as `(from default)`, indicating the actions will use the default template.  The "Templates" section highlighted in yellow accesses a sub-command to pick a different template or manage your list of templates.  The last selection in the "Templates" section lets you view the currently selected template; this is also the way you can copy existing templates to make a new one. (An example of a template is shown below.)
 
-help text 7
+The three actions available in the "Apply Template" section are:
 
-help text 7
+*  **All files...** - this will copy all the files in the template to the workspace.  This is useful for creating a new project from scratch or adding specific files or settings to an existing project.  A warning with a cancellation option will be shown if any of the files already exist in the workspace; settings are always merged.
+*  **Merge settings...** - this only merges settings from the template into the workspace settings.
+*  **Add Sample Files...** - basically the same as the first option, but if a template file exists in the workspace the file will be copied in but with `.sample` added as an extension.
 
-help text 7
+In the "Templates" section, the "Choose different template..." option will show a list of your available templates along with an option to return to the default template.  When a template is chosen the main command is shown again with the new template name in the placeholder.
 
-help text 7
+![Choose template](projtemplate2.png)
 
-help text 7
+As seen in this illustration, you can save your own templates in one of several locations:
+* **Local file path** - the template must be plain text; it should have a helpful filename with a `.txt` extension.  While the template can be in the workspace (a sub-folder is recommended), the path saved is absolute; if the repo is restored to a different folder or another workstation the reference will need to be deleted and re-added (see below).
+* **Private GitHub repo or gist** - If you have your GitHub account saved in VS Code you can save your custom template as a text file in one of your repos or as a gist.  The file should have a helpful filename and a `.txt` extension.  Be sure to use the raw link to the file when adding to your list.  Note that public repos and gists are also supported.
+* **Public website** - the same as above, but the file must be available with no authentication required.  This is useful for sharing templates with others.
 
-help text 7
+When the "Add new template..." option is selected in the "Choose personal template" command, another sub-command comes up which allows you to add new files or URL's, or remove existing ones.
+
+![alt text](projtemplate3.png)
+
+You can add as many new entries as you have templates, then hit Escape to return to the "Choose personal template" command.  This command is also available in the command palette as `Manage Templates`.  The list of available templates is saved in your user settings, not the workspace since you often want to start a new project with a blank workspace.
+
+As noted above, the format of a template file is a stream of text with file-path delimited sections.  File paths start with `>>>` at the beginning of a line, followed by the relative path of the file.  A path with only a trailing `/` will create the folder.  All file content between the path delimiters must be plain text; it is not a recommended way to include library files, see [Library Support](#library-support) instead.  Some samples from the default template file is shown below:
+
+```text
+>>>code.py
+#sample circuitpython main code file
+import time
+
+while True:
+    print('hello circuitpython!')
+    time.sleep(2)
+
+>>>lib/
+
+>>>settings.toml
+# To auto-connect to Wi-Fi on enabled boards uncomment and enter correct info
+#CIRCUITPY_WIFI_SSID="mywifissd"
+#CIRCUITPY_WIFI_PASSWORD="mysecretpassword"
+
+>>>.gitignore
+# Sometimes it can be useful...
+
+...
+
+
+>>>.vscode/settings.json
+{
+    "python.languageServer": "Pylance",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingModuleSource": "none",
+        "reportShadowedImports": "none"
+    }
+}
+```
+When "All Files..." action is run with this template selected the following occurs:
+* The `code.py` file is created with the sample code in the workspace root folder.
+* The `lib` folder is created in the workspace root folder.
+* The `settings.toml` file is created in the workspace root folder. 
+* The `.gitignore` file is created in the workspace root folder.  There are some example entries in the default template that are commented out but can be uncommented to tailer the commits to your repo.
+* The `settings.json` file is created in the `.vscode` folder in the workspace if it does not exist (with the `.vscode` folder created if it does not yet exist).  If the file already exists, the settings in the template are merged with the existing settings.  The default template includes some recommended settings for CircuitPython development including explicit callout of the Pylance language server, and some settings that prevent warnings if your `code.py` filename overrides your default workstation python settings.
+
+Templates can be handy to simply add settings, such as:
+
+```text
+>>>.vscode/settings.json
+{
+     "python.analysis.typeCheckingMode": "basic"
+}
+```
+This tells the python language server to check for errors (by default only informational notices are given.).  This would, for example, give an error if you tried to use a pin on a board that doesn't have that pin in its definition.
 
 [Top](#welcome-to-circuitpython-sync)
 
