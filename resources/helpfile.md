@@ -179,7 +179,7 @@ which results in a manifest file like:
 
 ![Manage Libs 2](cpfileslib2.png)
 
-Then when you are ready to try the other sensor you can reverse the selections.  The Copy Libs command clears out any prior libraries on the board that are not included in the current copy.  As an alternative, the extension supports commenting out lines:
+Then when you are ready to try the other sensor you can reverse the selections.  The Copy Libs command clears out any prior libraries on the board that are not included in the current copy.  As an alternative, the extension supports commenting out lines by editing the manifest file:
 
 ![alt text](cpfileslib3.png)
 
