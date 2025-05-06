@@ -50,7 +50,9 @@ Note that there are some action buttons that only show up when you float your mo
 
 ![CPS Board Explorer Secondary](boardexplorerright.png)
 
-In addition to showing the files and folders on the mapped board, the explorer enables file deletion (right click on a file), opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux), and the view refreshed when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
+In addition to showing the files and folders on the mapped board, the explorer enables actions: file deletion (right click on a file); opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux); and refreshing the view when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
+
+While not directly accessible from the explorer, there is a companion command that compares a file in the workspace with the same file on the board.  This is useful for checking if a file has been modified on the board or in the workspace.  The command is `Compare File to Board` and can be run from the command palette or by right-clicking on a file in the explorer.
 
 [Top](#welcome-to-circuitpython-sync)
 
@@ -165,23 +167,27 @@ Note that while the paths are specific to the workstation or remote server being
 
 ## Libs Copy Support
 
-help text 5
+As noted in the Toolbar section above the extension provides a `Copy Libs to board` command that copies some or all of the files and folders in the `lib` folder to the board mapped drive.  If you need all the libraries copied to the board, no other configuration is needed.  Any newly selected libraries will also be copied to the board.  There are scenarios where a subset of the libraries in the `lib` folder need to be copied.  For example, during prototyping several different sensors may be used with different libraries involved.  While normally copying different libraries for similar sensors to a board is not an issue, there can be conflicts such as versions of dependencies and storage space.  This extension offers the `Manage Libs Copy` command to craft a copy manifest that can be used to enable selective copy of the contents of the libraries folder.  
 
-help text 5
+The default filename of the manifest file is `cpfiles.txt`, but this can be changed in settings.  The file is located in the `.vscode` folder in the workspace.  The file is a simple text file with one line per library to be copied.  When executing the copy command the extension will check the `lib` folder for the libraries listed in the manifest and copy them to the board.  If a library is not found, it will be skipped.  If the file is missing or no libraries are listed, the extension will copy all the libraries in the `lib` folder.  The manifest file is not required for the extension to work; it is only used if you want to limit the libraries copied to the board.  The file is also used to tailor file copies (see the next section).
 
-help text 5
+An example of using the manifest file is choosing between a sonar sensor or a time of flight sensor during prototyping.  The `Manage Libs Copy` command shows all libraries in the `lib` folder, but then you can deselect those you are not working with at a point during development, like:
 
-help text 5
+![Manage Libs 1](cpfileslib1.png)
 
-help text 5
+which results in a manifest file like:
 
-help text 5
+![Manage Libs 2](cpfileslib2.png)
 
-help text 5
+Then when you are ready to try the other sensor you can reverse the selections.  The Copy Libs command clears out any prior libraries on the board that are not included in the current copy.  As an alternative, the extension supports commenting out lines:
 
-help text 5
+![alt text](cpfileslib3.png)
 
-help text 5
+which results in the same selections in the command:
+
+![alt text](cpfileslib4.png)
+
+The commenting feature makes it a bit quicker to flip back and forth between library sets.
 
 [Top](#welcome-to-circuitpython-sync)
 
