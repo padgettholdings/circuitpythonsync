@@ -181,11 +181,11 @@ which results in a manifest file like:
 
 Then when you are ready to try the other sensor you can reverse the selections.  The Copy Libs command clears out any prior libraries on the board that are not included in the current copy.  As an alternative, the extension supports commenting out lines by editing the manifest file:
 
-![alt text](cpfileslib3.png)
+![Manage Libs 3](cpfileslib3.png)
 
 which results in the same selections in the command:
 
-![alt text](cpfileslib4.png)
+![Manage Libs 4](cpfileslib4.png)
 
 The commenting feature makes it a bit quicker to flip back and forth between library sets.
 
@@ -193,23 +193,20 @@ The commenting feature makes it a bit quicker to flip back and forth between lib
 
 ## Files Copy Support
 
-help text 6
+The `Manage Files Copy` command is similar to the `Manage Libs Copy` command, but it is used to manage the non-library files copied to the board. The copy logic is similar to the library copy: if `cpfiles.txt` is missing or has no non-library files, only the main python files (`code.py` or `main.py`) will be copied.  The command lets you select from all the possible files that can be copied:
 
-help text 6
+![Manage Files 1](cpfiles1.png)
 
-help text 6
+The resulting manifest file will then look like:
 
-help text 6
+![Manage Files 2](cpfiles2.png)
 
-help text 6
+The commenting feature noted above for libraries also works for the files copy settings.  There is an additional feature that copies a file from the workspace to a different filename on the board.  This is useful if you have several versions of a file you are testing (for example `code1.py` and `code2.py`) and you want to copy one of them to the board as `code.py` or `main.py`.  The syntax is shown below with a `->` chord between the source and destination filenames.  You can then use the commenting feature to select which source file to copy:
 
-help text 6
+![Manage Files 3](cpfiles3.png)
 
-help text 6
+Note that unlike the library copy, the files copy does not clear out any prior files on the board that are not included in the current copy manifest.  You can use the board explorer to delete files as noted in prior sections.
 
-help text 6
-
-help text 6
 
 [Top](#welcome-to-circuitpython-sync)
 
