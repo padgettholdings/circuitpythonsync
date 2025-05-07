@@ -293,23 +293,11 @@ This tells the python language server to check for errors (by default only infor
 
 ## Board Downloading
 
-help text 9
+A utility command `Download Board` is provided to copy files and folders from an attached CP board to the workspace.  The command provides several options to tailor the download:
 
-help text 9
+![Board Download](download.png)
 
-help text 9
-
-help text 9
-
-help text 9
-
-help text 9
-
-help text 9
-
-help text 9
-
-help text 9
+By default the command overwrites any existing files in the workspace with the same name.  If the option is turned off only non-conflicting files will be copied.  The "Skip Dot Files and Folders" skips artifacts that are created by the CP runtime such as `.fseventsd` and `.Trashes`.  These are generally not needed but can be retrieved by turning off this option.  Finally the "Download only standard folders" option will skip folders such as `System Volume Information` while retrieving the `lib` folder.  To use the command you must map the CP drive first.  
 
 [Top](#welcome-to-circuitpython-sync)
 
