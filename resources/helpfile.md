@@ -16,6 +16,7 @@ To return to this help file while using the extension run the `Welcome and Help`
 * [Project Template Support](#project-template-support)
 * [Board Downloading](#board-downloading)
 * [Project Bundle Support](#project-bundle-support)
+* [Using the Serial Monitor](#using-the-serial-monitor)
 
 ## Getting Started
 
@@ -320,6 +321,28 @@ help text 10
 help text 10
 
 help text 10
+
+[Top](#welcome-to-circuitpython-sync)
+
+## Using the Serial Monitor
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
+
+help text 11
 
 [Top](#welcome-to-circuitpython-sync)
 
