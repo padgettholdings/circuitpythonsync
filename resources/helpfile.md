@@ -304,23 +304,25 @@ By default the command overwrites any existing files in the workspace with the s
 
 ## Project Bundle Support
 
-help text 10
+The [Adafruit Learn site](https://learn.adafruit.com/) has thousands of excellent learn guides, many of which use CircuitPython.  Often the author will include a link to download a "project bundle" which is a zip file containing the code and libraries used in the project.  This extension provides a command, `Load Project Bundle` which makes it easy to download the bundle into your workspace and setup the project for development:
 
-help text 10
+![Project Bundle Cmd](projBundle0.png)
 
-help text 10
+The URL for the download can be entered into the command input, or if you have already downloaded the file to your workstation just press enter and a file picker will come up.  To get the URL link, find the `Download Project Bundle` button in the article and right-click it:
 
-help text 10
+![Project Bundle Link](projBundle1.png)
 
-help text 10
+Once the URL is entered or a local file is selected the zip file will be extracted to the root of your workspace.  Typically this has the code.py file and a `lib` folder with the libraries used in the project. The extension will then prompt to add some typical settings (basically just the settings and .gitignore from the default template as detailed above).  If the `lib` folder exists the extension will also prompt to install library and stub support: 
 
-help text 10
+![Project Bundle Settings](projBundle2.png)
 
-help text 10
+![Project Bundle Libs](projBundle3.png)
 
-help text 10
+When the command downloads a bundle or uses a local file, it copies the file to a `projectBundleArchive` folder in the workspace.  This allows you to restore the project bundle files if you decide to start over.  If you enter the same URL again, the extension will let you use the saved file if desired:
 
-help text 10
+![Project Bundle exists](projBundle4.png)
+
+The project bundle files often include a `README.txt` file with some additional information on the project.  In particular the version of CircuitPython used may be noted.  By default the extension will use the latest stable version of CircuitPython for libraries and stubs, but if it is an older learn guide you may need to switch back to previous versions based on the information in the README file.
 
 [Top](#welcome-to-circuitpython-sync)
 
