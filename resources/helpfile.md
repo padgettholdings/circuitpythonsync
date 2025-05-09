@@ -328,23 +328,15 @@ The project bundle files often include a `README.txt` file with some additional 
 
 ## Using the Serial Monitor
 
-help text 11
+VS Code includes a built-in Serial Monitor that can be used to monitor the output of your CircuitPython application.  With a CP board plugged into the workstation, use the `View: Toggle Serial Monitor` command to open the Serial Monitor in the panel, usually at the bottom of the edit area:   
 
-help text 11
+![Serial Monitor](serial.png)
 
-help text 11
+The serial port of the board is usually pre-selected when the monitor starts, but if not select from the list.  Most recent boards use 115200 as the baud rate but check your board documentation if that doesn't work.  When you click Start Monitoring the output from the CP program (or errors) will scroll below the monitor controls (you can expand the vertical size of the panel to display more data).  To pause the program use the function button pull-down at the bottom right to select `Ctrl-C`.  This will stop the program and give you a REPL prompt.  You can then enter commands to test your code or check the state of the board by typing into the message box to the left of the function pull-down.  To restart the program, use the function button pull-down again to select `Ctrl-D`.  The monitor will then show the output from the program again.
 
-help text 11
-
-help text 11
-
-help text 11
-
-help text 11
-
-help text 11
-
-help text 11
+The VS Code Serial Monitor is well supported and reliable.  The separate message area and function button pull-down are a bit different from most serial terminals.  If you prefer a more traditional serial terminal, you might try the following:
+* For Mac OS and Linux, the `screen` command is a good option.  In VS Code, open a terminal in the panel and use, for example, `screen /dev/tty.usbmodemXXXX 115200` or `screen /dev/ttyACM0 115200` (you can list the /dev directory to find the port name).  Use `Ctrl-A` then `K` to exit the screen session.  Once the session connects you can use `Ctrl-C` to stop the program and get into the REPL, and `Ctrl-D` to restart it. 
+* For Windows you will need to install a program.  Edward Wright has an excellent program specifically tailored for CircuitPython called "SimplySerial". It is available on GitHub at https://github.com/fasteddy516/SimplySerial.  Once installed, open a terminal panel in VS Code and run `ss` to start the program.  It should automatically find the port and start the monitor. 
 
 [Top](#welcome-to-circuitpython-sync)
 
