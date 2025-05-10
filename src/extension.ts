@@ -621,9 +621,6 @@ async function getProjTemplateText(): Promise<string> {
 			);
 			if(session){
 				const token=session.accessToken;
-				//const token='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';
-				//const token='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';
-				//projTemplatePath='https://api.github.com/repos/standsi/my-typescript-project/contents/myCpTemplate.txt';
 				// download the contents of the file from github using axios
 				try {
 					// const response=await axios.default(
