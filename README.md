@@ -1,4 +1,4 @@
-# circuitpythonsync README
+# CircuitPython Sync for Visual Studio Code
 
 ## Commands
 * CP Copy
