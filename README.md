@@ -21,7 +21,7 @@ Using these buttons you can perform most of your workflow with a connected Circu
 The extension can download library and board definitions (either the latest or a specified version), saving the configuration such that at any time your source control repo can be downloaded to restore your last saved development configuration.  The definitions support full Python IntelliSense and code completion, including pin definitions for the selected board. 
 
 ## Features
-* **Board Explorer** - Shows current files on the board.  Compare of local and board files.  Download files from the board.  Delete files on the board.
+* **Board Explorer** - Shows current files on the board.  Compare of local and board files.  Download files from the board to workspace.  Delete files on the board.
 * **Python Language Support** - VS Code Pylance augmented by library and board "stub" definitions for error checking, code completion, and IntelliSense. 
 * **Configurable File and Copy Actions** - Manifest file saved in configuration to tailor which files and libraries are copied to the board.
 * **Project Templates** - Create new projects from templates.  A default is provided but you can create your own to suit your needs.
