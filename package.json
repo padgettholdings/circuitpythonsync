@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "padgettholdings",
   "license": "MIT",
+  "icon": "resources/circuitpythonsync-icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/padgettholdings/circuitpythonsync.git"
