@@ -5,3 +5,9 @@
 
 ## v0.1.0 - 2025-05-12
 * Initial pre-release version.
+
+## v0.1.1 - 2025-05-15
+* Second pre-release version with icon and preview flag
+
+## v0.1.2 - 2025-05-15
+* Third pre-release version with modified icon
