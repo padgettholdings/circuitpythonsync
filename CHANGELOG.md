@@ -11,3 +11,6 @@
 
 ## v0.1.2 - 2025-05-15
 * Third pre-release version with modified icon
+
+## v0.2.0 - 2025-05-15
+* First preview release
