@@ -53,7 +53,7 @@ Note that there are some action buttons that only show up when you float your mo
 
 In addition to showing the files and folders on the mapped board, the explorer enables actions: file deletion (right click on a file); opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux); and refreshing the view when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
 
-While not directly accessible from the explorer, there is a companion command that compares a file in the workspace with the same file on the board.  This is useful for checking if a file has been modified on the board or in the workspace.  The command is `Compare File to Board` and can be run from the command palette or by right-clicking on a file in the explorer.
+While not directly accessible from the explorer, there is a companion command that compares a file in the workspace with the same file on the board.  This is useful for checking if a file has been modified on the board or in the workspace.  The command is `Compare File to Board` and can be run from the command palette or by right-clicking on a file in the explorer.  Note that if the workspace file is not found on the board BUT the file is mapped to a filename that is on the board (see [Files Copy Support](#files-copy-support)), the command will ask if you want to compare the two files.
 
 [Top](#welcome-to-circuitpython-sync)
 

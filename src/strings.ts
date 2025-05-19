@@ -122,6 +122,11 @@ export const fndCPDrvInsPath:string[]=[
     'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
     '".  Do you want to map it?'
 ];
+export const fndCPDrvInsPathChange:string[]=[
+    'Found potential CP drive at "', //+connectDrvPath+'"
+    '". Connect it instead of current "', //+curDriveSetting+'"?'
+    '"?'
+];
 export const fndCPDrvInsPathDetail:string='You can alway run Set Drive later';
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
@@ -204,6 +209,10 @@ export const boardFileConfDelete:string="Are you sure you want to permanently de
 export const boardUnkTypeFileFolder:string="** Unknown type of file/folder, cannot be deleted.";
 export const diffContextWarning:string='Must have active file in editor, or use context menu in explorer.';
 export const diffBoardFileNoExist:string="Selected file does not exist on board.";
+export const diffBoardFileNoExistMapped:string[]=[
+    'Source file does not exist on board, but mapped to "',  //cpFileLines[0].dest
+    '", compare?'
+];
 export const diffScreenHeader:string='Workspace to Board compare file: ';   //+leftFile
 
 //library and stubs related

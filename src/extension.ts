@@ -2015,7 +2015,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(connectDrvPath){
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {
-					const pickRes=await vscode.window.showInformationMessage(strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1],
+					// ** #111, check if cur drive is set, if so ask if want to change
+					let chgDriveMessage:string=strgs.fndCPDrvInsPath[0]+connectDrvPath+strgs.fndCPDrvInsPath[1];
+					if(curDriveSetting!==''){
+						chgDriveMessage=strgs.fndCPDrvInsPathChange[0]+connectDrvPath+strgs.fndCPDrvInsPathChange[1]+curDriveSetting+strgs.fndCPDrvInsPathChange[2];
+					}
+					const pickRes=await vscode.window.showInformationMessage(chgDriveMessage,
 						{modal:true,detail:strgs.fndCPDrvInsPathDetail},'Yes','No');
 					if(pickRes==='Yes') {
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
@@ -3123,8 +3128,38 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		if(!fles || fles.length===0){
-			_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
-			return;
+			// ** #112, check to see if file being compared (leftFile) is src in cpfiles and it is being mapped
+			let cpFileLines=await parseCpfiles();
+			if(cpFileLines && cpFileLines.length>0){
+				cpFileLines=cpFileLines.filter(line => !line.inLib && line.src===leftFile && line.dest!=='');
+				if(cpFileLines.length>0){
+					//check if file exists on board and if so set the right compare fles[0]
+					const relPatMap=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri),cpFileLines[0].dest);
+					try {
+						fles=await _vscode.workspace.findFiles(relPatMap);
+					} catch(error){
+						const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
+						await _vscode.window.showErrorMessage(errMsg);
+						return;
+					}
+					if(fles && fles.length>0){
+						const ans=await _vscode.window.showWarningMessage(_strgs.diffBoardFileNoExistMapped[0]+cpFileLines[0].dest+_strgs.diffBoardFileNoExistMapped[1],'Yes','No');
+						if(ans!=='Yes'){
+							return;
+						}
+						leftFile=leftFile+'<>'+cpFileLines[0].dest;	// just for title of compare window
+					} else { 
+						_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
+						return;
+					}
+				} else {
+					_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
+					return;
+				}
+			} else {
+				_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
+				return;
+			}
 		}
 		// now compare files
 		_vscode.commands.executeCommand('vscode.diff',fileUri,fles[0],_strgs.diffScreenHeader+leftFile);
