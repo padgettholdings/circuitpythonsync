@@ -19,3 +19,7 @@
 * Second preview release with new features: 
     * Startup modal that offers potential CP drive now recognizes that settings have a current mapping and makes it clear that offered mapping will change that.
     * When comparing a workspace file to the mapped CP board, if the filename in the workspace is not found on the board there was just an error.  But if the file map manifest has a mapping for that workspace file to a name that does exist on the board, the extension will now offer to compare those two files.
+
+## v0.2.2 - 2025-05-25
+* Third preview release with new feature:
+    * Add context menu in the board explorer to download a single file to the workspace.  Has overwrite protection with an option to make a .copy version.
