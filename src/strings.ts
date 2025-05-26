@@ -206,6 +206,11 @@ export const errorCopyingLibFile:string='** Error copying lib file: ';      //+f
 //board explorer and diff related
 export const boardFileDeleteError:string="** Error with file delete: ";   //+fse.message
 export const boardFileConfDelete:string="Are you sure you want to permanently delete from board?";
+export const boardFileDnldError:string="** Error with file download: ";   //+fse.message
+export const boardFileDnldNoLibs:string='Cannot download files in library';
+export const boardFileDnldDestNotFile:string='Cannot download file, destination is not a file';
+export const boardFileDnldDestError:string='Cannot download file, destination threw an error: ';   //+fse.message
+export const boardFileDnldAskOverwrite:string='Destination exists, Overwrite?';
 export const boardUnkTypeFileFolder:string="** Unknown type of file/folder, cannot be deleted.";
 export const diffContextWarning:string='Must have active file in editor, or use context menu in explorer.';
 export const diffBoardFileNoExist:string="Selected file does not exist on board.";

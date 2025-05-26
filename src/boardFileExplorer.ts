@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as os from 'os';
-import { getCurrentDriveConfig } from './extension';
+import { getCurrentDriveConfig,getLibPath } from './extension';
 import { toNamespacedPath } from 'path';
 import * as strgs from './strings';
 
@@ -128,6 +128,77 @@ export class BoardFileExplorer {
 			} else {
 				vscode.window.showErrorMessage(strgs.boardUnkTypeFileFolder);
 			}
+		});
+		vscode.commands.registerCommand('boardExplorer.filednld', async (resource:Entry) => {
+			const _vscode = vscode;
+			const _strgs = strgs;
+			const _os = os;
+			// ** #36, make sure uri exists and confirm every delete
+			let ftype:vscode.FileType;
+			try {
+				const fstat=await _vscode.workspace.fs.stat(resource.uri);
+				ftype=fstat.type;
+			} catch(error) {
+				const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+				_vscode.window.showErrorMessage(_strgs.boardFileDnldError+fse.message);
+				return;
+			}
+			// can only download files, should be filtered by when in manifest but to double check
+			if(ftype!==vscode.FileType.File){return;}
+			// Now check to see if will overwrite in workspace, get filename first
+			let baseUri=curDriveSetting;
+			// if windows, need to use lowercase for getting filename
+			let resourcePath:string=resource.uri.fsPath;
+			if (_os.platform()==='win32') {
+				resourcePath=resourcePath.toLowerCase();
+				baseUri=baseUri.toLowerCase();
+			}
+			let dnldFile:string=resourcePath.replace(baseUri,'');
+			//_vscode.window.showInformationMessage("resourcePath:"+resourcePath+", baseuri:"+baseUri+", dnldFile: "+dnldFile);
+			if(dnldFile.startsWith('/') || dnldFile.startsWith('\\')){
+				dnldFile=dnldFile.slice(1);
+			}
+			// normalize the path to use forward slashes only on windows
+			if (_os.platform()==='win32') {
+				dnldFile=dnldFile.replace(/\\/g,'/');
+			}
+			const libPath=await getLibPath();
+			if(libPath!=='' && dnldFile.toLowerCase().startsWith(libPath.toLowerCase()+'/')){
+				_vscode.window.showErrorMessage(_strgs.boardFileDnldNoLibs);
+				return;
+			}
+			// now check to see if file path exists in workspace
+			const wsRootFolder=_vscode.workspace.workspaceFolders?.[0];
+			if(!wsRootFolder) {return;}	//should not happen
+			let wsDestUri=_vscode.Uri.joinPath(wsRootFolder.uri,dnldFile);
+			// check if file exists
+			let destExists:boolean=false;
+			try{
+				const fstat=await _vscode.workspace.fs.stat(wsDestUri);
+				if(fstat.type===vscode.FileType.File){
+					destExists=true;
+				} else {
+					_vscode.window.showErrorMessage(_strgs.boardFileDnldDestNotFile);
+					return;
+				}
+			} catch(error) {
+				const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+				if(fse.code==='FileNotFound'){
+					destExists=false;
+				} else {
+					_vscode.window.showErrorMessage(_strgs.boardFileDnldDestError+fse.message);
+					return;
+				}
+			}
+			// if exists, ask whether to overwrite or make a copy
+			if(destExists){
+				const ans=await _vscode.window.showWarningMessage(_strgs.boardFileDnldAskOverwrite,"Yes","No, make a copy", 'No, cancel');
+				if(ans==="No, cancel") {return;}
+				if(ans==="No, make a copy"){
+					wsDestUri=_vscode.Uri.joinPath(wsRootFolder.uri,dnldFile+'.copy');
+				}
+			}
+			await _vscode.workspace.fs.copy(resource.uri,wsDestUri,{overwrite:true});
 		});
 		vscode.commands.registerCommand('boardExplorer.openOS', async (resource:Entry) => {
 			let rname=vscode.env.remoteName;
