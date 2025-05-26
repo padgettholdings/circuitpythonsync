@@ -126,6 +126,10 @@
         "title": "Delete"
       },
       {
+        "command": "boardExplorer.filednld",
+        "title": "Download File"
+      },
+      {
         "command": "boardExplorer.openOS",
         "title": "Open In OS"
       },
@@ -154,6 +158,10 @@
         },
         {
           "command": "boardExplorer.delete",
+          "when": "false"
+        },
+        {
+          "command": "boardExplorer.filednld",
           "when": "false"
         },
         {
@@ -197,6 +205,18 @@
         {
           "command": "boardExplorer.delete",
           "when": "view == boardExplorer && (viewItem == file)"
+        },
+        {
+          "command": "boardExplorer.filednld",
+          "when": "view == boardExplorer && (viewItem == file)"
+        },
+        {
+          "command": "boardExplorer.openOS",
+          "when": "view == boardExplorer && (viewItem == file) && remoteName!=='wsl'"
+        },
+        {
+          "command": "boardExplorer.openOS-wsl",
+          "when": "view == boardExplorer && (viewItem == file) && remoteName==='wsl'"
         },
         {
           "command": "boardExplorer.openOS",
