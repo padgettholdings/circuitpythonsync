@@ -23,3 +23,7 @@
 ## v0.2.2 - 2025-05-25
 * Third preview release with new feature:
     * Add context menu in the board explorer to download a single file to the workspace.  Has overwrite protection with an option to make a .copy version.
+
+## v0.2.3 - 2025-05-28
+* Fourth preview release with new feature:
+    * Decorate libraries and files that are configured to be copied to the board.  Both a color and a badge show up in the file explorer and on the tabs of any files opened for edit.  Help file updated to include this feature.
