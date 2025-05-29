@@ -16,6 +16,8 @@ import { ProjectBundleMgmt } from './projectBundle';
 // **#72, new full quick pick with buttons that can be used in commands like showQuickPick
 import { showFullQuickPick,QuickPickParameters,shouldResume } from './fullQuickPick';
 
+import { FileDecorator  } from './fileDecorator';
+
 import * as axios from 'axios';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
@@ -1825,6 +1827,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	//????? save in ext state?
 	//context.subscriptions.push(curDriveSetting);
 
+	// ** #118, wire up the file decorator - initial set will be empty, will refresh below
+	const fileDec=new FileDecorator(context);
+
 	//set the flags for whether have files and/or lib to copy
 	//just read the top level of the base workspace folder, if workspace open
 	libraryFolderExists=false;
@@ -1861,6 +1866,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			];
 			cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 		}
+		// ** #118, set the initial file decorators
+		await updateFileDecorations(cpFileLines);
+		//
 		//now check sources
 		const fileSources=await checkSources(cpFileLines);
 		if(fileSources) {
@@ -2046,7 +2054,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(wkspcChg);
-
 
 	async function getBootFileContents(curDriveSetting:string): Promise<string> {
 		let retval:string='';
@@ -3346,6 +3353,31 @@ export async function activate(context: vscode.ExtensionContext) {
 	// ** NOTE this does not track folder changes in workspace, only workspace changes itself
 	//file sytem watchers do watch files and folders
 
+	// ** #118 - utility to call in startup and watchers to update file decorations showing files that will be copied
+	async function updateFileDecorations(cpFileLines:Array<cpFileLine>) {
+		if(haveCurrentWorkspace && vscode.workspace.workspaceFolders){
+			const rootFolder=  vscode.workspace.workspaceFolders[0];
+			let decRfshUris:Array<vscode.Uri>=new Array<vscode.Uri>();
+			let libPath:string=await getLibPath();
+			let libWholeCopy:boolean=true;
+			for(const cpFln of cpFileLines){
+				if(cpFln.src && cpFln.src.length>0){
+					if(!cpFln.inLib){
+						decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,cpFln.src));
+					} else {
+						libWholeCopy=false;
+						decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,libPath,cpFln.src));
+					}
+				}
+			}
+			if(libPath!=='' &&  libWholeCopy){
+				//if whole library copy, just decorate the library folder
+				decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,libPath));
+			}
+			fileDec.refresh(decRfshUris);
+		}
+	}
+
 	//none of this can work if not a workspace, will reload when go into workspace
 	if(haveCurrentWorkspace && vscode.workspace.workspaceFolders){
 		//first the library watch
@@ -3424,6 +3456,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				];
 				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
+			// ** #118 - update file decorations showing files that will be copied
+			await updateFileDecorations(cpFileLines);
+			//
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources.pyExists) {
@@ -3463,6 +3498,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				];
 				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
+			// ** #118 - update file decorations showing files that will be copied
+			await updateFileDecorations(cpFileLines);
+			//
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources.pyExists) {
@@ -3501,6 +3539,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				];
 				cpFileLines.push(...cpFileLinesAdd);
 			}
+			// ** #118 - update file decorations showing files that will be copied
+			await updateFileDecorations(cpFileLines);
+			//
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources) {
@@ -3640,6 +3681,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				];
 				cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
 			}
+			// ** #118 - update file decorations showing files that will be copied
+			await updateFileDecorations(cpFileLines);
+			//
 			//now check sources
 			const fileSources=await checkSources(cpFileLines);
 			if(fileSources) {

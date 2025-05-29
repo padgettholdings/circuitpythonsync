@@ -139,6 +139,11 @@ export const pickDrvOrMount:string='Pick drive or mount point for CP';
 export const pickDrvAskSelBoard:string='Do you also want to select a board type? ';
 export const pickCommentFlag:string="Commented";
 
+// file decorator related strings
+export const fileDecoratorBadge:string='CP';
+export const fileDecoratorTooltip:string='Will be copied to the board';
+export const fileDecoratorColor:string='textLink.foreground'; // cyan color, use theme color
+
 //download related strings
 export const couldNotReadCpDnld:string[]=[
     '!! Could not read mapped circuit python drive: "', //+curDriveSetting+

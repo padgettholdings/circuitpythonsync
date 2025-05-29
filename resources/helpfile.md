@@ -51,7 +51,7 @@ Note that there are some action buttons that only show up when you float your mo
 
 ![CPS Board Explorer Secondary](boardexplorerright.png)
 
-In addition to showing the files and folders on the mapped board, the explorer enables actions: file deletion (right click on a file); opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux); and refreshing the view when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
+In addition to showing the files and folders on the mapped board, the explorer enables actions: deleting a file from the board (right click on a file); downloading a single file to your workspace (right click on a file); opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux); and refreshing the view when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
 
 While not directly accessible from the explorer, there is a companion command that compares a file in the workspace with the same file on the board.  This is useful for checking if a file has been modified on the board or in the workspace.  The command is `Compare File to Board` and can be run from the command palette or by right-clicking on a file in the explorer.  Note that if the workspace file is not found on the board BUT the file is mapped to a filename that is on the board (see [Files Copy Support](#files-copy-support)), the command will ask if you want to compare the two files.
 
@@ -190,6 +190,14 @@ which results in the same selections in the command:
 
 The commenting feature makes it a bit quicker to flip back and forth between library sets.
 
+After your library copy set is configured, the selected files/folders that will be copied are decorated with a color and a "CP" badge in the explorer view:
+
+![Lib Files Dec 1](fileDecLib2.png)
+
+If no specific libraries are selected to be copied, the entire `lib` folder will be copied and the `lib` folder itself will be decorated with a color and a "CP" badge:
+
+![Lib Files Dec 2](fileDecLib1.png)
+
 [Top](#welcome-to-circuitpython-sync)
 
 ## Files Copy Support
@@ -207,6 +215,12 @@ The commenting feature noted above for libraries also works for the files copy s
 ![Manage Files 3](cpfiles3.png)
 
 Note that unlike the library copy, the files copy does not clear out any prior files on the board that are not included in the current copy manifest.  You can use the board explorer to delete files as noted in prior sections.
+
+As with the library copy support, files that are currently configured to be copied by the copy files button will be decorated with a color and a "CP" badge:
+
+![Files Copy Decoration](fileDecFiles.png)
+
+If the file copy manifest has no non-library files the default `code.py` or `main.py` will be decorated.  When any of the decorated files is opened the editor tab will also show the decoration.  Note that higher priority decorations such as an error indication (normally red) or source control status will fully or partially override the copy decoration.
 
 
 [Top](#welcome-to-circuitpython-sync)
