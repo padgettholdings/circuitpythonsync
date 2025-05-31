@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CircuitPython development.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publisher": "padgettholdings",
   "license": "MIT",
   "icon": "resources/circuitpythonsync-icon.png",

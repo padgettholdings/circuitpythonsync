@@ -27,3 +27,10 @@
 ## v0.2.3 - 2025-05-28
 * Fourth preview release with new feature:
     * Decorate libraries and files that are configured to be copied to the board.  Both a color and a badge show up in the file explorer and on the tabs of any files opened for edit.  Help file updated to include this feature.
+
+## v0.2.4 - 2025-05-31
+* Fifth preview release with new features and bug fixes:
+    * In file copy management, add ability to designate files in folders such as `/assets` to be copied.  Folders limited to non-system folders like `.vscode` or `.git`.
+    * Enhanced file decoration to include folders that have files configured to be copied.  The "bubble" badge is similar to the one used for vscode functions such as source control.  Also applies to `lib` folder if specific libraries are configured to be copied.  The full badge is still shown if the whole library folder is the default copy.
+    * Fix bug in board explorer where delete or download gave error after board drive changed.
+
