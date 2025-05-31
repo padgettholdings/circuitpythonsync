@@ -141,8 +141,11 @@ export const pickCommentFlag:string="Commented";
 
 // file decorator related strings
 export const fileDecoratorBadge:string='CP';
+export const fileDecoratorBadgeFolder:string='●';
 export const fileDecoratorTooltip:string='Will be copied to the board';
+export const fileDecoratorTooltipFolder:string='Contains files to be copied to the board';
 export const fileDecoratorColor:string='textLink.foreground'; // cyan color, use theme color
+export const fileDecoratorColorFolder:string='textLink.foreground'; // cyan color, use theme color
 
 //download related strings
 export const couldNotReadCpDnld:string[]=[
