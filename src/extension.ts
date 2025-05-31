@@ -250,10 +250,12 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 	};
 	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
 	if(!wsRootFolder) {return retVal;}
+	// ** #115 - cplines may have folder/file entries, filter them out first, then process later
+	const cpLinesNoFolders=cpLines.filter(lne => !lne.src.includes('/'));
 	//first the py (really any source) files in root
 	const rootDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
 	if(rootDir.length>0){
-		const anyValidfilesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
+		const anyValidfilesInDir=cpLinesNoFolders.some((cpfle:cpFileLine,index,ary) => {
 			return !cpfle.inLib && rootDir.some(dfile => dfile[0]===cpfle.src && dfile[1]===vscode.FileType.File);
 		});
 		// if got some non lib files, return flag that is used to say SOME valid files exist
@@ -261,9 +263,9 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 			retVal.pyExists=true;
 		}
 		//now check the files independently for #26 conditions
-		const gotPyFile=cpLines.some(cpFileLine => !cpFileLine.inLib && cpFileLine.src.endsWith(".py"));
+		const gotPyFile=cpLinesNoFolders.some(cpFileLine => !cpFileLine.inLib && cpFileLine.src.endsWith(".py"));
 		if(!gotPyFile) { retVal.noPyFiles=true; }
-		const allExist=cpLines.filter(lne => !lne.inLib).every((cpFileLine) => {
+		const allExist=cpLinesNoFolders.filter(lne => !lne.inLib).every((cpFileLine) => {
 			return rootDir.some(dfile =>  dfile[0]===cpFileLine.src && dfile[1]===vscode.FileType.File);
 		});
 		if(!allExist) { retVal.filesNoExist=true; }
@@ -273,7 +275,7 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 	// BUT first see if any lib files are in lib folder OR if no lib files in cpfiles
 	if(libraryFolderExists){
 		//short circuit if no lib files in cpfiles, then "have" lib files, all of them!
-		const gotLIbFiles=cpLines.some((lne:cpFileLine) => {
+		const gotLIbFiles=cpLinesNoFolders.some((lne:cpFileLine) => {
 			return lne.inLib;
 		});
 		if(!gotLIbFiles) {
@@ -288,13 +290,13 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 				const libPath=vscode.Uri.joinPath(wsRootFolder.uri,libName[0]);
 				const libDir=await vscode.workspace.fs.readDirectory(libPath);
 				//see if any cpfile lib directories are in the lib dir, most likely, if not check files
-				const dirsInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
+				const dirsInDir=cpLinesNoFolders.some((cpfle:cpFileLine,index,ary) => {
 					return cpfle.inLib && libDir.some(entry => entry[0]===cpfle.src && entry[1]===vscode.FileType.Directory);
 				});
 				if(dirsInDir){
 					retVal.libExists=true;
 				} else {
-					const filesInDir=cpLines.some((cpfle:cpFileLine,index,ary) => {
+					const filesInDir=cpLinesNoFolders.some((cpfle:cpFileLine,index,ary) => {
 						//NOTE can't use search object in includes, it is not the same object!!
 						//const srch:[string,vscode.FileType]=[cpfle.src,vscode.FileType.File];
 						//return cpfle.inLib && libDir.includes(srch);
@@ -307,6 +309,27 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 			}
 			// ** #95 - got lib entry but not found in dir, so flag it
 			retVal.invalidLibFiles=true;
+		}
+	}
+	// now process any entries with folder paths - NOTE only one level supported
+	const cpLinesWithFolders=cpLines.filter(lne => lne.src.includes('/'));
+	// if any entries with folders, check them
+	if(cpLinesWithFolders.length>0){
+		// ** two flags applicable:
+		//  filesNoExist, set if any file in cpfiles does not exist in the non-lib workspace
+		//  pyExists, which is set if any file is in cpfiles that exists in the non-lib workspace
+		//  ** BUT, can't short circuit out unless BOTH already set because need to check each one they are independent
+		if(!(retVal.filesNoExist && retVal.pyExists)) {
+			// just check each entry to see if it exists using fs exists, since don't expect many
+			let testFileUri:vscode.Uri;
+			for(const cpFileLine of cpLinesWithFolders) {
+				testFileUri=vscode.Uri.joinPath(wsRootFolder.uri,cpFileLine.src);
+				if(!fs.existsSync(testFileUri.fsPath)){
+					retVal.filesNoExist=true;
+				} else {
+					retVal.pyExists=true;
+				}
+			}
 		}
 	}
 	return retVal;
@@ -433,7 +456,7 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 	const fileDir=await vscode.workspace.fs.readDirectory(wsRootFolder.uri);
 	//create the output array and match
 	for(const entry of fileDir){
-		// **NO folders ??????
+		// ** #115 - recurse down through non-lib and non settings dirs ** also not the archive folders
 		const entryType:vscode.FileType=entry[1] as vscode.FileType;
 		if(entryType===vscode.FileType.File){
 			let curEntry:fileListSelect={
@@ -451,6 +474,32 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 				curEntry.selected=true;
 			}
 			retVal.push(curEntry);
+		} else if (entryType===vscode.FileType.Directory &&
+				entry[0].toLowerCase()!=='lib' && entry[0].toLowerCase()!=='.vscode' &&
+				entry[0]!==strgs.workspaceLibArchiveFolder && entry[0]!==strgs.stubArchiveFolderName &&
+				entry[0]!==strgs.projectBundleArchiveFolderName && !entry[0].toLowerCase().startsWith('.git')) {
+			// if it is a directory, then recurse down to get files in it *** one level only
+			const subDirUri=vscode.Uri.joinPath(wsRootFolder.uri,entry[0]);
+			const subDirContents=await vscode.workspace.fs.readDirectory(subDirUri);
+			for(const subEntry of subDirContents){
+				if(subEntry[1]===vscode.FileType.File){
+					let curEntry:fileListSelect={
+						src:subEntry[0],
+						dest:"",
+						fullPath:entry[0]+'/'+subEntry[0],
+						selected:false,
+						fType:subEntry[1]
+					};
+					const matchedCp=cpLinesFiles.find((value) => {
+						return value.src===curEntry.fullPath;
+					});
+					if(matchedCp){
+						curEntry.dest=matchedCp.dest;
+						curEntry.selected=true;
+					}
+					retVal.push(curEntry);
+				}
+			}
 		}
 	}
 
@@ -458,6 +507,27 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 	return retVal;
 }
 
+// ** #115, utility to parse non-lib and non-root cpfile entry to path and filename
+export function parseCpFilePath(cpFileLine:cpFileLine): {path:string, fileName:string} {
+	// ** #115, cpFileLine has src and dest, but dest is not used here
+	// if src is empty, return empty path and filename
+	if(!cpFileLine.src || cpFileLine.src.length===0) {
+		return {path:'', fileName:''};
+	}
+	// if src has a / then it is a path, split it
+	const pathParts=cpFileLine.src.split('/');
+	let retPath:string='';
+	let retFileName:string='';
+	if(pathParts.length>1){
+		//multiple parts, last is file name
+		retFileName=pathParts.pop() ?? '';
+		retPath=pathParts.join('/');
+	} else {
+		//just one part, it is the file name
+		retFileName=pathParts[0];
+	}
+	return {path:retPath, fileName:retFileName};
+}
 
 //refresh the drive list
 async function refreshDrives() {
@@ -1133,6 +1203,36 @@ export async function activate(context: vscode.ExtensionContext) {
 					errorFileCnt+=1;
 				}
 				progInc+=progStep;
+			} else if(codeFile.src.includes('/')) {
+				// is a subfolder, parse and try to copy
+				const parsedPath=parseCpFilePath(codeFile);
+				if(parsedPath.path && parsedPath.fileName){
+					// need to check if the source exists
+					srcUri=vscode.Uri.joinPath(wsRootFolderUri,parsedPath.path,parsedPath.fileName);
+					if(fs.existsSync(srcUri.fsPath)){
+						// now try to copy to the same folder on the board
+						destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),parsedPath.path,codeFile.dest==='' ? parsedPath.fileName : codeFile.dest);
+						try {
+							await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
+							copiedFilesCnt+=1;
+						}
+						catch (error) {
+							const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+							//******* give the error but continue */
+							vscode.window.showErrorMessage(strgs.errorCopyingFile+fse.message);
+							//see if it was code py file, if so reset the did copy...
+							errorFileCnt+=1;
+						}
+						progInc+=progStep;
+					} else {
+						skippedFilesCnt+=1;
+						progInc+=progStep;
+					}
+				}
+				else {
+					skippedFilesCnt+=1;
+					progInc+=progStep;
+				}
 			} else {
 				skippedFilesCnt+=1;
 				progInc+=progStep;
@@ -3354,19 +3454,31 @@ export async function activate(context: vscode.ExtensionContext) {
 	//file sytem watchers do watch files and folders
 
 	// ** #118 - utility to call in startup and watchers to update file decorations showing files that will be copied
+	// ** #115 - also add badge to folders if files contained will be copied
 	async function updateFileDecorations(cpFileLines:Array<cpFileLine>) {
 		if(haveCurrentWorkspace && vscode.workspace.workspaceFolders){
 			const rootFolder=  vscode.workspace.workspaceFolders[0];
 			let decRfshUris:Array<vscode.Uri>=new Array<vscode.Uri>();
+			let decRfshFolderUris:Array<vscode.Uri>=new Array<vscode.Uri>();
+			let decRfshFolderPaths:Array<string>=new Array<string>();
 			let libPath:string=await getLibPath();
 			let libWholeCopy:boolean=true;
 			for(const cpFln of cpFileLines){
 				if(cpFln.src && cpFln.src.length>0){
 					if(!cpFln.inLib){
 						decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,cpFln.src));
+						// check to see if src has a folder, add to list for folder decoration
+						if(cpFln.src.includes('/')){
+							const srcPath=parseCpFilePath(cpFln);
+							if(srcPath.path!==''){
+								decRfshFolderPaths.push(srcPath.path);
+							}
+						}
 					} else {
 						libWholeCopy=false;
 						decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,libPath,cpFln.src));
+						// add the lib folder to folder decoration paths, not to file decs
+						decRfshFolderPaths.push(libPath);
 					}
 				}
 			}
@@ -3374,6 +3486,15 @@ export async function activate(context: vscode.ExtensionContext) {
 				//if whole library copy, just decorate the library folder
 				decRfshUris.push(vscode.Uri.joinPath(rootFolder.uri,libPath));
 			}
+			// get unique set of folder paths to decorate
+			decRfshFolderPaths=[...new Set(decRfshFolderPaths)];
+			// now get the folder uris from the paths
+			decRfshFolderUris=decRfshFolderPaths.map((path) => {
+				return vscode.Uri.joinPath(rootFolder.uri,path);
+			});
+			//first decorate the folders...
+			fileDec.refreshFolders(decRfshFolderUris);
+			//now the files
 			fileDec.refresh(decRfshUris);
 		}
 	}

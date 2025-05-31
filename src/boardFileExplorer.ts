@@ -88,8 +88,10 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 
 export class BoardFileExplorer {
 	boardFileProvider:BoardFileProvider;
+    _curDriveSetting: string;
     constructor(context: vscode.ExtensionContext,curDriveSetting:string) {
-        this.boardFileProvider=new BoardFileProvider(curDriveSetting);
+		this._curDriveSetting=curDriveSetting;
+        this.boardFileProvider=new BoardFileProvider(this._curDriveSetting);
 		const tvo:vscode.TreeViewOptions<Entry>={
 			treeDataProvider:this.boardFileProvider,
 			showCollapseAll:true
@@ -98,6 +100,7 @@ export class BoardFileExplorer {
 		vscode.commands.registerCommand('boardExplorer.refresh', () => {
 			const _curDrive=getCurrentDriveConfig();
 			this.boardFileProvider.refresh(_curDrive);
+			this._curDriveSetting=_curDrive;
 		});
 		vscode.commands.registerCommand('fileExplorer.openFile', (resource) => {});
 		vscode.commands.registerCommand('boardExplorer.delete', async (resource:Entry) => { 
@@ -117,7 +120,8 @@ export class BoardFileExplorer {
 			if(ftype===vscode.FileType.File){
 				try{
 					await vscode.workspace.fs.delete(resource.uri);
-					this.boardFileProvider.refresh(curDriveSetting);
+					// ** the bfp has current drive, just don't change it, use this to update tree only
+					this.boardFileProvider.refresh(this.boardFileProvider._CurDriveSetting);
 				} catch(error) {
 					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
 					vscode.window.showErrorMessage(strgs.boardFileDeleteError+fse.message);	
@@ -146,12 +150,14 @@ export class BoardFileExplorer {
 			// can only download files, should be filtered by when in manifest but to double check
 			if(ftype!==vscode.FileType.File){return;}
 			// Now check to see if will overwrite in workspace, get filename first
-			let baseUri=curDriveSetting;
+			// ** have to get drive from boardFileProvider, it is directly refreshed by main code
+			let baseUri=this.boardFileProvider._CurDriveSetting;
 			// if windows, need to use lowercase for getting filename
 			let resourcePath:string=resource.uri.fsPath;
 			if (_os.platform()==='win32') {
-				resourcePath=resourcePath.toLowerCase();
-				baseUri=baseUri.toLowerCase();
+				// ** #115 - bug with windows path below drive level, normalize slashes
+				resourcePath=resourcePath.toLowerCase().replace(/\\/g,'/');
+				baseUri=baseUri.toLowerCase().replace(/\\/g,'/');
 			}
 			let dnldFile:string=resourcePath.replace(baseUri,'');
 			//_vscode.window.showInformationMessage("resourcePath:"+resourcePath+", baseuri:"+baseUri+", dnldFile: "+dnldFile);

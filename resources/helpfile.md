@@ -190,9 +190,9 @@ which results in the same selections in the command:
 
 The commenting feature makes it a bit quicker to flip back and forth between library sets.
 
-After your library copy set is configured, the selected files/folders that will be copied are decorated with a color and a "CP" badge in the explorer view:
+After your library copy set is configured, the selected files/folders that will be copied are decorated with a color and a "CP" badge in the explorer view, while the `lib` folder itself is decorated with a bubble badge and color:
 
-![Lib Files Dec 1](fileDecLib2.png)
+![Lib Files Dec 1](fileDecLib3.png)
 
 If no specific libraries are selected to be copied, the entire `lib` folder will be copied and the `lib` folder itself will be decorated with a color and a "CP" badge:
 
@@ -221,6 +221,12 @@ As with the library copy support, files that are currently configured to be copi
 ![Files Copy Decoration](fileDecFiles.png)
 
 If the file copy manifest has no non-library files the default `code.py` or `main.py` will be decorated.  When any of the decorated files is opened the editor tab will also show the decoration.  Note that higher priority decorations such as an error indication (normally red) or source control status will fully or partially override the copy decoration.
+
+The file copy manifest can also handle folders with application specific files.  The folder and files will show up in the pick list of the `Manage Files Copy` command, for example: 
+
+![Manage Files Folder Pick](cpfiles4.png)
+
+Note that as with the library copy support, a folder with files selected for copy will have the bubble badge and color decoration, with the files having the CP badge and color.  Certain system level folders are excluded from the command pick list, such as `.vscode` and `.git`.
 
 
 [Top](#welcome-to-circuitpython-sync)
