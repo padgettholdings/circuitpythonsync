@@ -34,3 +34,7 @@
     * Enhanced file decoration to include folders that have files configured to be copied.  The "bubble" badge is similar to the one used for vscode functions such as source control.  Also applies to `lib` folder if specific libraries are configured to be copied.  The full badge is still shown if the whole library folder is the default copy.
     * Fix bug in board explorer where delete or download gave error after board drive changed.
 
+## v0.2.5 - 2025-06-02
+* Sixth preview release with bug fix:
+    * The file copy configuration command was showing a generic warning if it could not detect any python files to be copied.  The message did not acknowledge that renamed copies (with the -> operator) may be python files.  Also if any non-python files were configured it said the default code/main.py would be copied.  New messages and better logic were added to clarify this.
+  
