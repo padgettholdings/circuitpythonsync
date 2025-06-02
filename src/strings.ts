@@ -117,7 +117,8 @@ export const warnEntireLib:string='WARNING! Entire lib folder will be copied, co
 export const noLibDir:string='!! No libraries yet created !';
 export const destMapsDel:string='Destination mappings can be preserved or deleted, or cancel all?';
 export const cnfrmEntireLib:string='No lib folders/files selected, entire lib folder will be copied, continue?';
-export const cnfrmNoPyFiles:string='No python files selected, only code.py/main.py will be copied, continue?';
+export const cnfrmNoPyFiles:string= 'No python files selected, only code.py/main.py will be copied, continue?';
+export const cnfrmNoPyFilesAtAll:string= 'No python files will be copied, continue?';
 export const fndCPDrvInsPath:string[]=[
     'Found a potential CircuitPython Board on drive: "', //+connectDrvPath+'"
     '".  Do you want to map it?'

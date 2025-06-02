@@ -263,7 +263,8 @@ async function checkSources(cpLines:cpFileLine[]):Promise<fileStates> {
 			retVal.pyExists=true;
 		}
 		//now check the files independently for #26 conditions
-		const gotPyFile=cpLinesNoFolders.some(cpFileLine => !cpFileLine.inLib && cpFileLine.src.endsWith(".py"));
+		// ** #123, check src and dest lines to see if any code files
+		const gotPyFile=cpLinesNoFolders.some(cpFileLine => !cpFileLine.inLib && (cpFileLine.src.endsWith(".py") || cpFileLine.dest.endsWith(".py")));
 		if(!gotPyFile) { retVal.noPyFiles=true; }
 		const allExist=cpLinesNoFolders.filter(lne => !lne.inLib).every((cpFileLine) => {
 			return rootDir.some(dfile =>  dfile[0]===cpFileLine.src && dfile[1]===vscode.FileType.File);
@@ -1782,8 +1783,21 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 				// **ALSO, if no .py files are selected, warn that only code.py/main.py will be copied
-				if(newChoices.length===0 || (!newChoices.some(chc => chc.src.endsWith('.py')))){
-					let ans=await vscode.window.showWarningMessage(strgs.cnfrmNoPyFiles,"Yes","No","Help");
+				// ** #123 - skip warning at this point if have some choices and have src or dest py file, 
+				//	OR if have comment files with mapping.  Then check again later to see if final map was py
+				// ** create a flag to track whether have any .py files, which can be checked later
+				// also flag to say warning already given
+				let havePyFile:boolean=false;
+				let pyWarningGiven:boolean=false;
+				havePyFile=newChoices.some(chc => chc.src.endsWith('.py') || (chc.dest && chc.dest.endsWith('.py')));
+				if(newChoices.length===0 || 
+						!(havePyFile || newChoices.some(chc => chc.description && /->.+comment/i.test(chc.description)))){
+					// select the right message
+					let noPyFilesMsg=strgs.cnfrmNoPyFiles;	// this applies if no choices and no py files
+					if(newChoices.length>0 && !havePyFile){
+						noPyFilesMsg=strgs.cnfrmNoPyFilesAtAll;
+					}
+					let ans=await vscode.window.showWarningMessage(noPyFilesMsg,"Yes","No","Help");
 					if(ans==="No"){
 						qpFileCopyChoices.hide();
 						return;
@@ -1791,7 +1805,8 @@ export async function activate(context: vscode.ExtensionContext) {
 						qpFileCopyChoices.hide();
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
-					}	
+					}
+					pyWarningGiven=true;
 				}
 				//now start constructing the new file
 				let newFileContents:string="";
@@ -1855,21 +1870,47 @@ export async function activate(context: vscode.ExtensionContext) {
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
 					}
+					// ** #123 - check to see result of uncommented lines has py file, just check end of line  for .py
 					if(ans==="Preserve"){
 						//just add the orig line without comment back in
 						for(const cmt of uncomMappedLines){
 							if(cmt.origLine){
-								newFileContents+=cmt.origLine.slice(1).trim()+'\n';
+								const _newCpline=cmt.origLine.slice(1).trim();
+								if(_newCpline.endsWith('.py')){
+									havePyFile=true;
+								}
+								newFileContents+=_newCpline+'\n';
 							}
 						}
 					} else {
 						//just do the source without the map from orig
 						for(const cmt of uncomMappedLines){
 							if(cmt.origLine){
-								newFileContents+=cmt.origLine.slice(1).trim().split('->')[0].trim()+'\n';
+								const _newCpline=cmt.origLine.slice(1).trim().split('->')[0].trim();
+								if(_newCpline.endsWith('.py')){
+									havePyFile=true;
+								}
+								newFileContents+=_newCpline+'\n';
 							}
 						}
 					}
+				}
+				// ** #123 - if no py files in newFileContents, give warning and option to cancel before save
+				if(!havePyFile && !pyWarningGiven){
+					// if no py file but at least one choice, must be non-py so use different message
+					let noPyFilesMsg=strgs.cnfrmNoPyFiles;	// this applies if no choices and no py files
+					if(newChoices.length>0){
+						noPyFilesMsg=strgs.cnfrmNoPyFilesAtAll;
+					}
+					let ans=await vscode.window.showWarningMessage(noPyFilesMsg,"Yes","No","Help");
+					if(ans==="No"){
+						qpFileCopyChoices.hide();
+						return;
+					} else if (ans==="Help") {
+						qpFileCopyChoices.hide();
+						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
+						return;
+					}	
 				}
 				//write cpfiles, creating if needed and making backup if orig not empty
 				const wrslt=await writeCpfiles(newFileContents);
