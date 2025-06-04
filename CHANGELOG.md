@@ -38,3 +38,5 @@
 * Sixth preview release with bug fix:
     * The file copy configuration command was showing a generic warning if it could not detect any python files to be copied.  The message did not acknowledge that renamed copies (with the -> operator) may be python files.  Also if any non-python files were configured it said the default code/main.py would be copied.  New messages and better logic were added to clarify this.
   
+## v1.0.0 - 2025-06-04
+    * First official release with all features and bug fixes from preview releases.
