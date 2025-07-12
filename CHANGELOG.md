@@ -40,3 +40,6 @@
   
 ## v1.0.0 - 2025-06-04
     * First official release with all features and bug fixes from preview releases.
+
+## v1.0.1 - 2025-7-12
+    * Add option in warning dialogs when issue noted with cpfiles manifest, such as no python files configured.  Now there is a "no, don't ask again" that applies during the current session only.

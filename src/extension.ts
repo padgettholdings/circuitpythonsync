@@ -119,6 +119,9 @@ interface cpFileLine {
 	origLine?:string | undefined
 }
 
+// ** #125, var in this session to not ask again about editing cpfiles.txt
+let cpfilesEditNoAskAgain:boolean=false;
+
 // parse cpfiles.txt into lines
 // schema is:
 //	src | src->dest | lib/src | lib/src -> dest (dest in lib implied) | lib/src -> lib/dest
@@ -3758,22 +3761,28 @@ export async function activate(context: vscode.ExtensionContext) {
 			let triggerEdit=false;
 			let toastShown=false;
 			//first check for no lib files and give warning
-			if(!origCpLines.some(lne => lne.inLib)){
-				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No","Help");
+			if(!cpfilesEditNoAskAgain && !origCpLines.some(lne => lne.inLib)){
+				const ans=await vscode.window.showWarningMessage(strgs_warnNoLibsInCP,"Yes","No","No, don't ask again","Help");
 				toastShown=true;
 				if(ans==="Yes"){
 					triggerEdit=true;
+				} else if (ans==="No, don't ask again") {
+					// ** #125, set the flag to not ask again
+					cpfilesEditNoAskAgain=true;
 				} else if (ans==="Help") {
 					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpLibsCopySupport);
 					return;
 				}
 			}
 			//then if didn't ask about library (that is, there were some), see if there are no code files
-			if(!toastShown && cpLinesPy.length===0){
-				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No","Help");
+			if(!toastShown && !cpfilesEditNoAskAgain && cpLinesPy.length===0){
+				const ans=await vscode.window.showWarningMessage(strgs_noCodeFilesInCp,"Yes","No","No, don't ask again","Help");
 				toastShown=true;
 				if(ans==="Yes"){
 					triggerEdit=true;
+				} else if (ans==="No, don't ask again") {
+					// ** #125, set the flag to not ask again
+					cpfilesEditNoAskAgain=true;
 				} else if (ans==="Help") {
 					vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 					return;
@@ -3782,31 +3791,40 @@ export async function activate(context: vscode.ExtensionContext) {
 				// ** Per #26, also give warning/edit opp if no python files in files only set, and some no exist
 				//  ALSO these conditions are from checkSources now
 				//  ** try to show just one message, so offer a combined if so
-				if(!toastShown && fileSources.noPyFiles && !fileSources.filesNoExist){
-					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No","Help");
+				if(!toastShown && !cpfilesEditNoAskAgain && fileSources.noPyFiles && !fileSources.filesNoExist){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyCodeFilesInCp,"Yes","No","No, don't ask again","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
+					} else if (ans==="No, don't ask again") {
+						// ** #125, set the flag to not ask again
+						cpfilesEditNoAskAgain=true;
 					} else if (ans==="Help") {
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
 					}
 				}
-				if(!toastShown && fileSources.filesNoExist && !fileSources.noPyFiles){
-					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No","Help");
+				if(!toastShown && !cpfilesEditNoAskAgain && fileSources.filesNoExist && !fileSources.noPyFiles){
+					const ans=await vscode.window.showWarningMessage(strgs_fileInCpNoExist,"Yes","No","No, don't ask again","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
+					} else if (ans==="No, don't ask again") {
+					// ** #125, set the flag to not ask again
+					cpfilesEditNoAskAgain=true;
 					} else if (ans==="Help") {
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
 					}
 				}
-				if(!toastShown && fileSources.filesNoExist && fileSources.noPyFiles){
-					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No","Help");
+				if(!toastShown && !cpfilesEditNoAskAgain && fileSources.filesNoExist && fileSources.noPyFiles){
+					const ans=await vscode.window.showWarningMessage(strgs_noPyAndNonExistFilesInCp,"Yes","No","No, don't ask again","Help");
 					toastShown=true;
 					if(ans==="Yes"){
 						triggerEdit=true;
+					} else if (ans==="No, don't ask again") {
+						// ** #125, set the flag to not ask again
+						cpfilesEditNoAskAgain=true;
 					} else if (ans==="Help") {
 						vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 						return;
