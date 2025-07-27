@@ -6,6 +6,7 @@ import * as zl from 'zip-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { LibraryMgmt } from './libraryMgmt';
 
 export class ProjectBundleMgmt {
 
@@ -199,12 +200,19 @@ export class ProjectBundleMgmt {
                         return;
                     }
                     // now read down through the extracted files/folders, looking for circuitpython N.x
-                    let foundCPy=false;
+                    interface CircuitPythonDir {
+                        name: string;
+                        uri: vscode.Uri;
+                        version: string;
+                    }
+                    const cpDirectories: CircuitPythonDir[] = [];
                     let curProjBundleTempDirFinalUri:vscode.Uri=vscode.Uri.file('');   // final circuitpython dir
                     // keep array of readme files if found down through dirs so can copy to workspace
                     let readmeFiles:string[]=[];
                     let curProjBundleTempDirUri=projectBundleTempDirUri;
-                    while(!foundCPy){
+                    let searchComplete = false;
+                    
+                    while(!searchComplete){
                         let lastProjBundleTempDirUri=curProjBundleTempDirUri;
                         const tmpDirContents=await vscode.workspace.fs.readDirectory(curProjBundleTempDirUri);
                         for(const [name,type] of tmpDirContents){
@@ -213,29 +221,111 @@ export class ProjectBundleMgmt {
                                 // keep track of any readme files found so can copy to workspace
                                 readmeFiles.push(vscode.Uri.joinPath(curProjBundleTempDirUri,name).fsPath);
                             }
-                            if(type===vscode.FileType.Directory &&  /circuitpython\s+[0-9](?:\.x)?/i.test(name.toLowerCase()  )){       //startsWith('circuitpython')){
-                                curProjBundleTempDirFinalUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
-                                foundCPy=true;
-                                //break;
+                            if(type===vscode.FileType.Directory &&  /circuitpython\s+[0-9](?:\.x)?/i.test(name.toLowerCase())){
+                                // Extract version number from directory name
+                                const versionMatch = name.toLowerCase().match(/circuitpython\s+([0-9]+)(?:\.x)?/);
+                                const version = versionMatch ? versionMatch[1] : '';
+                                cpDirectories.push({
+                                    name: name,
+                                    uri: vscode.Uri.joinPath(curProjBundleTempDirUri, name),
+                                    version: version
+                                });
                             }
-                                if(type===vscode.FileType.Directory){
-                                    lastProjBundleTempDirUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
-                                }
-                            
+                            if(type===vscode.FileType.Directory){
+                                lastProjBundleTempDirUri=vscode.Uri.joinPath(curProjBundleTempDirUri,name);
+                            }
                         }
-                        // if did not find cp dir, and did not change the directory, then no more dirs to go down
-                        if(foundCPy || curProjBundleTempDirUri.fsPath===lastProjBundleTempDirUri.fsPath){
-                            break;
+                        // if we found cp dirs or didn't change directory, stop searching
+                        if(cpDirectories.length > 0 || curProjBundleTempDirUri.fsPath===lastProjBundleTempDirUri.fsPath){
+                            searchComplete = true;
                         } else {
                             curProjBundleTempDirUri=lastProjBundleTempDirUri;
                         }
                     }
-                    if(!foundCPy){
+                    
+                    if(cpDirectories.length === 0){
                         vscode.window.showErrorMessage(strgs.projectBundleNoFindCPinZipErr);
                         // ** cleanup the temp
                         fs.rmdirSync(projectBundleTempDirUri.fsPath, { recursive: true });
                         projectBundleQuickInput.hide();
                         return;
+                    }
+
+                    // Choose the appropriate CircuitPython directory
+                    let selectedDir: CircuitPythonDir;
+                    
+                    if(cpDirectories.length === 1) {
+                        // Only one option, use it
+                        selectedDir = cpDirectories[0];
+                    } else {
+                        // Multiple options - try to match current CP version from settings
+                        const currentCPVersion = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
+                        let matchedDir: CircuitPythonDir | undefined;
+                        
+                        if(currentCPVersion) {
+                            // Try to find exact match
+                            matchedDir = cpDirectories.find(dir => dir.version === currentCPVersion);
+                        }
+                        
+                        if(!matchedDir) {
+                            // No exact match or no current version setting - let user choose
+                            const picks = cpDirectories.map(dir => ({
+                                label: dir.name,
+                                description: `CircuitPython ${dir.version}`,
+                                cpDir: dir
+                            }));
+                            
+                            const selected = await vscode.window.showQuickPick(picks, {
+                                title: strgs.projectBundleCPVersionsFoundTitle,
+                                placeHolder: strgs.projectBundleCPVersionsFoundPrompt
+                            });
+                            
+                            if(!selected) {
+                                // User cancelled
+                                fs.rmdirSync(projectBundleTempDirUri.fsPath, { recursive: true });
+                                projectBundleQuickInput.hide();
+                                return;
+                            }
+                            
+                            matchedDir = selected.cpDir;
+                        }
+                        
+                        selectedDir = matchedDir;
+                    }
+                    
+                    curProjBundleTempDirFinalUri = selectedDir.uri;
+                    
+                    // Set flag to prevent library management auto-trigger during project bundle loading
+                    LibraryMgmt.setSkipLibAutoUpdate(true);
+                    
+                    // Update the cpbaseversion setting to match the selected version
+                    if(selectedDir.version) {
+                        await vscode.workspace.getConfiguration().update(
+                            `circuitpythonsync.${strgs.confCPbaseverPKG}`, 
+                            selectedDir.version, 
+                            vscode.ConfigurationTarget.Workspace
+                        );
+                        
+                        // Also set cpfullversion to prevent library management from overriding
+                        try {
+                            const fullVersion = await this.getLatestCPVersionForBase(selectedDir.version);
+                            if(fullVersion) {
+                                await vscode.workspace.getConfiguration().update(
+                                    `circuitpythonsync.${strgs.confCPfullverPKG}`, 
+                                    fullVersion, 
+                                    vscode.ConfigurationTarget.Workspace
+                                );
+                            }
+                        } catch (error) {
+                            // If we can't get the full version, set a reasonable default
+                            // This prevents the library management from overriding with a different major version
+                            const defaultFullVersion = `${selectedDir.version}.0.0`;
+                            await vscode.workspace.getConfiguration().update(
+                                `circuitpythonsync.${strgs.confCPfullverPKG}`, 
+                                defaultFullVersion, 
+                                vscode.ConfigurationTarget.Workspace
+                            );
+                        }
                     }
                     //now read the cp directory and copy all files and folders to the workspace
                     //####TBD#### ask if can overwrite
@@ -251,6 +341,8 @@ export class ProjectBundleMgmt {
                             if(ans==='Yes'){
                                 break;
                             } else {
+                                // Clean up flag before returning
+                                this.cleanupSkipLibAutoUpdateFlag();
                                 projectBundleQuickInput.hide();
                                 return;
                             }
@@ -281,6 +373,10 @@ export class ProjectBundleMgmt {
                         // use the special hiddent command to add only new files and merge settings
                         vscode.commands.executeCommand(strgs.cmdScaffoldProjectPKG,strgs.projTemplateQPItemHiddenAddNewWSettings);
                     }
+                    
+                    // Clean up the flag after scaffold command to prevent library management auto-trigger
+                    this.cleanupSkipLibAutoUpdateFlag();
+                    
                     /*
                     const ans=await vscode.window.showInformationMessage('Project bundle loaded, do you want to update libraries?','Yes','No');
                     if(ans==='Yes'){
@@ -303,6 +399,14 @@ export class ProjectBundleMgmt {
     // ** public functions
 
     // ** private functions
+    
+    // Helper function to clean up the skipLibAutoUpdate flag
+    private cleanupSkipLibAutoUpdateFlag(): void {
+        setTimeout(() => {
+            LibraryMgmt.setSkipLibAutoUpdate(false);
+        }, 500);
+    }
+    
     // utility to get message from error
     private getErrorMessage(error: any): string {
         if (error instanceof Error) {
@@ -323,5 +427,69 @@ export class ProjectBundleMgmt {
             writer.on('finish', resolve);
             writer.on('error', reject);
         });
+    }
+
+    // Get the latest full version for a given base version (e.g., "10" -> "10.0.0-beta.3")
+    private async getLatestCPVersionForBase(baseVersion: string): Promise<string> {
+        try {
+            const response = await axios.default.get(
+                strgs.libCpReleaseJsonUrl,
+                { 
+                    headers: {
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    responseType: 'json'
+                }
+            );
+            
+            // Extract array of tag_names from the json object
+            const tagNames = response.data.map((item: { tag_name: string; }) => item.tag_name);
+            
+            // Find versions that match the base version pattern (e.g., "10" matches "10.0.0", "10.1.0", etc.)
+            const versionPattern = `${baseVersion}.`;
+            const matchingVersions = tagNames.filter((tag: string) => tag.startsWith(versionPattern));
+            
+            if (matchingVersions.length === 0) {
+                throw new Error(`No versions found for base version ${baseVersion}`);
+            }
+            
+            // Sort versions to get the latest (descending order)
+            matchingVersions.sort((a: string, b: string) => {
+                // Remove any pre-release identifiers for comparison
+                const aClean = a.split('-')[0];
+                const bClean = b.split('-')[0];
+                
+                // Split versions into components and convert to numbers
+                const aParts = aClean.split('.').map(Number);
+                const bParts = bClean.split('.').map(Number);
+                
+                // Pad arrays to same length
+                while (aParts.length < 3) { aParts.push(0); }
+                while (bParts.length < 3) { bParts.push(0); }
+                
+                // Compare versions (descending order)
+                for (let i = 0; i < 3; i++) {
+                    if (aParts[i] !== bParts[i]) {
+                        return bParts[i] - aParts[i];
+                    }
+                }
+                
+                // If base versions are equal, prefer the one without pre-release suffix
+                if (a.includes('-') && !b.includes('-')) {
+                    return 1; // b comes first
+                } else if (!a.includes('-') && b.includes('-')) {
+                    return -1; // a comes first
+                }
+                
+                // Both have pre-release or both don't, compare the full strings
+                return b.localeCompare(a);
+            });
+            
+            return matchingVersions[0];
+        } catch (error) {
+            console.error('Error fetching CP versions:', error);
+            throw error;
+        }
     }
 }

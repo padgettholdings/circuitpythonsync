@@ -297,13 +297,18 @@ export class StubMgmt {
                 responseType: 'stream'
             });
     
-            response.data.pipe(fs.createWriteStream(stubFilePath));
+            const writeStream = fs.createWriteStream(stubFilePath);
+            response.data.pipe(writeStream);
     
             return new Promise((resolve, reject) => {
-                response.data.on('end', () => {
+                writeStream.on('finish', () => {
                     resolve(strgs.stubsPyPiFileDnldSuccessRtn + stubFilePath);
                 });
     
+                writeStream.on('error', (err: any) => {
+                    reject(err);
+                });
+                
                 response.data.on('error', (err: any) => {
                     reject(err);
                 });
@@ -399,6 +404,21 @@ export class StubMgmt {
         }
     }
 
+    // Convert GitHub version format to PyPI format
+    // e.g., "10.0.0-beta.0" -> "10.0.0b0", "10.0.0-alpha.1" -> "10.0.0a1"
+    private convertGitHubVersionToPyPI(githubVersion: string): string {
+        // Handle pre-release versions
+        if (githubVersion.includes('-beta.')) {
+            return githubVersion.replace('-beta.', 'b');
+        } else if (githubVersion.includes('-alpha.')) {
+            return githubVersion.replace('-alpha.', 'a');
+        } else if (githubVersion.includes('-rc.')) {
+            return githubVersion.replace('-rc.', 'rc');
+        }
+        // Return as-is for stable releases
+        return githubVersion;
+    }
+
     private async getLatestCPTag(): Promise<string> {
         let r: axios.AxiosResponse = await axios.default.get(
             strgs.libCPAdafruitUrlLatest,
@@ -429,9 +449,13 @@ export class StubMgmt {
         // ** start progress display **
         await this.showStubUpdateProgress(strgs.installStubsProgressMsg);
         if(!this._stubZipArchiveUri){return;}  //should not happen
-        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+        // Use PyPI format for the archive filename to match what we actually download
+        const pypiVersionForFilename = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+pypiVersionForFilename+'.tar.gz');
 
-        this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+this._cpVersionFull);
+        // Use PyPI format for the stub directory path since the extracted tar contains PyPI-formatted directory names
+        const pypiVersionForPath = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+        this._cpVersionFullStubUri = vscode.Uri.joinPath(this._stubsDirUri, 'circuitpython_stubs-'+pypiVersionForPath);
         if(fs.existsSync(this._cpVersionFullStubUri.fsPath) && fs.existsSync(stubZipArchiveTarUri.fsPath)){
             this._progInc=75;
             //stubs already installed- **NOTE** don't clean up at this point, only when new stubs loaded
@@ -479,7 +503,9 @@ export class StubMgmt {
                         const stubDirNewUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         vscode.workspace.fs.rename(stubDirOrigUri,stubDirNewUri,{overwrite:true});
                     }
-                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){
+                    // Use PyPI format for comparison since extracted directories use PyPI naming
+                    const pypiVersionForComparison = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+pypiVersionForComparison){
                         const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
                     }
@@ -511,7 +537,9 @@ export class StubMgmt {
         this._progInc=40;
         //read and process the file for chosen release
         const stubsReleases = JSON.parse(fs.readFileSync(destJson, 'utf8'));
-        let rls=stubsReleases.releases[this._cpVersionFull];
+        // Convert GitHub version format to PyPI format for lookup
+        const pypiVersion = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+        let rls=stubsReleases.releases[pypiVersion];
         if(!rls){
             //throw new Error('No releases found for tag: '+this._cpVersionFull);
             vscode.window.showErrorMessage(strgs.installStubsNoRelForCpVerErr+this._cpVersionFull);
@@ -551,7 +579,9 @@ export class StubMgmt {
                         const stubDirNewUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         vscode.workspace.fs.rename(stubDirOrigUri,stubDirNewUri,{overwrite:true});
                     }
-                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+this._cpVersionFull){ 
+                    // Use PyPI format for comparison since extracted directories use PyPI naming  
+                    const pypiVersionForComparison = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+                    if(stubDir[1]===vscode.FileType.Directory && stubDir[0] !== 'circuitpython_stubs-'+pypiVersionForComparison){ 
                         const stubDirUri = vscode.Uri.joinPath(this._stubsDirUri,stubDir[0]);
                         fs.rmdirSync(stubDirUri.fsPath,{recursive:true});
                     }
@@ -593,7 +623,9 @@ export class StubMgmt {
         // ** #64, check for the actual stub archive file, if doesn't exist then setup not done
         // must have current cp version
         this._cpVersionFull = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
-        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+this._cpVersionFull+'.tar.gz');
+        // Use PyPI format for the archive filename to match what we actually save
+        const pypiVersionForFilename = this.convertGitHubVersionToPyPI(this._cpVersionFull);
+        const stubZipArchiveTarUri = vscode.Uri.joinPath(this._stubZipArchiveUri, 'circuitpython_stubs-'+pypiVersionForFilename+'.tar.gz');
         const stubTarExists= fs.existsSync(stubZipArchiveTarUri.fsPath);
         if(!stubTarExists){
             return false;

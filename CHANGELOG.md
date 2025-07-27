@@ -43,3 +43,6 @@
 
 ## v1.0.1 - 2025-7-12
     * Add option in warning dialogs when issue noted with cpfiles manifest, such as no python files configured.  Now there is a "no, don't ask again" that applies during the current session only.
+
+## v1.0.2 - 2025-7-27
+    * Add logic in project bundle loading to determine if multiple CP version solutions are included and if so offer a choice of which version to load.  NOTE this was implemented totally by Copilot Coding Agent!

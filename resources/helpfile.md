@@ -228,7 +228,6 @@ The file copy manifest can also handle folders with application specific files. 
 
 Note that as with the library copy support, a folder with files selected for copy will have the bubble badge and color decoration, with the files having the CP badge and color.  Certain system level folders are excluded from the command pick list, such as `.vscode` and `.git`.
 
-
 [Top](#welcome-to-circuitpython-sync)
 
 ## Project Template Support
@@ -332,7 +331,9 @@ The URL for the download can be entered into the command input, or if you have a
 
 ![Project Bundle Link](projBundle1.png)
 
-Once the URL is entered or a local file is selected the zip file will be extracted to the root of your workspace.  Typically this has the code.py file and a `lib` folder with the libraries used in the project. The extension will then prompt to add some typical settings (basically just the settings and .gitignore from the default template as detailed above).  If the `lib` folder exists the extension will also prompt to install library and stub support: 
+Once the URL is entered or a local file is selected the zip file will be extracted to the root of your workspace.  Typically this has the code.py file and a `lib` folder with the libraries used in the project.  If the project bundle contains solutions for multiple versions of CircuitPython, the extension will prompt you to select which version you want to use.  Make sure to install that version of the CircuitPython runtime on your board.
+
+The extension will then prompt to add some typical settings (basically just the settings and .gitignore from the default template as detailed above).  If the `lib` folder exists the extension will also prompt to install library and stub support: 
 
 ![Project Bundle Settings](projBundle2.png)
 

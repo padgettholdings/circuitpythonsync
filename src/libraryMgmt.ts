@@ -10,6 +10,18 @@ import {getLibPath, setupStubs} from './extension';
 //import { timeStamp } from 'console';
 
 export class LibraryMgmt {
+    // Static flag to prevent auto-trigger during project bundle loading
+    private static _skipLibAutoUpdate: boolean = false;
+    
+    // Static methods to control the skip flag
+    public static setSkipLibAutoUpdate(skip: boolean): void {
+        LibraryMgmt._skipLibAutoUpdate = skip;
+    }
+    
+    public static getSkipLibAutoUpdate(): boolean {
+        return LibraryMgmt._skipLibAutoUpdate;
+    }
+    
     constructor(context: vscode.ExtensionContext)  {
         this._context = context;
 
@@ -538,6 +550,12 @@ export class LibraryMgmt {
             if(e.affectsConfiguration(`circuitpythonsync.${strgs.confCurlibPKG}`) || 
                     //e.affectsConfiguration(`circuitpythonsync.${strgs.confCPbaseverPKG}`) ||
                     e.affectsConfiguration(`circuitpythonsync.${strgs.confCPfullverPKG}`)) {
+                
+                // Check if we should skip auto-triggering (e.g., when project bundle sets version)
+                if(LibraryMgmt.getSkipLibAutoUpdate()) {
+                    return; // Skip auto-trigger when flag is set
+                }
+                
                 const confCurlibPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCurlibPKG}`,'');
                 const confCPbaseverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPbaseverPKG}`, '');
                 const confCPfullverPKG = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`, '');
