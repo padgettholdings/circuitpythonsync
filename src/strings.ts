@@ -353,6 +353,8 @@ export const projectBundleArchiveDirNotInitErr:string='Project bundle archive di
 export const projectBundleDnldExistsSkipQues:string='Project bundle by that ID already downloaded, Use it?';
 export const projectBundleTempDirNotInitErr:string='Project bundle temp directory not initialized, restart';
 export const projectBundleNoFindCPinZipErr:string='Did not find CircuitPython code folder in project bundle.';
+export const projectBundleCPVersionsFoundTitle:string='Multiple CircuitPython versions found';
+export const projectBundleCPVersionsFoundPrompt:string='Select the CircuitPython version to use:';
 export const projectBundleOverwriteConfirm:string='Some bundle content will overwrite existing, continue?';
 export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
 // ** help related
