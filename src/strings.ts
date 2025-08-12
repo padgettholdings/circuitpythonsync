@@ -271,6 +271,7 @@ export const updateCpNewVerQPItemBottom:qpitem={label:'CircuitPython Version'};
 export const libBundleFilePrefix:string='adafruit-circuitpython-bundle';    // this is just for internal files NOT the URL
 export const libBundleAdafruitUrlRoot:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download';
 export const libBundleAdafruitUrlLatest:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/latest';
+export const libBundleAdafruitUrlReleases:string='https://api.github.com/repos/adafruit/Adafruit_CircuitPython_Bundle/releases?per_page=100';
 export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitpython/releases/latest";
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
@@ -299,6 +300,7 @@ export const libCmdsReadyNeedSettingsError:string='Before selecting libraries ru
 export const libCmdsReadyVerChgError:string='Before selecting libraries run Install or Update Libraries and Stubs due to pending version change.';
 export const libCmdsReadyNoSourceError:string='Before selecting libraries run Install or Update Libraries and Stubs';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
+export const libBundleNoCompatibleVersionError:string='No compatible library bundle found for CircuitPython version ';  //+cpVersion+'. Try specifying a different CircuitPython version or bundle tag.'
 export const libDnldBundleExistsLog:string='File already exists:';
 export const libDnldBundleExistsRtn:string='file already exists';
 export const libDnldBundleSuccessRtn:string='File downloaded successfully for fmt:';  // + pyLibFmt

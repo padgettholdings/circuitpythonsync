@@ -218,35 +218,46 @@ export class LibraryMgmt {
                                 }
                             }
                         } else if (value!==undefined && value===''){
-                            //get the latest tag
-                            const latestTag=await this.getLatestBundleTag();
-                            if(latestTag===this._libTag &&  !this._libUpdateVerChg){
-                                quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
-                                const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
-                                quickPick.items = [
-                                    { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
-                                    { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
-                                ];                    
-                                quickPick.show();
-                            } else {
-                                const ans=await vscode.window.showInformationMessage(strgs.libTagLatestChgConfirm + latestTag, 'Yes','No');
-                                if(ans==='Yes') {
-                                    this._libTag = latestTag;
-                                    this._libUpdateVerChg=true;
-                                    //quickPick.items[0].description = value;
-                                    quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                            //get the latest compatible tag
+                            try {
+                                const latestTag = this._cpVersion !== '' 
+                                    ? await this.getLatestCompatibleBundleTag(this._cpVersion)
+                                    : await this.getLatestBundleTag();
+                                if(latestTag===this._libTag &&  !this._libUpdateVerChg){
+                                    quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                     const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
                                     quickPick.items = [
-                                        { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
-                                        { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                        { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
+                                        { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                        { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
-                                    quickPick.hide();
-                                    quickPick.dispose();
+                                    const ans=await vscode.window.showInformationMessage(strgs.libTagLatestChgConfirm + latestTag, 'Yes','No');
+                                    if(ans==='Yes') {
+                                        this._libTag = latestTag;
+                                        this._libUpdateVerChg=true;
+                                        //quickPick.items[0].description = value;
+                                        quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
+                                        const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
+                                        quickPick.items = [
+                                            { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
+                                            { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
+                                            { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                        ];                    
+                                        quickPick.show();
+                                    } else {
+                                        quickPick.hide();
+                                        quickPick.dispose();
+                                    }
                                 }
+                            } catch (error) {
+                                // Clear the library tag setting when error occurs
+                                await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,'',vscode.ConfigurationTarget.Workspace);
+                                this._libTag = '';
+                                vscode.window.showErrorMessage(this.getErrorMessage(error));
+                                quickPick.hide();
+                                quickPick.dispose();
                             }
                         } else if (value===undefined) {
                             //if ESC just get back to the QP
@@ -634,12 +645,7 @@ export class LibraryMgmt {
         // let cpVersionFull:string = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confCPfullverPKG}`,'');
         // this._cpVersionFull = cpVersionFull;
         //if lib or cp version configs are not defined, set from latest and check for conflicts in cp versions
-        if(this._libTag===''){
-            const latestTag=await this.getLatestBundleTag();
-            this._libTag=latestTag;
-            libTag=this._libTag;
-            await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
-        }
+        // First, ensure we have CP version information
         if(this._cpVersion===''){
             const latestCPTag=await this.getLatestCPTag();
             this._cpVersion=latestCPTag.split('.')[0];
@@ -651,6 +657,24 @@ export class LibraryMgmt {
             this._cpVersionFull=latestCPTag;
             cpVersionFull=this._cpVersionFull;
             await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCPfullverPKG}`,this._cpVersionFull,vscode.ConfigurationTarget.Workspace);
+        } 
+        
+        // Now get compatible library bundle based on CP version
+        if(this._libTag===''){
+            try {
+                // Get latest bundle compatible with our CP version
+                const latestTag = await this.getLatestCompatibleBundleTag(this._cpVersion);
+                this._libTag=latestTag;
+                libTag=this._libTag;
+                await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,this._libTag,vscode.ConfigurationTarget.Workspace);
+            } catch (error) {
+                // Clear the library tag setting when error occurs
+                await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,'',vscode.ConfigurationTarget.Workspace);
+                this._libTag = '';
+                vscode.window.showErrorMessage(this.getErrorMessage(error));
+                this.stopLibUpdateProgress();
+                return;
+            }
         } 
         // finally check to see if cpverion and cpfullversion match in first part
         if(this._cpVersion !== this._cpVersionFull.split('.')[0]) {
@@ -696,6 +720,9 @@ export class LibraryMgmt {
                     await this.getOrigBundle(libTag, pyLibFmt);
                 }
             } catch (error) {
+                // Clear the library tag setting when error occurs
+                await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confCurlibPKG}`,'',vscode.ConfigurationTarget.Workspace);
+                this._libTag = '';
                 vscode.window.showErrorMessage(strgs.setupLibDnldError);
                 //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
                 this.stopLibUpdateProgress();
@@ -1037,6 +1064,47 @@ export class LibraryMgmt {
             { headers: { Accept: "application/json" } }
         );
         return await r.data.tag_name;
+    }
+
+    private async getLatestCompatibleBundleTag(cpVersionMajor: string): Promise<string> {
+        try {
+            let r: axios.AxiosResponse = await axios.default.get(
+                strgs.libBundleAdafruitUrlReleases,
+                { 
+                    headers: { 
+                        Accept: "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    } 
+                }
+            );
+            
+            const releases = r.data;
+            const targetPattern = `${strgs.libBundleAdafruitUrlFilePrefix}-${cpVersionMajor}.x-mpy-`;
+            
+            // Search through releases from newest to oldest
+            for (const release of releases) {
+                if (release.assets && Array.isArray(release.assets)) {
+                    // Check if this release has a bundle for our CP version
+                    const hasCompatibleBundle = release.assets.some((asset: any) => 
+                        asset.browser_download_url && 
+                        asset.browser_download_url.includes(targetPattern)
+                    );
+                    
+                    if (hasCompatibleBundle) {
+                        return release.tag_name;
+                    }
+                }
+            }
+            
+            // If no compatible bundle found, throw an error
+            console.log(`No compatible bundle found for CP ${cpVersionMajor}.x`);
+            throw new Error(strgs.libBundleNoCompatibleVersionError + `${cpVersionMajor}.x. Try specifying a different CircuitPython version or bundle tag.`);
+            
+        } catch (error) {
+            console.error('Error finding compatible bundle tag:', error);
+            // Re-throw the error instead of falling back
+            throw error;
+        }
     }
     
     private async getLatestCPTag(): Promise<string> {

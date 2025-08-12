@@ -46,3 +46,6 @@
 
 ## v1.0.2 - 2025-7-27
     * Add logic in project bundle loading to determine if multiple CP version solutions are included and if so offer a choice of which version to load.  NOTE this was implemented totally by Copilot Coding Agent!
+
+## v1.0.3 - 2025-8-11
+    * Fix issue in lib/stub install/update command where last lib bundle version not being detected for specified CP version.  NOTE this was implemented totally by Copilot Coding Agent!
