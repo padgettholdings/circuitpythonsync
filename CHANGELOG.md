@@ -49,3 +49,6 @@
 
 ## v1.0.3 - 2025-8-11
     * Fix issue in lib/stub install/update command where last lib bundle version not being detected for specified CP version.  NOTE this was implemented totally by Copilot Coding Agent!
+
+## v1.0.4 - 2025-8-21
+    * Fix issue where folder decoration on `/lib` folder did not appear if folder created by extension, such as when libs added after installing in a new workspace.
