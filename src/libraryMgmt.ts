@@ -6,7 +6,7 @@ import * as zl from 'zip-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import {getLibPath, setupStubs} from './extension';
+import {getLibPath, setupStubs, onLibFolderCreated} from './extension';
 //import { timeStamp } from 'console';
 
 export class LibraryMgmt {
@@ -424,6 +424,8 @@ export class LibraryMgmt {
                     const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
                     if(!wsRootFolder) {return;}
                     await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(wsRootFolder.uri,'lib'));
+                    // Notify extension that lib folder was created to update decorations
+                    await onLibFolderCreated();
                     libPath=await getLibPath();
                 }else {
                     return;

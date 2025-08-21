@@ -80,6 +80,9 @@ let confirmDnldStdFoldersOnly:boolean;
 let libMgmtSys:LibraryMgmt;
 let stubMgmtSys:StubMgmt;
 
+// ** Global function to update file decorations, set during activate **
+let globalUpdateFileDecorations: ((cpFileLines: Array<cpFileLine>) => Promise<void>) | null = null;
+
 //define quick pick type for drive pick
 interface drivePick extends vscode.QuickPickItem {
 	path: string
@@ -405,6 +408,43 @@ export async function getLibPath(): Promise<string>{
 	});
 	retVal=libName ? libName[0] : "";
 	return retVal;
+}
+
+// ** Function to handle lib folder creation from external modules
+export async function onLibFolderCreated(): Promise<void> {
+	// Update the library folder exists flag
+	libraryFolderExists = true;
+	
+	// Parse cpfiles and update decorations if the function is available
+	let cpFileLines = await parseCpfiles();
+	// ** #133, need to add default py files before dec update
+		if(!cpFileLines || cpFileLines.length===0 || !cpFileLines.some(lne => !lne.inLib)){
+		//just put in default py files to check and no lib
+		// #101, need to add defaults because there may be libs (and cpFileLines always has array)
+		const cpFileLinesDfltPy=[
+			{
+				src:'code.py', dest:'',	inLib:false
+			},
+			{
+				src: 'main.py',	dest: '', inLib: false
+			}
+		];
+		cpFileLines=[...cpFileLines,...cpFileLinesDfltPy];
+	}
+	//
+	if (globalUpdateFileDecorations) {
+		await globalUpdateFileDecorations(cpFileLines);
+	}
+	
+	// Update status bar items
+	const fileSources = await checkSources(cpFileLines);
+	if(fileSources.libExists) {
+		libFilesExist = fileSources.libExists;
+		statusBarItem2.backgroundColor = new vscode.ThemeColor(strgs.btnLightBkgd);
+	} else {
+		libFilesExist = false;
+	}
+	updateStatusBarItems();
 }
 
 // #76, add export functions to allow other modules to access the lib setup and stubs setup
@@ -3542,6 +3582,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			fileDec.refresh(decRfshUris);
 		}
 	}
+	
+	// ** Assign the function to global variable for external access
+	globalUpdateFileDecorations = updateFileDecorations;
 
 	//none of this can work if not a workspace, will reload when go into workspace
 	if(haveCurrentWorkspace && vscode.workspace.workspaceFolders){
