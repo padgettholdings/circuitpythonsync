@@ -52,3 +52,6 @@
 
 ## v1.0.4 - 2025-8-21
     * Fix issue where folder decoration on `/lib` folder did not appear if folder created by extension, such as when libs added after installing in a new workspace.
+
+## v1.0.5 - 2025-9-5
+    * Add command to source and upload a CircuitPython firmware .uf2 file to a board connected in bootloader mode.  Matches info from board to specific board type and allows choice of CP version.

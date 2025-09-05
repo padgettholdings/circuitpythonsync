@@ -119,7 +119,12 @@ export async function list():Promise<Drive[]>{
             // Call systeminformation to get more details on the drives if needed
             let diskInfo = await getDiskInfo(); // Get the latest disk info
             // only types of disk or part are valid 
-            diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part') && disk.mount); // Filter out invalid types
+            // ** on mac need to include virtual type
+            if(os.platform() === 'darwin'){
+                diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part' || disk.type.toLowerCase() === 'virtual') && disk.mount);
+            } else {
+                diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part') && disk.mount); // Filter out invalid types
+            }
             if (diskInfo && diskInfo.length > 0) {
                 // Update the detected drives with more details from systeminformation
                 for (const drv of detectedDrives) {
@@ -138,7 +143,12 @@ export async function list():Promise<Drive[]>{
         // Call systeminformation to get more details on the drives
         let diskInfo = await getDiskInfo(); // Get the latest disk info
         // only types of disk or part are valid
-        diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part') && disk.mount); // Filter out invalid types
+        // ** on mac need to include virtual type
+        if(os.platform() === 'darwin'){
+            diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part' || disk.type.toLowerCase() === 'virtual') && disk.mount);
+        } else {
+            diskInfo = diskInfo.filter(disk => disk.type && (disk.type.toLowerCase() === 'disk' || disk.type.toLowerCase() === 'part') && disk.mount);
+        }
         if (diskInfo && diskInfo.length > 0) {
             // Update the detected drives with more details from systeminformation
             for (const disk of diskInfo) {

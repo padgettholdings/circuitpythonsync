@@ -52,6 +52,7 @@ export const cmdSelectBoardPKG:string='circuitpythonsync.selectboard';
 export const cmdLoadProjectBundlePKG:string='circuitpythonsync.loadProjectBundle';
 export const cmdAddTemplateLinkPKG:string='circuitpythonsync.addtemplatelink';
 export const cmdFileDiffPKG:string='circuitpythonsync.filediff';
+export const cmdUf2LoadingPKG:string='circuitpythonsync.uploaduf2';
 
 //change to have different name for manifest file
 // ** these can be overriden in main file by configuration pulls **
@@ -359,6 +360,71 @@ export const projectBundleCPVersionsFoundTitle:string='Multiple CircuitPython ve
 export const projectBundleCPVersionsFoundPrompt:string='Select the CircuitPython version to use:';
 export const projectBundleOverwriteConfirm:string='Some bundle content will overwrite existing, continue?';
 export const projectBundleGetSettingsQues:string='Project bundle loaded, do you want to get helpful settings?';
+
+// ** uf2 upload related - NEW PATTERN FOR INTERPOLATED STRINGS
+export const uf2LoadingManualSearchTooltip:string='Manual board search';
+export const uf2LoadingCPorgUrl:string='https://circuitpython.org/downloads';
+export const uf2LoadingFetchCPTitle:string='Fetching circuitpython.org boards...';
+export const uf2LoadingDriveInputTitle:string='Select UF2 Bootloader Drive';
+export const uf2LoadingDriveInputPrompt:string='Connect board in bootloader mode and enter its drive letter (e.g., D:) or path (e.g., /media/user)';
+export const uf2LoadingDriveInputPromptLooking:string='Looking for UF2 drive. Connect board in bootloader mode or enter path to stop search...';
+export const uf2LoadingDriveInputPromptFound:string='UF2 drive found';
+export const uf2LoadingDriveInputValidateEmpty:string='Drive letter or path cannot be empty';
+export const uf2LoadingDriveInputValidateNoInfoFile:string='No info_uf2.txt file found at path';
+export const uf2LoadingDriveInputBtnRefreshTooltip:string='Try to find UF2 drive again';
+export const uf2LoadingDriveInputPlaceholder:string='e.g., D: or /media/user';
+export const uf2LoadingDriveInputPlaceholderLooking:string='Looking for UF2 drive...';
+export const uf2LoadingDriveInputPlaceholderFound:string='Enter to accept or ESC to cancel';
+export const uf2LoadingDriveInputBadAction:string='Unknown error in finding uf2 drive';
+export const uf2LoadingDriveCheckNoModelInInfo:string='No board model found in UF2 info';
+export const uf2LoadingBoardSearchNoneFound:string='No matching boards found, switching to  manual search.';
+// export const uf2LoadingMatchedBoardPickTitle:string[]=[
+//     'Select Board for bootloader model ',   //+boardModelFromUf2Info
+//     ' or click search button if board not listed'
+// ];
+export const uf2LoadingMatchedBoardPickTitle=(arg:string):string=>`Select Board for bootloader model ${arg} or click search button if board not listed`;
+export const uf2LoadingMatchedBoardPickPlaceholder:string='Select board or click search to manually search, or ESC to cancel ';
+export const uf2LoadingManualSearchInpuTitle=(arg:string):string=>'Alternate search for bootloader model '+arg;
+export const uf2LoadingManualSearchInputPlaceholder:string='Enter alternate search for boards or ESC to end command';
+export const uf2LoadingManualSearchTooMany:string='Too many results, try again...';
+export const uf2LoadingManualSearchNoneFound:string='No matching boards found, try a different search term.';
+// export const uf2LoadingManualSearchPickTitle:string[]=[
+//     'Boards from search of "', //+_searchString
+//     '" for bootloader model '  //+boardModelFromUf2Info
+// ];
+export const uf2LoadingManualSearchPickTitle=(arg1:string,arg2:string):string=>`Boards from search of "${arg1}" for bootloader model ${arg2}`;
+export const uf2LoadingManualSearchPickPlaceholder:string='Select board from search results or ESC to enter new search';
+export const uf2LoadingCpVersionInputPlaceholder:string='Enter CircuitPython Firmware version such as 9.2.8';
+export const uf2LoadingCpVersionInputPrompt:string='Specify the CircuitPython version for the UF2 file, or enter for latest';
+export const uf2LoadingCpVersionInputFailedLatestCPTag:string='Failed to get latest CircuitPython version, start command again and enter a version';
+export const uf2LoadingUf2DnldFail=(err:string):string=>`Failed to download UF2 file, error: ${err}`;
+export const uf2LoadingUf2PickPicks:string[]=[
+    'Upload and Keep the file',
+    'Upload and Delete the file',
+    'Cancel upload'
+];
+export const uf2LoadingUf2PickTitle=(arg:string):string=>'Action to take with file:'+arg;
+export const uf2LoadingUf2PickPlaceholder:string='Select an action for the downloaded UF2 file';
+export const uf2LoadingUf2CopyProgressTitle:string="Copying UF2 file...";
+export const uf2LoadingUf2copyFail=(err:string):string=>`Failed to upload UF2 file to drive: ${err}`;
+export const uf2LoadingUf2copySuccess:string='Finished uploading UF2, board should reboot.';
+export const uf2LoadingUf2DeleteFail=(err:string):string=>`Failed to delete UF2 file:: ${err}`;
+export const uf2LoadingCpOrgFetchFail:string='circuitpython.org fetch failed: ';
+export const uf2LoadingCpOrgFetchError:string=' Unexpected cp.org error';
+export const uf2LoadingDriveInputValidateInputEmpty:string='Path cannot be empty';
+export const uf2LoadingDriveInputValidateTimeout:string='No UF2 drive found. Connect in bootloader mode and enter its drive letter or path, or click refresh.';
+export const uf2LoadingDriveSearchError=(arg:string):string=>'Error enumerating potential uf2 dirve:'+arg;
+export const uf2LoadingUf2DnldUrl=(arg1:string,arg2:string):string=>`https://downloads.circuitpython.org/bin/${arg1}/en_US/adafruit-circuitpython-${arg1}-en_US-${arg2}.uf2`;
+export const uf2LoadingUf2DnldFilename=(arg1:string,arg2:string):string=>`adafruit-circuitpython-${arg1}-en_US-${arg2}.uf2`;
+export const uf2LoadingUf2DnldError=(err:string):string=>`Error fetching uf2: ${err}`;
+export const uf2LoadingContextConfirmPicks:string[]=[
+    'Yes, proceed with upload',
+    'No, cancel upload'
+];
+export const uf2LoadingContextConfirmTitle=(arg1:string,arg2:string):string=>`Upload UF2 file ${arg1} to bootloader drive with model id ${arg2}?`;
+export const uf2LoadingContextConfirmPlaceholder:string='Select Yes to upload or No to cancel';
+export const uf2LoadingDriveInputTitleForContext:string='Select UF2 Bootloader Drive for uploading selected UF2 file';
+
 // ** help related
 export const helpFilename:string='helpfile.md';
 export const helpFileLoadErr:string='** ERROR loading help file **';
@@ -373,6 +439,7 @@ export const helpDownloading:string='board-downloading';
 export const helpProjectTemplateSupport:string='project-template-support';
 export const helpLibrarySupport:string='library-support';
 export const helpProjectBundleSupport:string='project-bundle-support';
+export const helpUploadingUf2:string='uploading-uf2';
 // do tooltips as a map from anchor keys
 export const helpTooltipMap:Map<string,string>=new Map([
     [helpBoardSupport,'Help with Boards'],
@@ -382,5 +449,6 @@ export const helpTooltipMap:Map<string,string>=new Map([
     [helpDownloading,'Help with Board Download'],
     [helpProjectTemplateSupport,'Help with Project Templates'],
     [helpLibrarySupport,'Help with Libraries'],
-    [helpProjectBundleSupport,'Help with Project Bundle']
+    [helpProjectBundleSupport,'Help with Project Bundle'],
+    [helpUploadingUf2,'Help with Uploading UF2'],
 ]);

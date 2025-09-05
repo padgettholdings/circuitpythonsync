@@ -44,7 +44,11 @@ export async function showFullQuickPick<T extends QuickPickItem, P extends Quick
             ];
             disposables.push(
                 input.onDidTriggerButton(item => {
-                        resolve((item as any));     
+                    // ** hide here-- only if ignore focus out is true
+                    if (input.ignoreFocusOut) {
+                        input.hide();
+                    }
+                    resolve((item as any));
                 }),
                 input.onDidChangeSelection(items => {
                     input.hide();
