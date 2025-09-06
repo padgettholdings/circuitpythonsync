@@ -55,3 +55,6 @@
 
 ## v1.0.5 - 2025-9-5
     * Add command to source and upload a CircuitPython firmware .uf2 file to a board connected in bootloader mode.  Matches info from board to specific board type and allows choice of CP version.
+
+## v1.0.6 - 2025-9-6
+    * Bug fix for windows on some boards (noted on ESP32-Sx) where upload throws an error but the board loads and reboots correctly.

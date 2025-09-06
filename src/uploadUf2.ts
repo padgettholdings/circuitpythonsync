@@ -317,6 +317,12 @@ export class UploadUf2 {
                             );
                             progress.report({ increment: 100, message: strgs.uf2LoadingUf2copySuccess });
                             return;
+                        } else if(os.platform() === 'win32' && error?.message && error.message.includes('chmod')) {
+                            vscode.window.showWarningMessage(
+                                'UF2 file upload likely succeeded, but a Windows chmod error occurred (expected for FAT drives). If your board reboots, the upload was successful.'
+                            );
+                            progress.report({ increment: 100, message: strgs.uf2LoadingUf2copySuccess });
+                            return;
                         } else {
                             vscode.window.showErrorMessage(strgs.uf2LoadingUf2copyFail(this.getErrorMessage(error)));
                             return;
@@ -537,6 +543,12 @@ export class UploadUf2 {
                                     } else if(os.platform() === 'linux' && error?.message.includes('ENODEV')) {
                                         vscode.window.showWarningMessage(
                                             'UF2 file upload likely succeeded, but the board ejected before the copy completed. This is expected on Linux. If your board reboots, the upload was successful.'
+                                        );
+                                        progress.report({ increment: 100, message: strgs.uf2LoadingUf2copySuccess });
+                                        return;
+                                    } else if(os.platform() === 'win32' && error?.message && error.message.includes('chmod')) {
+                                        vscode.window.showWarningMessage(
+                                            'UF2 file upload likely succeeded, but a Windows chmod error occurred (expected for FAT drives). If your board reboots, the upload was successful.'
                                         );
                                         progress.report({ increment: 100, message: strgs.uf2LoadingUf2copySuccess });
                                         return;
