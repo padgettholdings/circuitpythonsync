@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CircuitPython development.",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "padgettholdings",
   "license": "MIT",
   "icon": "resources/circuitpythonsync-icon.png",
@@ -111,6 +111,11 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.uploaduf2",
+        "title": "CP Upload UF2 Firmware",
+        "category": "CircuitPythonSync"
+      },
+      {
         "command": "circuitpythonsync.filediff",
         "title": "CP Compare file to board",
         "enablement": "!explorerResourceIsFolder",
@@ -182,6 +187,11 @@
           "command": "circuitpythonsync.filediff",
           "when": "!explorerResourceIsFolder",
           "group": "3_compare"
+        },
+        {
+          "command": "circuitpythonsync.uploaduf2",
+          "when": "!explorerResourceIsFolder && resourceExtname=='.uf2'",
+          "group": "2_workspace"
         }
       ],
       "view/title": [
@@ -328,8 +338,10 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "fuse.js": "^7.1.0",
+    "htmlparser2": "^10.0.0",
+    "systeminformation": "^5.25.11",
     "tar": "^7.4.3",
-    "zip-lib": "^1.0.5",
-    "systeminformation": "^5.25.11"
+    "zip-lib": "^1.0.5"
   }
 }

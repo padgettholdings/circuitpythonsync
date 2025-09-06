@@ -17,6 +17,7 @@ To return to this help file while using the extension run the `Welcome and Help`
 * [Board Downloading](#board-downloading)
 * [Project Bundle Support](#project-bundle-support)
 * [Using the Serial Monitor](#using-the-serial-monitor)
+* **NEW** [Uploading Circuit Python Firmware UF2](#uploading-uf2)
 
 ## Getting Started
 
@@ -363,3 +364,19 @@ The VS Code Serial Monitor is well supported and reliable.  The separate message
 
 [Top](#welcome-to-circuitpython-sync)
 
+## Uploading UF2
+
+The [Circuit Python site](https://circuitpython.org/) has a wealth of information on choosing and uploading UF2 firmware to your microcontroller board.  In general, the process involves putting your board into bootloader mode to appear as a drive on your PC, and then copying the downloaded UF2 file to the board using your operating system file utilities. The board then automatically reboots as a drive ready for CP code.  This extension provides a command to select and load the CP firware to your board all from within VS Code. (Note that a workspace must be open although no files are required for this command.)
+
+Running the `CP Upload UF2 Firmware` command executes the following steps:
+1.  The command will first open an input box and attempt to determine the drive path of your board connected in bootloader mode.  See the Circuit Python Site for help in entering bootloader mode, but it is often done by "double-clicking" a Reset button or holding a Boot button will connecting the power.  The command waits for a bit looking for a drive that contains a special file, `INFO_UF2.TXT`, which contains some text information about the board.  If found the path is shown in the input box ready to accept.  If not, you can manually enter the drive path (such as `D:` or `/media/path`).  Once the path is verified the command proceeds to the next step.  You can also stop the searching for a drive just by starting to type a drive or path in the input box.
+2.  The `INFO_UF2` file contains several text strings that can be used to identify the board model.  This next step will try to match the strings to the list of boards from the site (the list was downloaded in the background when the command starts up).  The strings from the file on the drive often don't exactly match a board description from the site, so usually a list of potential boards are given in a best-match order from a fuzzy search.  If your board is listed select it and the command will proceed to step 4.
+3.  If your board is not listed in the prior step you can search manually through the list that was downloaded from the site.  In the pick list from the previous step click the magnifying glass on the title bar.  This brings up a text entry field where you can type search text and enter to accept.  This will bring up another pick list of matches from the site list where your board should be listed.  If not, you can ESC and try again.  Once you select your board the command will proceed to the next step.
+4.  In this step a text input box will prompt for the version of Circuit Python you want to upload.  To get the latest version just use the Enter key, or type a full version number (like 9.2.8) and Enter.  Note that previous versions are not always available for every board; an error will be given if that version for the specified board is not available.  (Note that the version of the UF2 firmware chosen is not related to the library and stubs version detailed earlier in this document, but that may change in future releases.)
+5.  In the final step the command will download the UF2 file for the specified board and version.  The file will be saved in the root of the workspace, at least temporarily.  A choice list will then be given: upload the file to the board and keep the UF2 file in the workspace; upload the file and delete from the workspace; or cancel the command, which will also keep the file in the workspace.  After the upload the board should reboot into the Circuit Python drive, which can then be connected using the other facilites in this extension.  Generally the UF2 file can be deleted after the upload but it can be useful to save in your project as a quick way to prepare boards for a project load (See Direct Load of UF2 file below).  If you are using source control and have applied the stock `.gitignore` file from the default template (see [Project Template Support](#project-template-support)), UF2 files are ignored in source control; just remove that line if you want to save the uf2 file in your repo.
+
+### Direct Load of previously Downloaded UF2 File
+If you have a previously downloaded UF2 file in your workspace, you can right click the file to upload it to a board in bootloader mode.  This provides a quick way to re-flash a board without going through the entire selection process again. The bootloader drive search in Step 1 above will be done, then a choice will be given to upload or cancel, with the details shown for the file to be uploaded and the model name ready from the drive info file.
+
+
+[Top](#welcome-to-circuitpython-sync)

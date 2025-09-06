@@ -27,4 +27,4 @@ The extension can download library and board definitions (either the latest or a
 * **Project Templates** - Create new projects from templates.  A default is provided but you can create your own to suit your needs.
 * **Adafruit Project Bundle Support** - Quick access to Adafruit project bundles in the learn system.
 * **Serial Monitor Compatibility** - Compatible with the built-in serial monitor in VS Code. 
-
+* **NEW**! **Firmware Upload** - Command to source and upload a CircuitPython firmware .uf2 file to a compatible board connected in bootloader mode.  Also allows choice of any CircuitPython version available for the board type.

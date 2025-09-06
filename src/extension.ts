@@ -21,6 +21,7 @@ import { FileDecorator  } from './fileDecorator';
 import * as axios from 'axios';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
+import { UploadUf2 } from './uploadUf2';
 //import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
@@ -2159,6 +2160,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		// other init
 	}
 
+	// ** #126, spin up the uf2 load class but nothing happens until command
+	const uf2Loader = new UploadUf2(context);
+	if(haveCurrentWorkspace){
+		//other init??
+	}
 
 	/*
 	// now call the setup if have workspace
