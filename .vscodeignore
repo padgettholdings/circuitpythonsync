@@ -14,5 +14,15 @@ node_modules
 webpack.config.json
 .devcontainer/**
 .github/**
+# nativemodules folder is for modifying the bottom of this file but should be ignored in output
+nativemodules/
+# these are includes for native modules maintained automatically by script
+# AUTO-NATIVEMODULES-DO-NOT-DELETE-THIS-LINE
+!node_modules/@serialport/
+!node_modules/debug/
+!node_modules/ms/
+!node_modules/node-addon-api/
+!node_modules/node-gyp-build/
+!node_modules/serialport/
 
 

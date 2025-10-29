@@ -58,3 +58,7 @@
 
 ## v1.0.6 - 2025-9-6
     * Bug fix for windows on some boards (noted on ESP32-Sx) where upload throws an error but the board loads and reboots correctly.
+
+## p2.0.0 - 2025-10-28
+    * Major upgrade to add support for serial interface for boards that do not have native USB to map a CIRCUITPY drive.  Also adds a lightweight serial terminal designed to be compatible with serial port boards.  A few other feature additions in file transfer mapping and in the board explorer.  See help command for more details. **This is a preview release**.
+

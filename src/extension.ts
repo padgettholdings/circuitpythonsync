@@ -20,8 +20,17 @@ import { FileDecorator  } from './fileDecorator';
 
 import * as axios from 'axios';
 import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
+//import * as fsPromises from 'fs/promises';
 import { UploadUf2 } from './uploadUf2';
+
+//import { REPL, FileOps, FileInfo } from './js/repl.js';
+import * as serialInterface from './serialInterface';
+import { SerialTerminal } from './serialTerminal';
+
+// the serial file system provider
+import { SerialFileSysProvider } from './serialFileSysProvider';
+//import { LineEnding } from '@microsoft/vscode-serial-monitor-api';
+
 //import { isSet } from 'util/types';
 
 //import { chdir } from 'process';
@@ -61,7 +70,7 @@ let curDriveSetting: string;
 // #73, status bar button to map drive
 let statusBarMapDrv: vscode.StatusBarItem;
 
-// need explicit flag to make sure workspace is set so can disable everythin
+// need explicit flag to make sure workspace is set so can disable everything
 let haveCurrentWorkspace: boolean;
 // track whether library folder is there or not
 let libraryFolderExists: boolean;
@@ -80,6 +89,9 @@ let confirmDnldStdFoldersOnly:boolean;
 // ** #68 make libmgmt and stubmgmt global so can use in other modules **
 let libMgmtSys:LibraryMgmt;
 let stubMgmtSys:StubMgmt;
+
+// ** make terminal instance global so can be used in serialInterface
+export let serialTerminalSys:SerialTerminal;
 
 // ** Global function to update file decorations, set during activate **
 let globalUpdateFileDecorations: ((cpFileLines: Array<cpFileLine>) => Promise<void>) | null = null;
@@ -103,6 +115,7 @@ let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
 
 // **#72, quick pick command buttons
 const iconCommandHelp:ThemeIcon=new ThemeIcon('question');
+const iconSerialPort:ThemeIcon=new ThemeIcon('plug');
 interface cmdQuickInputButton extends QuickInputButton {
 	commandName: string;
 }
@@ -585,7 +598,7 @@ async function refreshDrives() {
 				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
 				let drvPath:string=drv.mountpoints[0].path;
 				//if windows remove backslashes
-				if(os.platform()==='win32') {
+				if(os.platform()==='win32' && !drvPath.startsWith(strgs.serialfsScheme)) {
 					drvPath=drvPath.replace(/\\/g,'');
 				}
 				//add to array
@@ -621,7 +634,7 @@ export function getCurrentDriveConfig(): string {
 	//still can be null, coalesce to ''
 	curDrive=curDrive ?? '';
 	//if on windows, remove backslashes 
-	if(os.platform()==='win32') {
+	if(os.platform()==='win32' && !curDrive.startsWith(strgs.serialfsScheme)) {
 		curDrive=curDrive.replace(/\\/g,'');
 	}
 	return curDrive;
@@ -834,7 +847,7 @@ async function updateStatusBarItems() {
 		//check to see if boot_out.txt is there, warn if not
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 			baseUri='file:'+baseUri;
 		}
 		//**replace glob find files with dir read for performance
@@ -1056,9 +1069,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.registerTextDocumentContentProvider(helpScheme, helpProvider)
 	);
 
-
-
-
+	//####TEST#### get the repl
+	//const repl=serialInterface.getReplInstance();
+	//####TEST####
 
 	// ** spin up the library management
 	/*
@@ -1111,7 +1124,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	function checkForCodeOrMainPy(codeFile:cpFileLine):boolean{
 		return (codeFile.src.toLowerCase()==='code.py' || codeFile.src.toLowerCase()==='main.py'
-			 || codeFile.dest.toLowerCase()==='code.py' || codeFile.dest.toLowerCase()==='main.py');
+			|| codeFile.dest.toLowerCase()==='code.py' || codeFile.dest.toLowerCase()==='main.py');
 	}
 
 	// ** the copy files button
@@ -1175,7 +1188,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		//now do the copy, possibly with rename
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 			baseUri='file:'+baseUri;
 		}
 		// ** read the device to see if it is there **
@@ -1200,6 +1213,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		});  
 		// ** setup and show progress indicator
 		let progInc=0;
+		// ** if using the serial port extend timeout quite a bit...****** TBD ****** how to set max timeout
+		let progressTimeout=10000;
+		if(curDriveSetting.startsWith(strgs.serialfsScheme)){
+			progressTimeout=60000;	// 1 minute
+		}
 		vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Copy Progress",
@@ -1220,7 +1238,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				setTimeout(() => {
 					clearInterval(intvlId);
 					resolve();
-				}, 10000);	// ****** TBD ****** how to set max timeout
+				}, progressTimeout);
 			});
 			return p;
 		});
@@ -1256,7 +1274,12 @@ export async function activate(context: vscode.ExtensionContext) {
 					srcUri=vscode.Uri.joinPath(wsRootFolderUri,parsedPath.path,parsedPath.fileName);
 					if(fs.existsSync(srcUri.fsPath)){
 						// now try to copy to the same folder on the board
-						destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),parsedPath.path,codeFile.dest==='' ? parsedPath.fileName : codeFile.dest);
+						// ** #151 - if dest has leading /, don't use src folder, just start at board root
+						if(codeFile.dest.startsWith('/')){
+							destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),codeFile.dest==='/' ? parsedPath.fileName : codeFile.dest);
+						} else {
+							destUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),parsedPath.path,codeFile.dest==='' ? parsedPath.fileName : codeFile.dest);
+						}
 						try {
 							await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
 							copiedFilesCnt+=1;
@@ -1348,7 +1371,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let errorFileCnt:number=0;
 		//prep for accessing the device
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 			baseUri='file:'+baseUri;
 		}
 		// need to find the actual path to the lib/Lib folder on the device
@@ -1380,6 +1403,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** setup and show progress indicator
 		let progInc=0;
 		let progStep=10;	//will get reset by which copy is done
+		// ** if using the serial port extend timeout quite a bit...****** TBD ****** how to set max timeout
+		let progressTimeout=10000;
+		let fakeStepTimerInvl=1000;
+		if(curDriveSetting.startsWith(strgs.serialfsScheme)){
+			progressTimeout=90000;	// 1.5 minute
+			fakeStepTimerInvl=5000;	// run the fake step slower too
+		}
 		vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Copy Progress",
@@ -1400,34 +1430,48 @@ export async function activate(context: vscode.ExtensionContext) {
 				setTimeout(() => {
 					clearInterval(intvlId);
 					resolve();
-				}, 10000);	// ****** TBD ****** how to set max timeout
+				}, progressTimeout);
 			});
 			return p;
 		});
 		//
 		if(copyFullLibFolder){
 			//calc prog step and setup interval for faking progress on full lib copy, max 10 secs
-			progStep=100/(libDir.length===0 ? 1 : libDir.length);
+			progStep=100/(libDir.length===0 ? 2 : libDir.length+1);
 			const fakeStepTimer=setInterval(() => {
 				progInc+=progStep;
 				if(progInc>=100){
 					clearInterval(fakeStepTimer);
 				}
-			}, 1000);
+			}, fakeStepTimerInvl);
 			if(srcLibPath!==''){
 				// ** this should always be true since we know we had library**
 				// ** now do the copy **
-				try {
-					await vscode.workspace.fs.copy(
-						vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath),
-						vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath),
-						{overwrite:true}
-					);
-				} catch(error) {
-					// ** notify error and bail
-					const fse:vscode.FileSystemError=error as vscode.FileSystemError;
-					vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
-					return;
+				const srcUriFullLib=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
+				const destUriFullLib=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
+				// ** if dest is serialfs need to use special copy folder function
+				if(destUriFullLib.scheme.startsWith(strgs.serialfsSchemeName)){
+					try {
+						await serialFileSysProvider.copyFolder(srcUriFullLib,destUriFullLib);
+					} catch(error) {
+						// ** notify error and bail
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
+						return;
+					}
+				} else {
+					try {
+						await vscode.workspace.fs.copy(
+							srcUriFullLib,
+							destUriFullLib,
+							{overwrite:true}
+						);
+					} catch(error) {
+						// ** notify error and bail
+						const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+						vscode.window.showErrorMessage(strgs.abortWholeLibCopyError+fse.message);
+						return;
+					}
 				}
 				// ** get rid of the progress bar
 				progInc=101;
@@ -1444,7 +1488,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			//const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
 			//const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
 			//calc progress counts
-			progStep=100/(cpLibLines.length===0 ? 1 : cpLibLines.length);
+			progStep=100/(cpLibLines.length===0 ? 2 : cpLibLines.length+1);
 			for(const cpLine of cpLibLines){
 				//make sure src file/folder is in dir
 				if(libDir.some(val => val[0]===cpLine.src)) {
@@ -1454,6 +1498,19 @@ export async function activate(context: vscode.ExtensionContext) {
 						destUri=vscode.Uri.joinPath(destLibUri,
 							(cpLine.dest==='' ? cpLine.src : cpLine.dest)
 						);
+						// ** need to decide if source is a folder and if dest is serial
+						// ** IF SO then will need to call special folder copy in file provider
+						if(destUri.scheme.startsWith(strgs.serialfsSchemeName)){
+							const srcStat=await vscode.workspace.fs.stat(srcUri);
+							if(srcStat.type===vscode.FileType.Directory){
+								// ** is a folder, call the special copy folder function
+								await serialFileSysProvider.copyFolder(srcUri,destUri);
+								copiedFilesCnt+=1;	//** count as one file copied **
+								progInc+=progStep;
+								continue;	// done with this one
+							}
+						}
+						// both src and dest are normal file providers.
 						await vscode.workspace.fs.copy(srcUri,destUri,{overwrite:true});
 						copiedFilesCnt+=1;
 					} catch (error) {
@@ -2012,6 +2069,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	//????? save in ext state?
 	//context.subscriptions.push(curDriveSetting);
 
+	//set flag if cur drive is serialfs, but go ahead and clear
+	// the drive map so won't error.  then after define serial port connect/disconnect cmds
+	// ask if want to connect serial port for the drive map, if so set 
+	// drive map config back to serialfs
+	let startingDriveWasSerialfs:boolean=false;
+	if(curDriveSetting===strgs.serialfsRoot){
+		startingDriveWasSerialfs=true;
+		// can't let board explorer and button updates run since no serial yet
+		// but config watcher not hooked so this won't hurt
+		vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,"");
+		curDriveSetting="";
+	}
+
 	// ** #118, wire up the file decorator - initial set will be empty, will refresh below
 	const fileDec=new FileDecorator(context);
 
@@ -2194,7 +2264,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			} else {
 				// need to search for the boot file
 				let baseUri=connectCandidate.drvPath;
-				if (os.platform()==='win32') {
+				if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 					baseUri='file:'+baseUri;
 				}
 				const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
@@ -2221,6 +2291,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					const pickRes=await vscode.window.showInformationMessage(chgDriveMessage,
 						{modal:true,detail:strgs.fndCPDrvInsPathDetail},'Yes','No');
 					if(pickRes==='Yes') {
+						// ** note that the config change watch will handle context key
 						vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,connectDrvPath);
 						curDriveSetting=connectDrvPath;
 						updateStatusBarItems();
@@ -2232,6 +2303,51 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// ** attach the board file view
 	const bfe=new BoardFileExplorer(context,curDriveSetting);
+
+	// ** initialize the custom serial terminal - won't start if no port
+	serialTerminalSys = new SerialTerminal(context);
+	if (haveCurrentWorkspace) {
+		// other init
+	}
+
+	// ** setup context keys for menu enablement, mainly board explorer
+	// - one is just for serial connected, that could be just terminal
+	// - the other is for drive connected to serial, this changes board explorer menus
+	vscode.commands.executeCommand('setContext',strgs.serialConnContextKeyPKG,false);
+	vscode.commands.executeCommand('setContext',strgs.serialDriveConnContextKeyPKG,false);
+
+	// ** init the serial file provider
+	const serialFileSysProvider = new SerialFileSysProvider();
+	context.subscriptions.push(vscode.workspace.registerFileSystemProvider(strgs.serialfsSchemeName, serialFileSysProvider, { isCaseSensitive: true }));
+	// ####TEST### with orig memfs still in place
+	/*
+	serialFileSysProvider.writeFile(vscode.Uri.parse('serialfs:/hello.txt'), Buffer.from('Hello World!'), { create: true, overwrite: true });
+	serialFileSysProvider.createDirectory(vscode.Uri.parse('serialfs:/folder/'));
+	serialFileSysProvider.writeFile(vscode.Uri.parse('serialfs:/folder/Readme.txt'), Buffer.from('This is a readme file'), { create: true, overwrite: true });
+	// now read each file
+	serialFileSysProvider.readFile(vscode.Uri.parse('serialfs:/hello.txt')).then( (data:Uint8Array) => {
+		console.log('serialfs:/hello.txt = '+data.toString());
+	});
+	// read just using vscode uri
+	const fileUri=vscode.Uri.parse('serialfs:/hello.txt');
+	const helloContents=await vscode.workspace.fs.readFile(fileUri);
+	vscode.window.showInformationMessage('vscode workspace read serialfs:/hello.txt = '+fromBinaryArray(helloContents));
+	// and the other file
+	serialFileSysProvider.readFile(vscode.Uri.parse('serialfs:/folder/Readme.txt')).then( (data:Uint8Array) => {
+		console.log('serialfs:/folder/Readme.txt = '+data.toString());
+	});
+	const readmeUri=vscode.Uri.parse('serialfs:/folder/Readme.txt');
+	const readmeContents=await vscode.workspace.fs.readFile(readmeUri);
+	vscode.window.showInformationMessage('vscode workspace read serialfs:/folder/Readme.txt = '+fromBinaryArray(readmeContents));
+	*/
+	// // try reading from serial device
+	// const serialTestUri=vscode.Uri.parse('serialfs:/boot_out.txt');
+	// const serialBootContents=await vscode.workspace.fs.readFile(serialTestUri);
+	// vscode.window.showInformationMessage('vscode workspace read serialfs:/boot_out.txt = '+fromBinaryArray(serialBootContents));
+	// ##################
+	// ####TEST ONLY - END###
+	// ##################
+
 
 	// listen to the workspace change event to see if button should be shown 
 	//	** this is probably not needed since "normal" workspace changes will re-trigger activate
@@ -2251,7 +2367,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const _curDrive=curDriveSetting;
 		if(_curDrive){
 			let baseUri=_curDrive;	
-			if (os.platform()==='win32') {
+			if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 				baseUri='file:'+baseUri;
 			}
 			const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
@@ -2289,6 +2405,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			tooltip:strgs.helpTooltipMap.get(strgs.helpDriveMapping),
 			commandName:'help'
 		};
+		// **#153 - add serial port drive connect button
+		const serialPortButton:cmdQuickInputButton={
+			iconPath:iconSerialPort,
+			tooltip:'Connect to Serial Port',
+			commandName:'serialportconnect'
+		};
+
 		// TBD- get drivelist, but for now fake it
 		/*
 		let picks: drivePick[]= [
@@ -2333,7 +2456,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.log(drv.mountpoints[0].path, 'isUsb? ',drv.isUSB);
 				let drvPath:string=drv.mountpoints[0].path;
 				//if windows remove backslashes
-				if(os.platform()==='win32') {
+				if(os.platform()==='win32' && !drvPath.startsWith(strgs.serialfsScheme)) {
 					drvPath=drvPath.replace(/\\/g,'');
 				}
 				let detectedPath:string='';
@@ -2353,7 +2476,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						//not detected yet, see if boot_out.txt at path
 						//need to add file scheme in windows
 						let baseUri=drvPath;
-						if (os.platform()==='win32') {
+						if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 							baseUri='file:'+baseUri;
 						}
 						//**replace glob find files with dir read for performance
@@ -2422,7 +2545,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		// picks.unshift(mappedDrive);
 		//see if the curDrive is not included in the detected ones, if not add it, ONLY if not blank
 		// also include not usb paths if any
-		if(curDrive!=='' && !(detectedPaths.includes(curDrive) || detectedPathsNotUsb.includes(curDrive))) {
+		if(curDrive!=='' && !(detectedPaths.includes(curDrive) || detectedPathsNotUsb.includes(curDrive)) && curDrive!== strgs.serialfsRoot) {
 			picks.unshift(
 				{
 					path: curDrive,
@@ -2439,6 +2562,33 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			});
 		}
+		// ####TEST#### 
+		// add serialfs: if port connected
+		const activePort=serialInterface.getActiveSerialPort();
+		if(activePort){
+			const connectedSerialPort=strgs.serialDriveConnectTag;
+			// if current drive is serial, add to top with current flag
+			if(curDrive===strgs.serialfsRoot){
+				picks.unshift(
+					{
+						path: strgs.serialfsRoot,
+						label:strgs.serialfsRoot,
+						description: activePort.friendlyName+'   (Current)',
+						detail: `           $(debug-disconnect) ${connectedSerialPort}`
+					}
+				);
+			} else {
+			picks.push(
+					{
+						path: strgs.serialfsRoot,
+						label: strgs.serialfsRoot,
+						description: activePort.friendlyName,
+						detail: `           $(debug-disconnect) ${connectedSerialPort}`
+					}
+				);
+			}
+		}
+
 		// const result=await vscode.window.showQuickPick(['/media','/etc','Pick Manually'],{
 		// 	placeHolder:'Pick detected drive or select manually',
 		// 	title: 'CP Drive Select'
@@ -2450,7 +2600,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				items:picks,
 				title:strgs.cpDrvSel,
 				placeholder:strgs.pickDrvOrManual,
-				buttons:[helpButton],
+				buttons:[helpButton,serialPortButton],
 				shouldResume: shouldResume
 			}
 		);
@@ -2462,7 +2612,18 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(resultWbutton.commandName==='help'){
 				// ** #72, open the help page
 				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpDriveMapping);
-				return;	
+				return;
+			} else if(resultWbutton.commandName==='serialportconnect'){
+				// ** #153, call the serial port connect command, wait for it, then re-start this command if not serialfs
+				await vscode.commands.executeCommand(strgs.cmdConnectSerialPortPKG);
+				//if after connect the curDriveSetting is serialfsRoot, just return
+				const curDriveAfterConnect=getCurrentDriveConfig();
+				if(curDriveAfterConnect===strgs.serialfsRoot){
+					return;
+				}
+				//else restart the open dir command
+				vscode.commands.executeCommand(openDirId);
+				return;
 			}
 		}
 		if(resultWbutton && !isCmdQuickInputButton(resultWbutton)){
@@ -2476,6 +2637,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** at this point may have changes so go ahead and refresh the drive list
 		await refreshDrives();
 		// **
+		// ** if serial connection, do a soft restart on the board
+		if(result.path===strgs.serialfsRoot){
+			await serialInterface.softReset();
+		}
 		//if got path selection (that is, not manual select) but no change, just get out
 		//NO, issue #2, update button anyway in case contents changed
 		if(result.path!=='' && result.path===curDrive) {
@@ -2485,6 +2650,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		//otherwise if selected detected drive, just update config, else open file dialog
+		// note that if drive set to serialfs the config change watcher will set context key
 		if(result.path!=='') {
 			vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,result.path);
 			//set the status bar text to active and save setting locally
@@ -2493,8 +2659,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			updateStatusBarItems();
 		} else {
 			let baseUri=curDrive;
-			if (os.platform()==='win32') {
+			if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 				baseUri='file:'+baseUri+'//';
+			}
+			// ** #148 - if curDrive is serialfs:/ set to file system root
+			if(curDrive===strgs.serialfsRoot){
+				baseUri=os.platform()==='win32' ? 'file:/' : 'file:///';
 			}
 			const opts: vscode.OpenDialogOptions={
 				canSelectFiles:false,
@@ -2510,7 +2680,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				curDriveSetting=dirs[0].fsPath;
 				//if windows upper case and remove backslashes
 				//UNLESS it has path after drive letter, then change \\ to //
-				if(os.platform()==='win32') {
+				if(os.platform()==='win32' && !curDriveSetting.startsWith(strgs.serialfsScheme)) {
 					curDriveSetting=curDriveSetting.replace(/\\/g,'/');
 					if(curDriveSetting.endsWith('/')) {
 						curDriveSetting=curDriveSetting.toUpperCase().replace(/\//g,'');
@@ -2600,7 +2770,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		//now try to read the mapped drive directory
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
-		if (os.platform()==='win32') {
+		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 			baseUri='file:'+baseUri;
 		}
 		//**replace glob find files with dir read for performance
@@ -3262,6 +3432,152 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(addNewTemplateLinkCmd);
 	
+	//** Connect to board serial port for file operations
+	const connectToBoardSerialId=strgs.cmdConnectSerialPortPKG;
+	const connectToBoardSerialCmd=vscode.commands.registerCommand(connectToBoardSerialId, async () =>{
+		// if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+		// get the port list and show quick pick
+		let portList:serialInterface.serialPortInfo[]=[];
+		try {
+			portList=await serialInterface.listSerialPorts();
+		} catch (error) {
+			vscode.window.showErrorMessage(strgs.errorListingSerialPorts(error));
+			return;
+		}
+		if(portList.length===0) {
+			vscode.window.showInformationMessage(strgs.noSerialPorts);
+			return;
+		}
+		// ** #153- get active port and show in quick pick
+		const activePort=serialInterface.getActiveSerialPort();
+		//vscode.window.showInformationMessage("serial ports: "+portList.join(', '));
+		const picks: vscode.QuickPickItem[] = portList.map((port) => ({
+			label: port.portName,
+			description: port.friendlyName + (activePort && port.portName===activePort.portName ? ` ${strgs.serialPortActiveSuffix}` : ''),
+			
+		}));
+		const choice = await vscode.window.showQuickPick(picks, {
+			title: strgs.selectSerialPortQPTitle,
+			placeHolder: strgs.selectSerialPortQPPlaceholder,
+			canPickMany: false
+		});
+		if (!choice) {
+			// User cancelled the quick pick
+			return;
+		}
+		// User made a selection, attempt to open the port
+		const selectedPort = portList.find(port => port.portName === choice.label);
+		if (!selectedPort) {
+			vscode.window.showErrorMessage(strgs.selectedSerialPortNotFound(choice.label));
+			return;
+		}
+		// ** if port already active, just notify and return
+		if(activePort && selectedPort.portName===activePort.portName){
+			vscode.window.showInformationMessage(strgs.serialPortAlreadyConnected(selectedPort.portName));
+			return;
+		}
+		// ** if another port active, disconnect it first, but leave any drive mapping
+		if(activePort){
+			await serialInterface.disconnectSerialPortAsync();
+			//vscode.window.showInformationMessage(`Disconnected from serial port ${activePort.portName}`);
+		}
+		try {
+			serialInterface.connectToSerialPort(selectedPort);
+			//vscode.window.showInformationMessage(`Connected to ${selectedPort.portName}`);
+			// set context key for enablement, just port, not necessarily drive mapped
+			vscode.commands.executeCommand('setContext',strgs.serialConnContextKeyPKG,true);
+			// ** if current drive is serialfs refresh board explorer and toolbar buttons
+			if(curDriveSetting===strgs.serialfsRoot){
+				updateStatusBarItems();	
+				bfe.boardFileProvider.refresh(curDriveSetting);
+			}
+			/*
+			// #####TEST#####
+			// test uri's
+			const serialTestUri=vscode.Uri.parse('serialfs:/boot_out.txt');
+			const serialWriteUri1=vscode.Uri.parse('serialfs:/testFile1.txt');
+			const serialWriteUri2=vscode.Uri.parse('serialfs:/testFile2.txt');
+			// try reading from serial device
+			const serialBootContents=await vscode.workspace.fs.readFile(serialWriteUri1);
+			vscode.window.showInformationMessage('vscode workspace read serialfs:/testFile1.txt = '+fromBinaryArray(serialBootContents));
+			// now try writing
+			const serialWriteContent='// this is another test write from vscode workspace to serialfs\n';
+			await vscode.workspace.fs.writeFile(serialWriteUri2,toBinaryArray(serialWriteContent));
+			vscode.window.showInformationMessage('wrote to serialfs:/testFile2.txt');
+			// add new folder
+			const serialNewDirUri=vscode.Uri.parse('serialfs:/newFolder');
+			await vscode.workspace.fs.createDirectory(serialNewDirUri);
+			vscode.window.showInformationMessage('created directory serialfs:/newFolder');
+			// write a file in the new folder
+			const serialNewDirFileUri=vscode.Uri.parse('serialfs:/newFolder/newFile.txt');
+			const serialNewDirFileContent='// this is a test write from vscode workspace to serialfs new folder\n';
+			await vscode.workspace.fs.writeFile(serialNewDirFileUri,toBinaryArray(serialNewDirFileContent));
+			vscode.window.showInformationMessage('wrote to serialfs:/newFolder/newFile.txt');
+			// delete testfile1
+			await vscode.workspace.fs.delete(serialWriteUri1);
+			vscode.window.showInformationMessage('deleted serialfs:/testFile1.txt');
+			// rename testfile2 to testfile1
+			await vscode.workspace.fs.rename(serialWriteUri2,serialWriteUri1);
+			vscode.window.showInformationMessage('renamed serialfs:/testFile2.txt to serialfs:/testFile1.txt');
+			// and read the final directory
+			const serialDir=vscode.Uri.parse('serialfs:/');
+			const serialDirContents=await vscode.workspace.fs.readDirectory(serialDir);
+			vscode.window.showInformationMessage('serialfs:/ directory contents: '+serialDirContents.map(entry => entry[0]).join(', '));
+			// #####TEST#####
+			*/
+		} catch (error) {
+			vscode.window.showErrorMessage(strgs.errorConnectingSerialPort(selectedPort.portName,error));
+			// make sure context key is false
+			vscode.commands.executeCommand('setContext',strgs.serialConnContextKeyPKG,false);
+		}
+	});
+	context.subscriptions.push(connectToBoardSerialCmd);
+
+
+	// ** command to disconnect serial port
+	const disconnectFromBoardSerialId=strgs.cmdDisconnectSerialPortPKG;
+	const disconnectFromBoardSerialCmd=vscode.commands.registerCommand(disconnectFromBoardSerialId, async () =>{
+		// if no workspace do nothing but notify
+		if(!haveCurrentWorkspace) {
+			vscode.window.showInformationMessage(strgs.mustHaveWkspce);
+			return;
+		}
+			// always set context key for enablement false so can turn on menus
+			vscode.commands.executeCommand('setContext',strgs.serialConnContextKeyPKG,false);
+		try {
+			// ** if current drive is serialfs, blank it out in config; event handler will update board explorer
+			if(curDriveSetting===strgs.serialfsRoot){
+				await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,'');
+				// ** this also turns off context key for serial drive map
+				vscode.commands.executeCommand('setContext',strgs.serialDriveConnContextKeyPKG,false);
+
+			}
+			serialInterface.disconnectSerialPort();
+			//vscode.window.showInformationMessage(`Disconnected from serial port`);
+		} catch (error) {
+			vscode.window.showErrorMessage(strgs.errorDisconnectingSerialPort(error));
+		}
+	});
+	context.subscriptions.push(disconnectFromBoardSerialCmd);
+
+	// ** if the starting drive map was serial, ask if want to connect a port 
+	//  and map the drive back to serial
+	if(startingDriveWasSerialfs) {
+		const ans=await vscode.window.showInformationMessage(strgs.askDriveMapppedSerialConnectPort,{modal:true},'Yes','No, leave drive unmapped');
+		if(ans==='Yes'){
+			await vscode.commands.executeCommand(connectToBoardSerialId);
+			// see if connected a port
+			const activePort=serialInterface.getActiveSerialPort();
+			if(activePort){
+				vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confDrivepathPKG}`,strgs.serialfsRoot);
+			}
+		}
+	}
+
 	// ** diff file **
 	const cmdFileDiffId =strgs.cmdFileDiffPKG;
 	//const fileDiffCmd=vscode.commands.registerCommand(cmdFileDiffId, async (...args) =>{
@@ -3311,40 +3627,110 @@ export async function activate(context: vscode.ExtensionContext) {
 		//now try to find file on board mapping
 		//need to add file scheme in windows
 		let baseUri=curDriveSetting;
-		if (_os.platform()==='win32') {
+		if (_os.platform()==='win32' && !baseUri.startsWith(_strgs.serialfsScheme)) {
 			baseUri='file:'+baseUri;
 		}
 		//now do rel pattern against the board
-		const relPat=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri),leftFile);
-		let fles;
-		try{
-		fles=await _vscode.workspace.findFiles(relPat);
-		} catch(error){
-			const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
-			await _vscode.window.showErrorMessage(errMsg);
-			return;
+		// ** take out use of relative pattern for serialfs since it doesn't work
+		let fles: vscode.Uri[] = [];
+		if (baseUri.startsWith(_strgs.serialfsSchemeName)) {
+			try {
+				const boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), leftFile);
+				const stat = await _vscode.workspace.fs.stat(boardFileUri);
+				if (stat) {
+					fles.push(boardFileUri);
+				}
+			} catch (error) {
+				// if file not found continue on, else error out
+				if ((error as vscode.FileSystemError).code !== 'FileNotFound') {
+					const errMsg = _strgs.couldNotReadCpDnld[0] + curDriveSetting + _strgs.couldNotReadCpDnld[1];
+					await _vscode.window.showErrorMessage(errMsg);
+					return;
+				}
+			}
+		} else {
+			try {
+				const relPat = new _vscode.RelativePattern(_vscode.Uri.parse(baseUri), leftFile);
+				fles = await _vscode.workspace.findFiles(relPat);
+			} catch (error) {
+				const errMsg = _strgs.couldNotReadCpDnld[0] + curDriveSetting + _strgs.couldNotReadCpDnld[1];
+				await _vscode.window.showErrorMessage(errMsg);
+				return;
+			}
 		}
 		if(!fles || fles.length===0){
 			// ** #112, check to see if file being compared (leftFile) is src in cpfiles and it is being mapped
 			let cpFileLines=await parseCpfiles();
 			if(cpFileLines && cpFileLines.length>0){
-				cpFileLines=cpFileLines.filter(line => !line.inLib && line.src===leftFile && line.dest!=='');
+				// ** need a normalized version with / vs \ to compare to cpfile src entries
+				const normLeftFile=leftFile.replace(/\\/g,'/');
+				cpFileLines=cpFileLines.filter(line => !line.inLib && line.src===normLeftFile && line.dest!=='');
+				//_vscode.window.showInformationMessage("looking for line.src: "+normLeftFile+" in cpfiles, found: "+cpFileLines.length);
 				if(cpFileLines.length>0){
-					//check if file exists on board and if so set the right compare fles[0]
-					const relPatMap=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri),cpFileLines[0].dest);
-					try {
-						fles=await _vscode.workspace.findFiles(relPatMap);
-					} catch(error){
-						const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
-						await _vscode.window.showErrorMessage(errMsg);
-						return;
+					// #149 - need to get src file path to pre-pend to dest like copy
+					const parsedPath=parseCpFilePath(cpFileLines[0]);	// we know this has src because it matched above
+					// ** and it exists because context launched command!!
+					// ** don't use rel pat on serial board, doesn't work
+					// save the dest path to show in compare title and notice if mapped
+					let destPathStr=cpFileLines[0].dest;
+					if (baseUri.startsWith(_strgs.serialfsSchemeName)) {
+						// use same path as copy command for dest
+						//const boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), cpFileLines[0].dest);
+						// ** #151 - if dest has leading /, don't use src folder, just start at board root
+						let boardFileUri:vscode.Uri;
+						if (cpFileLines[0].dest.startsWith('/')) {
+							boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), cpFileLines[0].dest==='/' ? parsedPath.fileName : cpFileLines[0].dest);
+							destPathStr = boardFileUri.path;
+						} else {
+							boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), parsedPath.path, cpFileLines[0].dest === '' ? parsedPath.fileName : cpFileLines[0].dest);
+							destPathStr = boardFileUri.path;
+						}
+						try {
+							const stat = await _vscode.workspace.fs.stat(boardFileUri);
+							if (stat) {
+								fles.push(boardFileUri);
+							}
+						} catch (error) {
+							// if file not found continue on, else error out
+							if ((error as vscode.FileSystemError).code !== 'FileNotFound') {
+								const errMsg = _strgs.couldNotReadCpDnld[0] + curDriveSetting + _strgs.couldNotReadCpDnld[1];
+								await _vscode.window.showErrorMessage(errMsg);
+								return;
+							} else {
+								_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
+								return;
+							}
+						}
+					} else {
+						//check if file exists on board and if so set the right compare fles[0]
+						// need to change to use same path pattern as copy
+						// ** #151 - if dest has leading /, don't use src folder, just start at board root
+						let relPath:vscode.Uri;
+						if (cpFileLines[0].dest.startsWith('/')) {
+							relPath = _vscode.Uri.joinPath(_vscode.Uri.parse('/'), cpFileLines[0].dest==='/' ? parsedPath.fileName : cpFileLines[0].dest);
+							destPathStr = relPath.path;
+						} else {
+							relPath = _vscode.Uri.joinPath(_vscode.Uri.parse('/'), parsedPath.path, cpFileLines[0].dest === '' ? parsedPath.fileName : cpFileLines[0].dest);
+							destPathStr = relPath.path;
+						}
+						// ** this was a hack to keep from having to spin up node path library, but need to
+						//  get rid of leading /
+						const relPathStr=relPath.path.startsWith('/') ? relPath.path.slice(1) : relPath.path;
+						const relPatMap=new _vscode.RelativePattern(_vscode.Uri.parse(baseUri), relPathStr);
+						try {
+							fles=await _vscode.workspace.findFiles(relPatMap);
+						} catch(error){
+							const errMsg=_strgs.couldNotReadCpDnld[0]+curDriveSetting+_strgs.couldNotReadCpDnld[1];
+							await _vscode.window.showErrorMessage(errMsg);
+							return;
+						}
 					}
 					if(fles && fles.length>0){
-						const ans=await _vscode.window.showWarningMessage(_strgs.diffBoardFileNoExistMapped[0]+cpFileLines[0].dest+_strgs.diffBoardFileNoExistMapped[1],'Yes','No');
+						const ans=await _vscode.window.showWarningMessage(_strgs.diffBoardFileNoExistMapped[0]+destPathStr+_strgs.diffBoardFileNoExistMapped[1],'Yes','No');
 						if(ans!=='Yes'){
 							return;
 						}
-						leftFile=leftFile+'<>'+cpFileLines[0].dest;	// just for title of compare window
+						leftFile=leftFile+'<>'+destPathStr;	// just for title of compare window
 					} else { 
 						_vscode.window.showErrorMessage(_strgs.diffBoardFileNoExist);
 						return;
@@ -3401,6 +3787,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		//see if the drivepath changed
 		if (event.affectsConfiguration(`circuitpythonsync.${strgs.confDrivepathPKG}`)) {
 			const curDrive=getCurrentDriveConfig();
+			// ** if new config is not serialfs, reset context key, else set it
+			if(curDrive !== strgs.serialfsRoot) {
+				vscode.commands.executeCommand('setContext',strgs.serialDriveConnContextKeyPKG,false);
+			} else {
+				vscode.commands.executeCommand('setContext',strgs.serialDriveConnContextKeyPKG,true);
+			}
 			if (curDriveSetting!==curDrive) {
 				curDriveSetting=curDrive;
 				updateStatusBarItems();
@@ -3654,6 +4046,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const relFilesPath=new vscode.RelativePattern(vscode.workspace.workspaceFolders[0],'*.*');
 		const pyFileWatcher=vscode.workspace.createFileSystemWatcher(relFilesPath);
 		const pyWatchCreate=pyFileWatcher.onDidCreate(async (uri) => {
+			//return;
 			//vscode.window.showInformationMessage("got py create: "+uri.fsPath);
 			let cpFileLines=await parseCpfiles();
 			// ** #22, also use default py files if not included in cpFileLines
