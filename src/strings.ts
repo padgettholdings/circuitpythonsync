@@ -29,6 +29,11 @@ export const confCurlibPKG:string ='curlibtag';
 export const confCPbaseverPKG:string ='cpbaseversion';
 export const confCPfullverPKG:string ='cpfullversion';
 export const confBoardNamePKG:string ='cpboardname';
+// serial port baudrate setting
+export const confSerialBaudRatePKG:string ='serialPortBaudRate';
+// board file download size limit setting
+export const confBoardFileDownloadSizeLimitPKG:string ='boardFileDownloadSizeLimit';
+//
 // the python/pylance setting for extra paths, DO NOT prefix with 'circuitpythonsync.'
 // **NOT currently in package.json, but can be added if needed**
 export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
@@ -432,6 +437,7 @@ export const welcomeHelpAskMsg:string='Would you like to see the help file?';
 export const welcomeHelpAskDetail:string='You can always run the Welcome command or click the help button in command title bars to get help';
 // these are the keys which match the anchor links in the help file
 export const helpBoardSupport:string='board-support';
+export const helpBoardExplorer:string='board-explorer';
 export const helpLibsCopySupport:string='libs-copy-support';
 export const helpFilesCopySupport:string='files-copy-support';
 export const helpDriveMapping:string='cp-drive-mapping';
@@ -440,6 +446,7 @@ export const helpProjectTemplateSupport:string='project-template-support';
 export const helpLibrarySupport:string='library-support';
 export const helpProjectBundleSupport:string='project-bundle-support';
 export const helpUploadingUf2:string='uploading-uf2';
+export const helpSerialPortConnect:string='serial-port-support';
 // do tooltips as a map from anchor keys
 export const helpTooltipMap:Map<string,string>=new Map([
     [helpBoardSupport,'Help with Boards'],
@@ -451,4 +458,68 @@ export const helpTooltipMap:Map<string,string>=new Map([
     [helpLibrarySupport,'Help with Libraries'],
     [helpProjectBundleSupport,'Help with Project Bundle'],
     [helpUploadingUf2,'Help with Uploading UF2'],
+    [helpSerialPortConnect,'Help with Serial Port Connect'],
 ]);
+
+// ** V2 related
+export const serialfsSchemeName:string='serialfs';
+export const serialfsScheme:string='serialfs:';
+export const serialfsRoot:string='serialfs:/';
+// boardFileExplorer
+export const foldersDeleteExcludes:string[]=['lib','Lib','System Volume Information','sd','.fseventsd'];
+export const boardFileExplorerFolderMustBeEmpty:string='Folder must be empty to delete.';
+export const boardFileExplorerErrorDeletingFolder:string='Error in deleting folder: ';  //+fse.message
+export const boardFileExplorerDnldTooBig=(arg1:number,arg2:number) => "File is too big at "+arg1+' bytes, limit is '+arg2+' bytes';
+export const boardFileExplorerErrorDownloadingFile:string='Error in downloading file: ';  //+fse.message;
+export const boardFileExplorerFileSizeFmtdMessage=(arg1:string,arg2:number,arg3:number) => '"' + arg1 + '" Size: '+(arg2>9999 ? (arg2/1000).toFixed(1)+' KB' : arg2+' bytes')+', last modified: '+new Date(arg3).toLocaleString();
+export const boardFileExplorerErrorFileStat:string="Error in getting board file status: ";  //+fse.message
+// drivelist
+export let driveExclusions: [os:string,drvname:string][] = [
+    ['linux','[SWAP]']
+];
+// extension
+// context keys that may be in pkg.json for enablement
+export const serialConnContextKeyPKG:string='circuitpythonsync.serialconnected';
+export const serialDriveConnContextKeyPKG:string='circuitpythonsync.serialdriveconnected';
+export const serialDriveConnectTag:string='Connected Serial Port';
+export const cmdConnectSerialPortPKG:string="circuitpythonsync.connectserialport";
+export const noSerialPorts:string='No Serial Ports Available';
+export const errorListingSerialPorts=(err:unknown) => `Error listing serial ports: ${err}`;
+export const selectSerialPortQPTitle:string='Serial Ports';
+export const selectSerialPortQPPlaceholder:string='Select a serial port to connect';
+export const selectedSerialPortNotFound=(arg1:string) => `Selected port not found: ${arg1}`;
+export const errorConnectingSerialPort=(arg1:string,err:unknown) => `Error connecting to ${arg1}: ${err}`;
+export const cmdDisconnectSerialPortPKG:string="circuitpythonsync.disconnectserialport";
+export const errorDisconnectingSerialPort=(err:unknown) => `Error disconnecting from serial port: ${err}`;
+export const askDriveMapppedSerialConnectPort:string='Drive was mapped to serial port, connect a port?';
+export const serialPortConnectButtonTT:string='Connect to Serial Port';
+export const serialPortActiveSuffix:string=' (Active)';
+export const serialPortAlreadyConnected=(arg1:string) => `Serial port ${arg1} is already connected.`;
+//serial file provider
+export const errSerialFileProvWritingFile=(arg1:string,err:unknown) => `Error writing file ${arg1}: ${err}`;
+export const errSerialFileProvRenamingFile=(arg1:string,arg2:string,err:unknown) => `Error renaming file ${arg1} to ${arg2}: ${err}`;
+export const errSerialFileProvCreatingDir=(arg1:string,err:unknown) => `Error creating directory ${arg1}: ${err}`;
+export const errSerialFileProvDeletingFile=(arg1:string,err:unknown) => `Error deleting file ${arg1}: ${err}`;
+export const errSerialFileProvCopyingFile=(arg1:string,arg2:string,err:unknown) => `Error copying file ${arg1} to ${arg2}: ${err}`;
+// serial interface
+export const serialPortOpenedMessage=(arg1:string,arg2:number) => `Serial port ${arg1} opened at ${arg2} baud.`;
+export const errorSerialPortOpening=(err:unknown) => `Error opening serial port: ${err}`;
+export const serialPortClosedMessage=(arg1:string) => `Serial port ${arg1} closed.`;
+export const errorSerialPortClosing=(err:unknown) => `Error closing serial port: ${err}`;
+export const errorSerialStat=(arg1:string,err:unknown) => `Error in stat for ${arg1}: ${err}`;
+export const errorSerialReadDir=(arg1:string,err:unknown) => `Error reading directory ${arg1}: ${err}`;
+export const serialInterfaceTextFileExtensions:string[]=['.txt', '.py', '.md', '.json', '.toml'];
+export const errorSerialReadFile=(arg1:string,err:unknown) => `Error reading file ${arg1}: ${err}`;
+export const errorSerialWriteFile=(arg1:string,err:unknown) => `Error writing file ${arg1}: ${err}`;
+export const errorSerialDeleteFile=(arg1:string,err:unknown) => `Error deleting file ${arg1}: ${err}`;
+export const errorSerialCreateDir=(arg1:string,err:unknown) => `Error creating directory ${arg1}: ${err}`;
+export const errorSerialRenameFile=(arg1:string,arg2:string,err:unknown) => `Error renaming file ${arg1} to ${arg2}: ${err}`;
+export const serialInterfaceLargeFileSizeKB:number=50;
+export const serialInterfaceLargeFileSizeChunksKB:number=32;
+//serial terminal
+export const serialTerminalName:string="CP Sync Serial Monitor";
+export const cmdSerialTerminalOpenPKG:string='circuitpythonsync.opencpsyncterminal';
+export const serialTerminalGreeting:string='Circuit Python Sync Serial Monitor\r\n';
+export const serialTerminalProfileName:string="circuitpythonsync.terminal-profile";
+export const errorSerialTerminalCloseVSCodeMonitor=(err:string) => `Error closing serial port monitor: ${err}`;
+

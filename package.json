@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CircuitPython development.",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "publisher": "padgettholdings",
   "license": "MIT",
   "icon": "resources/circuitpythonsync-icon.png",
@@ -113,6 +113,22 @@
       {
         "command": "circuitpythonsync.uploaduf2",
         "title": "CP Upload UF2 Firmware",
+        "enablement": "!circuitpythonsync.serialdriveconnected",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.connectserialport",
+        "title": "CP Connect to Board Serial Port",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.disconnectserialport",
+        "title": "CP Disconnect from Board Serial Port",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.opencpsyncterminal",
+        "title": "CP Open CircuitPython Sync Terminal",
         "category": "CircuitPythonSync"
       },
       {
@@ -135,18 +151,24 @@
         "title": "Download File"
       },
       {
+        "command": "boardExplorer.filestat",
+        "title": "File Size"
+      },
+      {
         "command": "boardExplorer.openOS",
+        "enablement": "!circuitpythonsync.serialdriveconnected",
         "title": "Open In OS"
       },
       {
         "command": "boardExplorer.openOS-wsl",
+        "enablement": "!circuitpythonsync.serialdriveconnected",
         "title": "Open in OS"
       },
       {
         "command": "boardExplorer.openBoardOS",
         "title": "Board Open in OS",
         "category": "CircuitPythonSync",
-        "enablement": "config.circuitpythonsync.drivepath",
+        "enablement": "config.circuitpythonsync.drivepath && !circuitpythonsync.serialdriveconnected",
         "icon": "$(explorer-view-icon)"
       },
       {
@@ -170,6 +192,10 @@
           "when": "false"
         },
         {
+          "command": "boardExplorer.filestat",
+          "when": "false"
+        },
+        {
           "command": "boardExplorer.openOS",
           "when": "false"
         },
@@ -190,7 +216,7 @@
         },
         {
           "command": "circuitpythonsync.uploaduf2",
-          "when": "!explorerResourceIsFolder && resourceExtname=='.uf2'",
+          "when": "!explorerResourceIsFolder && resourceExtname=='.uf2' && !circuitpythonsync.serialdriveconnected",
           "group": "2_workspace"
         }
       ],
@@ -214,10 +240,14 @@
       "view/item/context": [
         {
           "command": "boardExplorer.delete",
-          "when": "view == boardExplorer && (viewItem == file)"
+          "when": "view == boardExplorer && (viewItem == file || viewItem == folder)"
         },
         {
           "command": "boardExplorer.filednld",
+          "when": "view == boardExplorer && (viewItem == file)"
+        },
+        {
+          "command": "boardExplorer.filestat",
           "when": "view == boardExplorer && (viewItem == file)"
         },
         {
@@ -302,20 +332,41 @@
           "type": "boolean",
           "default": false,
           "description": "Do not show the welcome help message again." 
+        },
+        "circuitpythonsync.serialPortBaudRate": {
+          "type": "number",
+          "default": 115200,
+          "description": "Baud rate for serial port - MUST MATCH BOARD."
+        },
+        "circuitpythonsync.boardFileDownloadSizeLimit": {
+          "type": "number",
+          "default": 25000,
+          "description": "Maximum file size in bytes for downloading from board."
         }
       }
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "title": "CP Sync Terminal",
+          "id": "circuitpythonsync.terminal-profile",
+          "icon": "$(plug)",
+          "displayName": "CP Sync Terminal"
+        }
+      ]
     }
   },
   "extensionDependencies": [
       "ms-python.python",
       "ms-vscode.vscode-serial-monitor"
   ],
-    "scripts": {
-		"vscode:prepublish": "webpack --mode production",
-		"webpack": "webpack --mode development",
-		"webpack-dev": "webpack --mode development --watch",
-		"test-compile": "tsc -p ./",
-		"lint": "eslint"
+  "scripts": {
+    "vscode:prepublish": "webpack --mode production && npm run nativemodules",
+    "nativemodules": "node ./nativemodules/install-native && node ./nativemodules/update-vscodeignore.js",
+    "webpack": "webpack --mode development",
+    "webpack-dev": "webpack --mode development --watch",
+    "test-compile": "tsc -p ./",
+    "lint": "eslint"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.9",
@@ -337,9 +388,12 @@
 		"webpack-cli": "^5.0.1"
   },
   "dependencies": {
+    "@microsoft/vscode-serial-monitor-api": "^0.1.7",
+    "async-mutex": "^0.5.0",
     "axios": "^1.7.9",
     "fuse.js": "^7.1.0",
     "htmlparser2": "^10.0.0",
+    "serialport": "^13.0.0",
     "systeminformation": "^5.25.11",
     "tar": "^7.4.3",
     "zip-lib": "^1.0.5"

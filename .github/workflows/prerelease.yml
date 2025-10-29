@@ -1,0 +1,52 @@
+name: Create Pre Release
+
+on:
+  push:
+    tags:
+      - p** # Push events to matching p*, i.e. v1.0, v20.15.10
+permissions:
+  contents: write
+  
+jobs:
+    release:
+      name: Release
+      runs-on: ubuntu-latest
+      steps:
+        - name: Create Release
+          id: create_release
+          env:
+              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              tag: ${{ github.ref_name }}
+          run: |
+            gh release create "${{ env.tag }}" \
+                --repo="${{ github.repository }}" \
+                --title="${{ env.tag }}" \
+                --generate-notes
+
+    builds:
+        needs: release
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v3
+          - uses: actions/setup-node@v4
+            with:
+              node-version: '20.x'
+              cache: "npm"
+          - uses: actions/setup-python@v5
+            with:
+              python-version: "3.11"
+          - run: npm i -g npm@latest
+          - run: npm --version
+          - run: npm install
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          - name: Build Package
+            run: npx vsce package --pre-release
+          - name: Upload Release Asset
+            env:
+              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              tag: ${{ github.ref_name }}
+            # NOTE that on windows=>powershell, \ is not valid line ending so don't make it multiline
+            run: |
+              gh release upload "${{ env.tag }}" --repo="${{ github.repository }}" --clobber $(ls *.vsix)
+

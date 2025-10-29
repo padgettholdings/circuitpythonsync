@@ -7,6 +7,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as si from 'systeminformation';
+import * as strgs from './strings';
 
 // Need a cache of detected drives managed by the DriveList module
 let detectedDrives: detectedDrive[] = [];
@@ -32,6 +33,12 @@ export interface Drive {
 	isUSB: boolean | null;
 	mountpoints: Mountpoint[];
 }
+
+// ** excluded fake system drives by os and name
+let driveExclusions=strgs.driveExclusions;
+// let driveExclusions: [os:string,drvname:string][] = [
+//     ['linux','[SWAP]']
+// ];
 
 async function getDiskInfo(): Promise<si.Systeminformation.BlockDevicesData[]> {
     let retval: si.Systeminformation.BlockDevicesData[] = [];
@@ -168,6 +175,12 @@ export async function list():Promise<Drive[]>{
     }
     // now copy the detected drives to the retval array
     for (const drv of detectedDrives) {
+        // ** #148, check exclusions by os
+        const exclusion = driveExclusions.find(excl => excl[0] === os.platform() && excl[1] === drv.drvPath);
+        if(exclusion){
+            // skip this drive
+            continue;
+        }
         const drive: Drive = {
             description: drv.drvPath,
             device: drv.drvPath,
