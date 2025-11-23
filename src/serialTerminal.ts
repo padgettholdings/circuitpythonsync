@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SerialMonitorApi, Version, getSerialMonitorApi } from '@microsoft/vscode-serial-monitor-api';
+//import { SerialMonitorApi, Version, getSerialMonitorApi } from '@microsoft/vscode-serial-monitor-api';
 import { SerialPort } from 'serialport';
 import * as serialInterface from './serialInterface';
 import * as strgs from './strings';
@@ -9,7 +9,7 @@ const terminalName = strgs.serialTerminalName;
 
 export class SerialTerminal {
     private _context: vscode.ExtensionContext;
-    private serMonApi: SerialMonitorApi | undefined = undefined;
+    //private serMonApi: SerialMonitorApi | undefined = undefined;
     //private serialPortList: serialInterface.serialPortInfo[] = [];
     private activeSerialPort: serialInterface.serialPortInfo | undefined = undefined;
     private port: SerialPort | undefined = undefined;
@@ -28,6 +28,11 @@ export class SerialTerminal {
         // command to open the CP sync terminal
         const openTerminalCmdId = strgs.cmdSerialTerminalOpenPKG;
         const openCPSyncTerminalCommand = vscode.commands.registerCommand(openTerminalCmdId, async () => {
+            // ** #157 - check if serial port disabled in config
+            if (this.isSerialPortDisabledInConfig()) {
+                vscode.window.showWarningMessage(strgs.serialTerminalSerialDisabledWarning);
+                return;
+            }
             if (this.activeTerminalCount()===0) {
                 this.spinUpTerminal();
                 this.updateTerminalActive(false);
@@ -36,7 +41,8 @@ export class SerialTerminal {
             }
         });
         context.subscriptions.push(openCPSyncTerminalCommand);
-
+        // ** #157 - register terminal profile to avoid error but still condition on config
+        this.registerToOpenTerminalFromProfile();
     }
 
     // ** public functions **
@@ -48,7 +54,7 @@ export class SerialTerminal {
         let pty: vscode.Pseudoterminal = {
             onDidWrite: this.termWriteEmitter.event,
             open: () => {
-                this.termWriteEmitter.fire(strgs.serialTerminalGreeting);
+                this.termWriteEmitter.fire(this.getTerminalGreeting());
             },
             close: () => {
                 // make same as term profile even though should not be opened if another is visible
@@ -98,12 +104,18 @@ export class SerialTerminal {
                             onDidWrite: this.termWriteEmitter.event,
                             onDidClose: this.termCloseEmitter.event,
                             open: () => {
+                                // check serial port config
+                                if(this.isSerialPortDisabledInConfig()){
+                                    vscode.window.showWarningMessage(strgs.serialTerminalSerialDisabledWarning);
+                                    this.termCloseEmitter.fire();
+                                    return;
+                                }
                                 // find all terminals with this name
                                 //const terminals = vscode.window.terminals.filter(term => term.name === 'CP Sync Serial Monitor');
                                 if (this.activeTerminalCount() > 1) {
                                     this.termCloseEmitter.fire();
                                 } else {
-                                    this.termWriteEmitter.fire(strgs.serialTerminalGreeting);
+                                    this.termWriteEmitter.fire(this.getTerminalGreeting());
                                 }
                                 //terminalVisible = true;
                             },
@@ -151,6 +163,8 @@ export class SerialTerminal {
         }
     }
 
+    // *** DEPRECATED
+    /*
     public async closeVscodeSerMon(activeSerialPort: serialInterface.serialPortInfo): Promise<void> {
         this.serMonApi = await getSerialMonitorApi(Version.latest, this._context);
         if (this.serMonApi && activeSerialPort) {
@@ -163,6 +177,7 @@ export class SerialTerminal {
 
         }
     }
+    */
 
     // ** private functions **
 
@@ -188,6 +203,21 @@ export class SerialTerminal {
         }
     }
 
+    // ** #157 - get serial port disablement config
+    private isSerialPortDisabledInConfig(): boolean {
+        const config = vscode.workspace.getConfiguration('circuitpythonsync');
+        const serialPortDisabled = config.get<boolean>(strgs.configDisableSerialPortKeyPKG, false);
+        return serialPortDisabled;
+    }
+
+    // ** #157 - modify terminal greeting based on port active
+    private getTerminalGreeting(): string { {
+        let greeting = strgs.serialTerminalGreeting;
+        if (!serialInterface.getActiveSerialPort()) {  
+            greeting = strgs.serialTerminalGreetingNoPort;
+        }
+        return greeting;
+    } }
 
     // utility to get message from error
     private getErrorMessage(error: any): string {

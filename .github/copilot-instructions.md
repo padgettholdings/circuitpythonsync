@@ -43,7 +43,7 @@ Always reference these instructions first and fallback to search or bash command
 
 - **KNOWN WARNING**: `osx-temperature-sensor` dependency missing warning during webpack build - this is expected and non-critical
 - **KNOWN ISSUE**: `npm run test-compile` fails due to minizlib TypeScript definitions conflict - use webpack builds instead
-- **Extension Dependencies**: Requires `ms-python.python` and `ms-vscode.vscode-serial-monitor` extensions
+- **Extension Dependencies**: Requires `ms-python.python` extension
 - **External Dependencies**: systeminformation, axios, tar, zip-lib for core functionality
 
 ## Common Tasks

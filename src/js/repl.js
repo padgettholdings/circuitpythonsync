@@ -34,6 +34,14 @@ const modes = [
     "Pre-Prompt",
 ];
 
+// *** troubleshooting sequence issues ***
+const troubleShoot = false;
+function tconsole_log(msg,...params) {
+    if (troubleShoot) {
+        console.log(msg,...params);
+    }
+}
+
 // Class to use python code to get file information
 // We want to do stuff like writing files, reading files, and listing files
 export class FileOps {
@@ -337,7 +345,20 @@ class InputBuffer {
     getRemainingBuffer() {
         // Let the result contain a slice of the buffer from the pointer to the end
         let result = this._buffer.slice(this._pointer);
+        // ####TEST#### try leaving the ok at end
+        if(result.toLowerCase().endsWith("ok\r\n")){
+            this._pointer += result.length - 4;
+            tconsole_log('grb - ends with ok\\r\\n, new pointer:',this._pointer);
+        } else if (result.toLowerCase().endsWith("ok\n")){
+            this._pointer += result.length - 3;
+            tconsole_log('grb - ends with ok\\n, new pointer:',this._pointer);
+        } else if (result.toLowerCase().endsWith("ok")){
+            this._pointer += result.length - 2;
+            tconsole_log('grb - ends with ok, new pointer:',this._pointer);
+        } else {
         this._pointer += result.length;
+        }
+        // ####TEST####
         return result;
     }
 
@@ -554,14 +575,18 @@ export class REPL {
             // or we receive an error message
             let bytes = this._serialInputBuffer.getRemainingBuffer();
             this._rawByteCount += bytes.length;
-
+            tconsole_log('ccr - raw bytes cnt: ',this._rawByteCount);
             if (this._rawByteCount >= 2) {
+                tconsole_log('%cccr- bytes beginning: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
                 while (bytes.length > 0) {
                     if (this._checkpointCount == 0) {
                         if (bytes.slice(0, 2).match("OK")) {
+                            tconsole_log('ccr- ckptcnt 0, ok found');
                             this._checkpointCount++;
                             bytes = bytes.slice(2);
+                            tconsole_log('%cccr- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
                         } else if (bytes.slice(0, 2).match("ra")) {
+                            tconsole_log('ccr- ckptcnt 0, ra found -error');
                             if (DEBUG) {
                                 console.log("Unexpected bytes encountered. " + bytes);
                             }
@@ -571,19 +596,31 @@ export class REPL {
                             return;
                         }
                     } else {
+                        //tconsole_log('ccr- ckptcnt>0: ',this._checkpointCount);
                         if (bytes.slice(0, 1).match(CHAR_CTRL_D)) {
+                            tconsole_log('ccr- matched ctrl-d for chkptcnt:',this._checkpointCount);
                             this._checkpointCount++;
                             //console.log("Checkpoint Count: " + this._checkpointCount);
                         } else {
                             if (this._checkpointCount == 1) {
+                                // *** if have ok was a dup, get rid of it
+                                if (bytes.slice(0, 2).match("OK")) {
+                                    tconsole_log('ccr- **DUP ok found, removing** for ckptcnt=1');
+                                    bytes = bytes.slice(2);
+                                    tconsole_log('%cccr- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
+                                }
                                 // Code Output
                                 this._codeOutput += bytes.slice(0, 1);
+                                //tconsole_log('ccr- ckptcnt=1, new codeOutput: (len=',this._codeOutput.length,'):',this._codeOutput.length>25 ? this._codeOutput.slice(0,25)+'...' : this._codeOutput);
                                 //console.log("Code Output: " + bytes.slice(0,1));
                             } else if (this._checkpointCount == 2) {
                                 // Error Output
                                 this._errorOutput += bytes.slice(0, 1);
+                                tconsole_log('ccr- ckptcnt=2, new error output:',this._errorOutput);
                                 //console.log("Error: " + bytes.slice(0,1));
                             } else if (this._checkpointCount >= 2) {
+                                tconsole_log('ccr- ckptcnt done, ending running:',this._checkpointCount);
+                                tconsole_log('%cccr- final code output:','color:#0f0;','\r\n', this._codeOutput);
                                 // We're done
                                 this._pythonCodeRunning = false;
                             }
@@ -599,6 +636,7 @@ export class REPL {
 
         // In normal mode, we need to look for the prompt
         if (!!this._currentLineIsNormalPrompt()) {
+            tconsole_log('ccr- back at normal prompt, ending code running');
             if (DEBUG) {
                 console.log("REPL at Normal Mode prompt");
             }

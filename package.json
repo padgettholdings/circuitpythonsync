@@ -119,16 +119,19 @@
       {
         "command": "circuitpythonsync.connectserialport",
         "title": "CP Connect to Board Serial Port",
+        "enablement": "!config.circuitpythonsync.disableSerialPort",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.disconnectserialport",
         "title": "CP Disconnect from Board Serial Port",
+        "enablement": "!config.circuitpythonsync.disableSerialPort",
         "category": "CircuitPythonSync"
       },
       {
         "command": "circuitpythonsync.opencpsyncterminal",
         "title": "CP Open CircuitPython Sync Terminal",
+        "enablement": "!config.circuitpythonsync.disableSerialPort",
         "category": "CircuitPythonSync"
       },
       {
@@ -342,6 +345,11 @@
           "type": "number",
           "default": 25000,
           "description": "Maximum file size in bytes for downloading from board."
+        },
+        "circuitpythonsync.disableSerialPort": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable serial port functionality."
         }
       }
     },
@@ -357,8 +365,7 @@
     }
   },
   "extensionDependencies": [
-      "ms-python.python",
-      "ms-vscode.vscode-serial-monitor"
+    "ms-python.python"
   ],
   "scripts": {
     "vscode:prepublish": "webpack --mode production && npm run nativemodules",
@@ -388,7 +395,6 @@
 		"webpack-cli": "^5.0.1"
   },
   "dependencies": {
-    "@microsoft/vscode-serial-monitor-api": "^0.1.7",
     "async-mutex": "^0.5.0",
     "axios": "^1.7.9",
     "fuse.js": "^7.1.0",

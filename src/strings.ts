@@ -166,6 +166,8 @@ export const dnldCfgQpTitle:string='Choose Download Options';
 export const dnldCfgQpPlchld:string='Check for yes, uncheck for no';
 export const dnldWarnOverwrite:string='File/Folder exists and overwrite not configured, skipping: '; //+file copying
 export const dnldCopyError:string='Copy Error, aborting, error: ';  //+error.message
+export const dnldQPDownloadInProgress:string="Downloading...";
+export const dnldQPDnldProgressPlaceholder:string=">>> ESC to cancel download.";
 
 // project template related
 export const projTemplateNoLoad:string='** ERROR - could not load default cp project template.';
@@ -458,7 +460,7 @@ export const helpTooltipMap:Map<string,string>=new Map([
     [helpLibrarySupport,'Help with Libraries'],
     [helpProjectBundleSupport,'Help with Project Bundle'],
     [helpUploadingUf2,'Help with Uploading UF2'],
-    [helpSerialPortConnect,'Help with Serial Port Connect'],
+    [helpSerialPortConnect,'Help with Serial Port Support'],
 ]);
 
 // ** V2 related
@@ -481,6 +483,7 @@ export let driveExclusions: [os:string,drvname:string][] = [
 // context keys that may be in pkg.json for enablement
 export const serialConnContextKeyPKG:string='circuitpythonsync.serialconnected';
 export const serialDriveConnContextKeyPKG:string='circuitpythonsync.serialdriveconnected';
+export const configDisableSerialPortKeyPKG:string='disableSerialPort';
 export const serialDriveConnectTag:string='Connected Serial Port';
 export const cmdConnectSerialPortPKG:string="circuitpythonsync.connectserialport";
 export const noSerialPorts:string='No Serial Ports Available';
@@ -516,10 +519,18 @@ export const errorSerialCreateDir=(arg1:string,err:unknown) => `Error creating d
 export const errorSerialRenameFile=(arg1:string,arg2:string,err:unknown) => `Error renaming file ${arg1} to ${arg2}: ${err}`;
 export const serialInterfaceLargeFileSizeKB:number=50;
 export const serialInterfaceLargeFileSizeChunksKB:number=32;
+// serial status button
+export const serialPortButtonTextDisconnected:string='CP$(pulse) $(circle-slash)';
+export const serialPortButtonTTDisconnected:string='CP Connect Serial Port';
+export const serialPortButtonTextConnected:string='CP$(pulse) $(pass-filled)';
+export const serialPortButtonTTConnected=(arg1:string) => `CP Serial Port ${arg1} connected - click disconnect`;
 //serial terminal
 export const serialTerminalName:string="CP Sync Serial Monitor";
 export const cmdSerialTerminalOpenPKG:string='circuitpythonsync.opencpsyncterminal';
 export const serialTerminalGreeting:string='Circuit Python Sync Serial Monitor\r\n';
+export const serialTerminalGreetingNoPort:string='Circuit Python Sync Serial Monitor - OPEN PORT\r\n';
 export const serialTerminalProfileName:string="circuitpythonsync.terminal-profile";
-export const errorSerialTerminalCloseVSCodeMonitor=(err:string) => `Error closing serial port monitor: ${err}`;
+export const serialTerminalSerialDisabledWarning:string="Serial Port support disabled in config";
+// DEPRECATED
+//export const errorSerialTerminalCloseVSCodeMonitor=(err:string) => `Error closing serial port monitor: ${err}`;
 

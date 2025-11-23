@@ -1193,7 +1193,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		// ** read the device to see if it is there **
 		try{
-			const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+			// try just doing a stat on the base uri
+			const rootStat=await vscode.workspace.fs.stat(vscode.Uri.parse(baseUri));
+			if(rootStat.type !== vscode.FileType.Directory){
+				throw new Error('Not a valid device mount');
+			}
+			//const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
 		} catch(error) {
 			// ***** give error and bail *****
 			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
@@ -2594,13 +2599,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		// 	title: 'CP Drive Select'
 		// });
 		// ** #72, use full quick pick so can have button for help
+		// ** #157 - do not add the serial connect button if config has serial disabled
+		let _buttons:Array<cmdQuickInputButton>=[helpButton,serialPortButton];
+		const serialPortConfigDisable=vscode.workspace.getConfiguration().get<boolean>(`circuitpythonsync.${strgs.configDisableSerialPortKeyPKG}`);
+		if(serialPortConfigDisable){
+			_buttons=[helpButton];
+		}
 		let result:drivePick|undefined=undefined;
 		const resultWbutton=await showFullQuickPick(
 			{
 				items:picks,
 				title:strgs.cpDrvSel,
 				placeholder:strgs.pickDrvOrManual,
-				buttons:[helpButton,serialPortButton],
+				buttons: _buttons,
 				shouldResume: shouldResume
 			}
 		);
@@ -2812,6 +2823,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			tooltip:strgs.helpTooltipMap.get(strgs.helpDownloading),
 			commandName:'help'
 		};
+		// ** setup a cancel flag to stop accept callback if started download
+		let cancelDownload=false;
 		const qpBoardDnldChoices=vscode.window.createQuickPick();
 		qpBoardDnldChoices.items=dnldConfigPicks;
 		qpBoardDnldChoices.title=strgs.dnldCfgQpTitle;
@@ -2860,8 +2873,20 @@ export async function activate(context: vscode.ExtensionContext) {
 			//now ready to download to workspace (have to check to resolve transpiler)
 			const wsRootFolderUri=vscode.workspace.workspaceFolders?.[0].uri;
 			if(!wsRootFolderUri) {return;}	//should never
+			// ** disable the quick pick but leave up while copying, and show progress
+			qpBoardDnldChoices.busy=true;
+			qpBoardDnldChoices.enabled=false;
+			qpBoardDnldChoices.title=strgs.dnldQPDownloadInProgress;
+			qpBoardDnldChoices.placeholder=strgs.dnldQPDnldProgressPlaceholder;
+			qpBoardDnldChoices.show();
+			qpBoardDnldChoices.buttons=[];	//remove buttons during copy
+			//loop through dir contents and copy each to workspace root
 			//####FIXED#### the cpProjTemplate should be only the default!!
 			for(const dirEntry of dirContents){
+				// if cancel flag set by user hide get out
+				if(cancelDownload){
+					return;
+				}
 				if((!skipDotFiles || !dirEntry[0].startsWith('.')) 
 						&& (!onlyStdFolders || !(dirEntry[1]===vscode.FileType.Directory && !cpProjTemplateDefault.some(tmpl => tmpl.folderName===dirEntry[0])))) {
 					const srcUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),dirEntry[0]);
@@ -2885,6 +2910,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			qpBoardDnldChoices.hide();
 		});
 		qpBoardDnldChoices.onDidHide(() => {
+			cancelDownload=true;
 			qpBoardDnldChoices.dispose();
 		});
 		qpBoardDnldChoices.show();
@@ -3432,6 +3458,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(addNewTemplateLinkCmd);
 	
+	// ** #157 - initialize the status bar button for the serial port connect/disconnect
+	serialInterface.initSerialStatusBarButton(context);
+
 	//** Connect to board serial port for file operations
 	const connectToBoardSerialId=strgs.cmdConnectSerialPortPKG;
 	const connectToBoardSerialCmd=vscode.commands.registerCommand(connectToBoardSerialId, async () =>{
@@ -3460,19 +3489,43 @@ export async function activate(context: vscode.ExtensionContext) {
 			description: port.friendlyName + (activePort && port.portName===activePort.portName ? ` ${strgs.serialPortActiveSuffix}` : ''),
 			
 		}));
-		const choice = await vscode.window.showQuickPick(picks, {
-			title: strgs.selectSerialPortQPTitle,
-			placeHolder: strgs.selectSerialPortQPPlaceholder,
-			canPickMany: false
-		});
-		if (!choice) {
+		// ** #163- add help button to quick pick
+		const helpButton:cmdQuickInputButton={
+			iconPath:iconCommandHelp,
+			tooltip:strgs.helpTooltipMap.get(strgs.helpSerialPortConnect),
+			commandName:'help'
+		};
+		// ** and change to full quick pick
+		let result:vscode.QuickPickItem|undefined=undefined;
+		const resultWbutton=await showFullQuickPick(
+			{
+				items:picks,
+				title: strgs.selectSerialPortQPTitle,
+				placeholder: strgs.selectSerialPortQPPlaceholder,
+				buttons: [helpButton],
+				shouldResume: shouldResume
+			}
+		);
+		if(resultWbutton && isCmdQuickInputButton(resultWbutton)){ 
+			if(resultWbutton.commandName==='help'){
+				// ** #163, open the help page
+				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpSerialPortConnect);
+				return;
+			}
+		}
+		if(resultWbutton && !isCmdQuickInputButton(resultWbutton)){
+			result=resultWbutton as vscode.QuickPickItem;
+		} else {
+			result=undefined;	//get out of this loop
+		}
+		if (!result) {
 			// User cancelled the quick pick
 			return;
 		}
 		// User made a selection, attempt to open the port
-		const selectedPort = portList.find(port => port.portName === choice.label);
+		const selectedPort = portList.find(port => port.portName === result.label);
 		if (!selectedPort) {
-			vscode.window.showErrorMessage(strgs.selectedSerialPortNotFound(choice.label));
+			vscode.window.showErrorMessage(strgs.selectedSerialPortNotFound(result.label));
 			return;
 		}
 		// ** if port already active, just notify and return
@@ -3634,8 +3687,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		// ** take out use of relative pattern for serialfs since it doesn't work
 		let fles: vscode.Uri[] = [];
 		if (baseUri.startsWith(_strgs.serialfsSchemeName)) {
+			// ** need to normalize leftFile to use / for serialfs, but don't change original, will be handled below
+			const normLeftFile=leftFile.replace(/\\/g,'/');
 			try {
-				const boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), leftFile);
+				const boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), normLeftFile);
 				const stat = await _vscode.workspace.fs.stat(boardFileUri);
 				if (stat) {
 					fles.push(boardFileUri);
@@ -3808,6 +3863,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			// #73, update drive map button
 			statusBarMapDrv.tooltip=curDriveSetting ? new vscode.MarkdownString(`CP Drive- ${curDriveSetting}`) : strgs.cpDrvSel;
+		}
+		// ** #157 - see if serial port disable config changed, if so update status bar button
+		if (event.affectsConfiguration(`circuitpythonsync.${strgs.configDisableSerialPortKeyPKG}`)) {
+			serialInterface.updateSerialStatusBarButton();
 		}
 	});
 	context.subscriptions.push(cfgChg);
