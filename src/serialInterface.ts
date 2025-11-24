@@ -52,12 +52,51 @@ const resourceLocker = new ResourceLocker();
 */
 
 // ** use mutex
-const mutex = new Mutex();
+// ** with timeout to prevent deadlock
+const mutex = withTimeout(new Mutex(), 5000, new Error('Timeout waiting for access to device.'));
 
 let port: SerialPort | undefined = undefined;
 let activeSerialPort: serialPortInfo | undefined = undefined;
 // ####MOVE to strings- ** NO, get from configuration- this is fallback default
 const baudRateDflt: number = 115200;
+
+// ** #157 - add status bar button to manage serial port connection, initially ready to connect
+let serialPortButton:vscode.StatusBarItem | undefined=undefined;
+
+export function initSerialStatusBarButton(context: vscode.ExtensionContext): void {
+	serialPortButton=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,51);
+	serialPortButton.command=strgs.cmdConnectSerialPortPKG;
+	serialPortButton.text=strgs.serialPortButtonTextDisconnected;
+	serialPortButton.tooltip=strgs.serialPortButtonTTDisconnected;
+	if(isSerialPortDisabled()){
+		serialPortButton.hide();
+	}else{
+		serialPortButton.show();
+	}
+	context.subscriptions.push(serialPortButton);
+}
+
+export function updateSerialStatusBarButton(): void {
+	// ** logic is:
+	// if serial port disabled in config, hide button
+	// else if port active, show disconnect state
+	// else show connect state
+	if(!serialPortButton){ return; }
+	if(isSerialPortDisabled()){
+		serialPortButton.hide();
+		return;
+	}
+	if(activeSerialPort){
+		serialPortButton.command=strgs.cmdDisconnectSerialPortPKG;
+		serialPortButton.text=strgs.serialPortButtonTextConnected;
+		serialPortButton.tooltip=strgs.serialPortButtonTTConnected(activeSerialPort.portName);
+	}else{
+		serialPortButton.command=strgs.cmdConnectSerialPortPKG;
+		serialPortButton.text=strgs.serialPortButtonTextDisconnected;
+		serialPortButton.tooltip=strgs.serialPortButtonTTDisconnected;
+	}
+	serialPortButton.show();
+}
 
 export function getActiveSerialPort(): serialPortInfo | undefined {
 	return activeSerialPort;
@@ -99,8 +138,8 @@ export function connectToSerialPort(selectedPort: serialPortInfo): void {
 	// ???? should we check if a different port is already open and close it????
 	// ** don't need to lock here since nothing else could run yet
 	activeSerialPort = selectedPort;
-	// try to close the vscode serial monitor if open on this port
-	serialTerminalSys.closeVscodeSerMon(activeSerialPort);
+	// try to close the vscode serial monitor if open on this port- DEPRECATED
+	//serialTerminalSys.closeVscodeSerMon(activeSerialPort);
 	// ** get the baud rate from configuration
 	const baudRate=vscode.workspace.getConfiguration('circuitpythonsync').get<number>(strgs.confSerialBaudRatePKG,baudRateDflt);
 	// create the port object
@@ -119,27 +158,90 @@ export function connectToSerialPort(selectedPort: serialPortInfo): void {
 		vscode.window.showInformationMessage(strgs.serialPortOpenedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port', baudRate));
 	}).catch((err: any) => {
 		vscode.window.showErrorMessage(strgs.errorSerialPortOpening(err));
+		// ** clear active port and port object
+		activeSerialPort = undefined;
+		port = undefined;
 	});
+	updateSerialStatusBarButton();
 }
 
 export function disconnectSerialPort(): void {
 	if (port && port.isOpen) {
-		closePort().then(() => {
-			vscode.window.showInformationMessage(strgs.serialPortClosedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port'));
-			activeSerialPort = undefined;
-			port = undefined;
-		}).catch((err: any) => {
-			vscode.window.showErrorMessage(strgs.errorSerialPortClosing(err));
+		// ** #158- toggle dtr and rts to reset some boards on close
+		port.set({ dtr: false, rts: false }, (err) => {
+			if (err) {
+				console.error('Error setting DTR/RTS on port close:', err);
+				closePort().then(() => {
+					vscode.window.showInformationMessage(strgs.serialPortClosedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port'));
+					activeSerialPort = undefined;
+					port = undefined;
+					updateSerialStatusBarButton();
+				}).catch((err: any) => {
+					vscode.window.showErrorMessage(strgs.errorSerialPortClosing(err));
+				});
+			} else {
+				// wait a bit and then set back
+				setTimeout(() => {
+					port?.set({ dtr: true, rts: true }, (err) => {
+						if (err) {
+							console.error('Error resetting DTR/RTS on port close:', err);
+						}
+						closePort().then(() => {
+							vscode.window.showInformationMessage(strgs.serialPortClosedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port'));
+							activeSerialPort = undefined;
+							port = undefined;
+							updateSerialStatusBarButton();
+						}).catch((err: any) => {
+							vscode.window.showErrorMessage(strgs.errorSerialPortClosing(err));
+						});
+					});
+				}, 200);
+			}
 		});
+		// closePort().then(() => {
+		// 	vscode.window.showInformationMessage(strgs.serialPortClosedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port'));
+		// 	activeSerialPort = undefined;
+		// 	port = undefined;
+		// }).catch((err: any) => {
+		// 	vscode.window.showErrorMessage(strgs.errorSerialPortClosing(err));
+		// });
 	} else {
 		activeSerialPort = undefined;
 		port = undefined;
+		updateSerialStatusBarButton();
 	}
+}
+
+// ** async version of toggling dtr/rts
+export async function toggleDtrRtsAsync(state: boolean): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (port && port.isOpen) {
+			port.set({ dtr: state, rts: state }, (err) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve();
+				}
+			});
+		} else {
+			resolve();
+		}
+	});
 }
 
 // ** need async version of disconnect
 export async function disconnectSerialPortAsync(): Promise<void> {
 	if (port && port.isOpen) {
+		// first try to toggle dtr/rts
+		try {
+			await toggleDtrRtsAsync(false);
+			// wait a bit
+			await new Promise(resolve => setTimeout(resolve, 200));
+			await toggleDtrRtsAsync(true);
+		} catch (err: any) {
+			console.error('Error toggling DTR/RTS on port close:', err);
+		}
+		// now close the port
 		try {
 			await closePort();
 			vscode.window.showInformationMessage(strgs.serialPortClosedMessage(activeSerialPort ? activeSerialPort.portName : 'Unknown Port'));
@@ -147,6 +249,8 @@ export async function disconnectSerialPortAsync(): Promise<void> {
 			port = undefined;
 		} catch (err: any) {
 			vscode.window.showErrorMessage(strgs.errorSerialPortClosing(err));
+			activeSerialPort = undefined;
+			port = undefined;
 		}
 	} else {
 		activeSerialPort = undefined;
@@ -251,6 +355,11 @@ export async function softReset(): Promise<void> {
 	//});
 }
 
+// ** get the disabled state of serial port config
+export function isSerialPortDisabled(): boolean {
+	return vscode.workspace.getConfiguration().get<boolean>(`circuitpythonsync.${strgs.configDisableSerialPortKeyPKG}`, false);
+}
+
 // **** file operations
 
 export interface serialEntry extends vscode.FileStat {
@@ -348,7 +457,8 @@ export async function readFile(filepath: string): Promise<Uint8Array | undefined
 				// ** read as binary(raw)
 				fileContent = await fileOps.readFile(filepath.startsWith('/') ? filepath : '/' + filepath, true);
 			}
-			if (!fileContent) { return undefined; }
+			// ** empty string here is ok, but not null or undefined
+			if (fileContent===null || fileContent===undefined) { return undefined; }
 			if (typeof fileContent === 'string') {
 				// ** per the repl-file-transfer.js at 
 				//  https://github.com/circuitpython/web-editor/blob/main/js/common/repl-file-transfer.js

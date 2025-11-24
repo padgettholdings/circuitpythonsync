@@ -1,6 +1,6 @@
 # Welcome to CircuitPython Sync
 
-The purpose of this extension is to provide developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The model used by this extension is for code and library files to reside on the storage of the development workstation with tools for synchronizing application assets with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync. Having code assets on the workstation also allows VS Code to efficiently leverage python language services like auto-completion and intellisense in conjunction with CircuitPython language and library "stubs" managed by the extension. There are other excellent VS Code extensions and alternate IDEs that use a model having the workstation directly edit files on the CircuitPython drive should you prefer not to use the source-control-first methodology.
+The purpose of this extension is to provide developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is for code and library files to reside on the storage of the development workstation with tools for synchronizing application assets with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync. Having code assets on the workstation also allows VS Code to efficiently leverage python language services like auto-completion and intellisense in conjunction with CircuitPython language and library "stubs" managed by the extension. There are other excellent VS Code extensions and alternate IDEs that use a model having the workstation directly edit files on the CircuitPython drive should you prefer not to use the source-control-first methodology.
 
 **New in Version 2**. Support has been added for boards that don't have native USB support, that is, that don't mount a "CIRCUITPY" drive when connected to the workstation USB port. These boards can be used with the extension by leveraging a serial port connection to upload code and libraries as well as monitor the application output.  See the [Serial Port Support](#serial-port-support) section below for more details.
 
@@ -26,7 +26,7 @@ To return to this help file while using the extension run the `Welcome and Help`
 
 The extension activates when a workspace is opened containing `code.py` or `main.py` python files and/or a folder for libraries named `lib` or `Lib`.  You can also manually start the extension (for instance in a blank workspace or where you have just created a python file) by running any of the commands, including `Welcome and Help` to show this file or one of the startup helpers like [Project Templates](#project-template-support) or [Project Bundles](#project-bundle-support).
 
-For a simple application, create a code file (typically `code.py`), connect your board to a usb port on your workstation, map the CircuitPython drive using the [CP Drive Mapping](#cp-drive-mapping) command, and use the `Copy Files` command to push the code file to the board.  Then you can monitor and debug the application on the board using the VS Code built-in Serial monitor, making modifications and re-pushing to the board.
+For a simple application, create a code file (typically `code.py`), connect your board to a usb port on your workstation, map the CircuitPython drive (or in **V2** Connect and mapping a serial port) using the [CP Drive Mapping](#cp-drive-mapping) command, and use the `Copy Files` command to push the code file to the board.  Then you can monitor and debug the application on the board using the VS Code built-in Serial monitor or the extension's own Serial Terminal, making modifications and re-pushing to the board.
 
 For more complicated applications that use sensors and other hardware you can add libraries with the extension [Library Support](#library-support) for Adafruit libraries, or add other 3rd party libraries as needed.  Library files have a dedicated `Copy libs` command as well as offering intellisense through Adafruit published definition files downloaded by the extension (which also includes all the built-in modules in CircuitPython).  You can also select the type of connected board to leverage the extension [Board Support](#board-support) feature, giving auto-completion and validation of board definitions such as pins available, for example.  The remainder of this help file gives details on all the commands and features of the extension.
 
@@ -36,16 +36,16 @@ One of the key ways in which the extension "protects" the integrity of your proj
 
 ## Toolbar and Board Explorer
 
-There are several visual tools offered by the extension that support the development workflow.  The first is a toolbar consisting of 4 command/status buttons in the lower status bar of VS Code (usually toward the left side).  
-The buttons show status through icons and also tooltips for issues and settings.
+There are several visual tools offered by the extension that support the development workflow.  The first is a toolbar consisting of 4 command/status buttons in the lower status bar of VS Code (usually toward the left side). The buttons show status through icons and also tooltips for issues and settings. **NEW in V2**. The toolbar includes a button to select and connect a serial port for boards that don't have native USB support. 
 
-![CPS toolbar](cpstoolbarsmall.png)
+![CPS toolbar](cpstoolbarsmall2.png)
 
 From left to right the buttons are:
 * **Copy Files to board.**  The icon to the right of the arrow shows whether a valid board connection exists, augmented by a tool tip explaining the condition.  The button will also "light up" with a contrasting color when files are ready to be copied, such as after editing.  Clicking the button copies the files to the board if connected.  The files that are copied are either the default `code.py` or `main.py`, or a configured set using the command detailed below in [Files Copy Support](#files-copy-support).
 * **Copy Libraries to board.** Similar to the Files Copy, status is indicated by icons and a tooltip.  The button lights up if new libraries are added or libraries are removed.  Clicking the button copies either all the libraries under the Lib folder or those configured using the command detailed in [Libs Copy Support](#libs-copy-support).
 * **Map CP Drive.** Clicking this runs the command detailed in [CP Drive Mapping](#cp-drive-mapping).  The tooltip on the button shows the current mapping, if any.
 * **Select CP Board Type.**  Clicking this button brings up a list for choosing one CircuitPython qualified board model to support intellisense and validation during code development.  More details can be found below at [Board Support](#board-support).  The tooltip on the button shows the currently chosen board type.
+* **Serial Port Status and Commands**.  This shows the current state of connection to a board serial port and provides a one click activation of the connect and disconnect commands as detailed in [Serial Port Support](#serial-port-support).
 
 ### Board Explorer
 
@@ -375,6 +375,8 @@ A utility command `Download Board` is provided to copy files and folders from an
 
 By default the command overwrites any existing files in the workspace with the same name.  If the option is turned off only non-conflicting files will be copied.  The "Skip Dot Files and Folders" skips artifacts that are created by the CP runtime such as `.fseventsd` and `.Trashes`.  These are generally not needed but can be retrieved by turning off this option.  Finally the "Download only standard folders" option will skip folders such as `System Volume Information` while retrieving the `lib` folder.  To use the command you must map the CP drive first.  
 
+**NEW in V2**.  The Board Download command now supports downloading files from a board connected via serial port (see [Serial Port Support](#serial-port-support)).  When a serial port is connected and the `serialfs:` drive is mapped (see [CP Drive Mapping](#cp-drive-mapping)), the command will download files from the connected board.  The same options are available as with a standard CircuitPython drive.  This is a convenient way to clone a board that doesn't have native USB with a mapped drive support.
+
 [Top](#welcome-to-circuitpython-sync)
 
 ## Project Bundle Support
@@ -409,7 +411,7 @@ VS Code includes a built-in Serial Monitor that can be used to monitor the outpu
 
 ![Serial Monitor](serial.png)
 
-The serial port of the board is usually pre-selected when the monitor starts, but if not select from the list.  Most recent boards use 115200 as the baud rate but check your board documentation if that doesn't work.  When you click Start Monitoring the output from the CP program (or errors) will scroll below the monitor controls (you can expand the vertical size of the panel to display more data).  To pause the program use the function button pull-down at the bottom right to select `Ctrl-C`.  This will stop the program and give you a REPL prompt.  You can then enter commands to test your code or check the state of the board by typing into the message box to the left of the function pull-down.  To restart the program, use the function button pull-down again to select `Ctrl-D`.  The monitor will then show the output from the program again.
+The serial port of the board is usually pre-selected when the monitor starts, but if not select from the list.  Most recent boards use 115200 as the baud rate but check your board documentation if that doesn't work.  When you click Start Monitoring the output from the CP program (or errors) will scroll below the monitor controls (you can expand the vertical size of the panel to display more data).  To pause the program use the function button pull-down at the bottom right to select `Ctrl-C`.  This will stop the program and give you a REPL prompt.  You can then enter commands to test your code or check the state of the board by typing into the message box to the left of the function pull-down.  To restart the program, use the function button pull-down again to select `Ctrl-D`.  The monitor will then show the output from the program again.  (NOTE that as of Version 2 of the extension the Serial Monitor is not automatically installed; you will need to install the `Serial Monitor` extension from the VS Code marketplace if you want to use it.)
 
 The VS Code Serial Monitor is well supported and reliable.  The separate message area and function button pull-down are a bit different from most serial terminals.  If you prefer a more traditional serial terminal, you might try the following:
 * For Mac OS and Linux, the `screen` command is a good option.  In VS Code, open a terminal in the panel and use, for example, `screen /dev/tty.usbmodemXXXX 115200` or `screen /dev/ttyACM0 115200` (you can list the /dev directory to find the port name).  Use `Ctrl-A` then `K` to exit the screen session.  Once the session connects you can use `Ctrl-C` to stop the program and get into the REPL, and `Ctrl-D` to restart it. 
@@ -460,9 +462,9 @@ The best way to load CircuitPython firmware to a board that does not have native
 
 Some CircuitPython boards do not have native USB support, meaning they do not mount a "CIRCUITPY" drive when connected to the workstation USB port.  These boards can now be used with this extension by leveraging a serial port connection to upload code and libraries as well as monitor the application output.  This section describes how to setup and use serial port support in the extension.  You can also connect to your board serial port even though your board presents a CIRCUITPY drive; this can be useful if you want to use the new lightweight serial terminal support in the extension, as described in [Using the Serial Monitor and New Serial Terminal](#using-the-serial-monitor-and-new-terminal).  (NOTE: this extension does not support uploading UF2 firmware over serial; refer to the section [Uploading Circuit Python Firmware UF2](#uploading-uf2) and the CircuitPython site for instructions on how to do this for your specific board.)
 
-1. Connect the USB port on your board to your workstation.  Depending on your board and operating system you may need to install drivers to get the serial port to show up.  Refer to your board documentation for details; the [CircuitPython site](https://circuitpython.org/downloads) also has helpful information for many boards.  If your board has two connectors (such as some of the Espressif boards with UART and USB ports) make sure to use the USB port.
+1. Connect the USB port on your board to your workstation.  Depending on your board and operating system you may need to install drivers to get the serial port to show up.  Refer to your board documentation for details; the [CircuitPython site](https://circuitpython.org/downloads) also has helpful information for many boards. The serial mode of this extension can generally be used as an alternative to "Web workflow" referenced in the documentation and learn guides.  If your board has two connectors (such as some of the Espressif boards with UART and USB ports) make sure to use the USB port.
 
-    To connect the extension to the serial port, use the `CP Connect to Board Serial Port` command from the command palette. This will open a choice list of ports:
+    To connect the extension to the serial port, use the `CP Connect to Board Serial Port` command from the command palette (or the `Serial Port Status and Commands` toolbar button). This will open a choice list of ports:
 
     ![Serial Port List](serialPort1.png)
 
@@ -482,6 +484,23 @@ Some CircuitPython boards do not have native USB support, meaning they do not mo
 
 4. When you are ready to close your workspace you can disconnect the serial port with the command `CP Disconnect from Board Serial Port`.  This will remove the `serialfs:/` drive mapping, remove the `serialfs:/` entry from the board mapping options, and leave the drive mapping empty.  However, you can just close the workspace, leaving the `serialfs:/` entry in the drive mapping configuration.  As noted in the section [CP Drive Mapping](#cp-drive-mapping) the next time the workspace is opened you will be prompted with an option to connect the serial port again and re-map the drive.
 
+5. As noted above in the [CP Drive Mapping](#cp-drive-mapping) section there is a shortcut to steps 1 and 2 above through a button on the title bar of `CP Drive Select` command picker:
+
+    ![Drive Map Serial Button](driveMapSerial3.png)
+
+    When clicked the `Connect to Board Serial Port` command is run first, then the `CP Set Drive` command is run again.  If a valid serial port was connected the `serialfs:/` drive will be shown in the pick list for mapping as the selected drive.
+
+If you don't need the serial port functionality of the extension it can be disabled through a setting:
+
+`circuitpythonsync.disableSerialPort`
+
+This can be set either by checking in the vscode settings UI or set to `true` in the settings.json file in your workspace.  If turned on the toolbar button, the serial connect button in the `CP Drive Select` command, as well as all the serial port and CP Sync Terminal commands will be hidden.  The setting defaults to `false`.
+
 
 
 [Top](#welcome-to-circuitpython-sync)
+
+
+
+
+
