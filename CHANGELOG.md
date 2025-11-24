@@ -62,3 +62,6 @@
 ## p2.0.0 - 2025-10-28
     * Major upgrade to add support for serial interface for boards that do not have native USB to map a CIRCUITPY drive.  Also adds a lightweight serial terminal designed to be compatible with serial port boards.  A few other feature additions in file transfer mapping and in the board explorer.  See help command for more details. **This is a preview release**.
 
+## p2.1.0 - 2025-11-23
+    * Performance and stability improvements for serial port operations, particularly for boards such as ESP32-C6.  Adds a toolbar button for serial status/connect/disconnect.  Enables full board download over serial connection.  Removes VSCode Serial Monitor extension as a dependency since extension has a lightweight embedded terminal.  But Serial Monitor extension can still be loaded and used.
+
