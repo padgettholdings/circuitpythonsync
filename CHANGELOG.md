@@ -65,3 +65,5 @@
 ## p2.1.0 - 2025-11-23
     * Performance and stability improvements for serial port operations, particularly for boards such as ESP32-C6.  Adds a toolbar button for serial status/connect/disconnect.  Enables full board download over serial connection.  Removes VSCode Serial Monitor extension as a dependency since extension has a lightweight embedded terminal.  But Serial Monitor extension can still be loaded and used.
 
+## v2.1.1 - 2025-11-30
+    * Official release of V2 out of preview.  No changes from p2.1.0 other than removing preview tag.
