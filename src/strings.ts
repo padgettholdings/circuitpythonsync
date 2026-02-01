@@ -280,6 +280,7 @@ export const libBundleFilePrefix:string='adafruit-circuitpython-bundle';    // t
 export const libBundleAdafruitUrlRoot:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/download';
 export const libBundleAdafruitUrlLatest:string='https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/latest';
 export const libBundleAdafruitUrlReleases:string='https://api.github.com/repos/adafruit/Adafruit_CircuitPython_Bundle/releases?per_page=100';
+export const libBundleReleasesMaxPages:number=10; // Maximum number of pages to search when looking for compatible bundle
 export const libCPAdafruitUrlLatest:string="https://github.com/adafruit/circuitpython/releases/latest";
 export const libBundleAdafruitUrlFilePrefix:string='adafruit-circuitpython-bundle';
 export const selLibQPtitle:string='Select libraries';
@@ -309,6 +310,14 @@ export const libCmdsReadyVerChgError:string='Before selecting libraries run Inst
 export const libCmdsReadyNoSourceError:string='Before selecting libraries run Install or Update Libraries and Stubs';
 export const libCmdsReadyNoMetadataError:string='Library metadata file not found, run update first';
 export const libBundleNoCompatibleVersionError:string='No compatible library bundle found for CircuitPython version ';  //+cpVersion+'. Try specifying a different CircuitPython version or bundle tag.'
+export const libVersionIncompatibleWarning:string[]=[
+    'Warning: Library bundle tag ',  // + libTag
+    ' does not include CircuitPython version ', // + cpVersion
+    ' (from boot_out.txt). This library may not work with your board. Continue anyway?'
+];
+export const libVersionIncompatibleContinue:string='Continue';
+export const libVersionIncompatibleDontAsk:string='Continue and don\'t ask again this session';
+export const libVersionIncompatibleCancel:string='Cancel';
 export const libDnldBundleExistsLog:string='File already exists:';
 export const libDnldBundleExistsRtn:string='file already exists';
 export const libDnldBundleSuccessRtn:string='File downloaded successfully for fmt:';  // + pyLibFmt
