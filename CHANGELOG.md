@@ -67,3 +67,6 @@
 
 ## v2.1.1 - 2025-11-30
     * Official release of V2 out of preview.  No changes from p2.1.0 other than removing preview tag.
+
+## v2.1.2 - 2026-02-01
+    * Small update to Library and Stub Install command that checks requested CP version and library tag against CP version on board if mapped.

@@ -25,7 +25,7 @@ The extension can download library and board definitions (either the latest or a
 
 ## Features
 * **Board Explorer** - Shows current files on the board.  Compare of local and board files.  Download files from the board to workspace.  Delete files on the board.  **NEW in V2** Download files or entire board over serial connection.
-* **Python Language Support** - VS Code Pylance augmented by library and board "stub" definitions for error checking, code completion, and IntelliSense. 
+* **Python Language Support** - VS Code Pylance augmented by library and board "stub" definitions for error checking, code completion, and IntelliSense. Compatibilty checking of CP and library versions against board firmware.
 * **Configurable File and Copy Actions** - Manifest file saved in configuration to tailor which files and libraries are copied to the board.  Supports comments and filename mapping.
 * **Project Templates** - Create new projects from templates.  A default is provided but you can create your own to suit your needs.
 * **Adafruit Project Bundle Support** - Quick access to Adafruit project bundles in the learn system.
