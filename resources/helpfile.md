@@ -157,6 +157,16 @@ Automated handling of the Adafruit bundle is initiated by running the `Install o
 
 The `Install or Update Libraries and Stubs` command allows you to specify the version of CircuitPython and a particular library bundle version, or the latest of each.  For CP you can specify the major version (such as 9), the complete version (such as 9.2.5), or just leave the field blank for the latest.  For the library bundle you can specify the full version (such as 20250725) or blank for the latest for the selected version of CP (for older releases, the last bundle version available for that version). NOTE that the extension may not be able to find the last library bundle for CP versions older than the last few (for example, version 7), in which case an error will be given. 
 
+If you have a board with CircuitPython firmware installed and it is mapped as either a CIRCUITPY drive or a serial port drive (see [CP Drive Mapping](#cp-drive-mapping)), the `Install or Update Libraries and Stubs` command will check the CP version and library tag requested in the command against the CP version on the board (reading the board boot_out.txt file). In general you should use a library version matching the CP version on the board.  If for some reason you need to use different library versions the command will flag potential issues.  The first is in the command pick list if the requested CP version does not match the board:
+
+![CP Mismatch Warning for Lib Install](libinstall1.png)
+
+The second warning is a notification if the library tag requested does not have a package matching the board version:
+
+![Lib tag missing board CP for Lib Install](libinstall2.png)
+
+You can continue to try to use the library but there may be compatibility issues.  Note that the library install may still fail if the CP version requested does not have a package available.
+
 For any libraries that are in the `lib` folder (or that are copied in later), the extension will extract plain text `.py` versions from the bundle files and place them in a `libstubs` folder in the lib archive folder.  Then the extension configures the python language services to use these folders as part of the python path, enabling intellisense and validation for all the the libraries being used.  For example, the configuration in settings.json might look like:
 
 ```json

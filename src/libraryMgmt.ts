@@ -69,6 +69,10 @@ export class LibraryMgmt {
             const quickPick = vscode.window.createQuickPick<cmdQuickItem>();
             quickPick.title = strgs.updateLibQPtitle;
             quickPick.buttons = [pickButton,helpButton];
+            
+            // Check for version mismatch with boot_out.txt to show warning indicator
+            const cpVersionWarning = await this.getCPVersionWarningIndicator();
+            
             // see if there is a pending change and alter the QP if so
             if(this._libUpdateVerChg) {
                 quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
@@ -77,7 +81,7 @@ export class LibraryMgmt {
                 quickPick.items = [
                     { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                     { label: strgs.updateLibNewTagQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
-                    { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                    { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                 ];
             } else {
                 quickPick.placeholder = strgs.updateLibQPSelPlaceholder;
@@ -86,7 +90,7 @@ export class LibraryMgmt {
                 quickPick.items = [
                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                     { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
-                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                 ];
             }
             // ** #64, save copy of placeholder and items so can reset if ESC
@@ -136,7 +140,11 @@ export class LibraryMgmt {
                             await setupStubs(true);
                         } catch (error) {
                             //report the error but continue, will get out
-                            vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
+                            // Don't show error message if user cancelled
+                            const errMsg = this.getErrorMessage(error);
+                            if (errMsg !== strgs.updateLibProgressCancelLog) {
+                                vscode.window.showErrorMessage(strgs.setupLibGeneralError+errMsg);
+                            }
                             this.stopLibUpdateProgress();
                         }
                         return;
@@ -163,7 +171,11 @@ export class LibraryMgmt {
                                 await setupStubs(true);
                             } catch (error) {
                                 //report the error but continue, will get out
-                                vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));
+                                // Don't show error message if user cancelled
+                                const errMsg = this.getErrorMessage(error);
+                                if (errMsg !== strgs.updateLibProgressCancelLog) {
+                                    vscode.window.showErrorMessage(strgs.setupLibGeneralError+errMsg);
+                                }
                                 this.stopLibUpdateProgress();
                             }
                         } else if(ans==='Help'){
@@ -180,7 +192,11 @@ export class LibraryMgmt {
                             await setupStubs(true);
                         } catch (error) {
                             //report the error but continue, will get out
-                            vscode.window.showErrorMessage(strgs.setupLibGeneralError+this.getErrorMessage(error));	
+                            // Don't show error message if user cancelled
+                            const errMsg = this.getErrorMessage(error);
+                            if (errMsg !== strgs.updateLibProgressCancelLog) {
+                                vscode.window.showErrorMessage(strgs.setupLibGeneralError+errMsg);
+                            }
                             this.stopLibUpdateProgress();			                            
                         }
                     }
@@ -192,10 +208,11 @@ export class LibraryMgmt {
                             if(value===this._libTag  && !this._libUpdateVerChg) {
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
+                                const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                             } else {
@@ -206,10 +223,11 @@ export class LibraryMgmt {
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
                                     const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
+                                    const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                     quickPick.items = [
                                         { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibNewTagQPItemMiddle.label, description: value, commandName: 'libtag' },
-                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                        { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -220,16 +238,23 @@ export class LibraryMgmt {
                         } else if (value!==undefined && value===''){
                             //get the latest compatible tag
                             try {
-                                const latestTag = this._cpVersion !== '' 
-                                    ? await this.getLatestCompatibleBundleTag(this._cpVersion)
-                                    : await this.getLatestBundleTag();
+                                // Ensure we have a CP version to find compatible bundle
+                                if (this._cpVersion === '') {
+                                    const latestCPTag = await this.getLatestCPTag();
+                                    if (!latestCPTag || !latestCPTag.includes('.')) {
+                                        throw new Error(`Failed to get valid CircuitPython version tag: ${latestCPTag}`);
+                                    }
+                                    this._cpVersion = latestCPTag.split('.')[0];
+                                }
+                                const latestTag = await this.getLatestCompatibleBundleTag(this._cpVersion);
                                 if(latestTag===this._libTag &&  !this._libUpdateVerChg){
                                     quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                     const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
+                                    const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                     quickPick.items = [
                                         { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateLibQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                        { label: strgs.updateLibQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                        { label: strgs.updateLibQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -240,10 +265,11 @@ export class LibraryMgmt {
                                         //quickPick.items[0].description = value;
                                         quickPick.placeholder=strgs.updateLibNewTagQPplaceholder;
                                         const descCPVer=(this._cpVersionFull!=='') ? this._cpVersionFull : '(LATEST)';
+                                        const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                         quickPick.items = [
                                             { label: strgs.updateLibNewTagQPItemTop.label, description: strgs.updateLibNewTagQPItemTop.description, commandName: 'update' },
                                             { label: strgs.updateLibNewTagQPItemMiddle.label, description: this._libTag, commandName: 'libtag' },
-                                            { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer, commandName: 'cpversion' }
+                                            { label: strgs.updateLibNewTagQPItemBottom.label, description: descCPVer + cpVersionWarning, commandName: 'cpversion' }
                                         ];                    
                                         quickPick.show();
                                     } else {
@@ -279,10 +305,11 @@ export class LibraryMgmt {
                                 this._cpVersion=this._cpVersionFull.split('.')[0];
                                 quickPick.placeholder=strgs.updateLibQPSelPlaceholder;
                                 const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                                const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                 quickPick.items = [
                                     { label: strgs.updateLibQPItemTop.label, description: strgs.updateLibQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateLibQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
-                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
+                                    { label: strgs.updateLibQPItemBottom.label, description: this._cpVersionFull + cpVersionWarning, commandName: 'cpversion' }
                                 ];
                                 quickPick.show();
                             } else {
@@ -316,10 +343,11 @@ export class LibraryMgmt {
                                     //quickPick.items[0].description = value;
                                     quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
                                     const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                                    const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                     quickPick.items = [
                                         { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
                                         { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
-                                        { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
+                                        { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull + cpVersionWarning, commandName: 'cpversion' }
                                     ];                    
                                     quickPick.show();
                                 } else {
@@ -338,10 +366,11 @@ export class LibraryMgmt {
                                 //quickPick.items[0].description = value;
                                 quickPick.placeholder=strgs.updateCpNewVerQPplaceholder;
                                 const descLibTag=(this._libTag!=='') ? this._libTag : '(LATEST)';
+                                const cpVersionWarning = await this.getCPVersionWarningIndicator();
                                 quickPick.items = [
                                     { label: strgs.updateCpNewVerQPItemTop.label, description: strgs.updateCpNewVerQPItemTop.description, commandName: 'update' },
                                     { label: strgs.updateCpNewVerQPItemMiddle.label, description: descLibTag, commandName: 'libtag' },
-                                    { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull, commandName: 'cpversion' }
+                                    { label: strgs.updateCpNewVerQPItemBottom.label, description: this._cpVersionFull + cpVersionWarning, commandName: 'cpversion' }
                                 ];                    
                                 quickPick.show();
                                 return;
@@ -685,6 +714,54 @@ export class LibraryMgmt {
             this.stopLibUpdateProgress();
             return;
         }
+        
+        // Check if library tag is compatible with CP version from boot_out.txt
+        if (!this._skipVersionWarning) {
+            try {
+                const bootFileContent = await this.getBootFileFromDrive();
+                if (bootFileContent && bootFileContent.length > 0) {
+                    const bootCPVersion = this.extractCPVersionFromBootFile(bootFileContent);
+                    
+                    if (bootCPVersion && bootCPVersion !== '') {
+                        // Check if the library tag supports this CP version
+                        const isCompatible = await this.checkLibTagSupportsCPVersion(this._libTag, bootCPVersion);
+                        
+                        if (!isCompatible) {
+                            // Show warning with three options
+                            const warningMsg = strgs.libVersionIncompatibleWarning[0] + this._libTag + 
+                                             strgs.libVersionIncompatibleWarning[1] + bootCPVersion + '.x' +
+                                             strgs.libVersionIncompatibleWarning[2];
+                            
+                            const choice = await vscode.window.showWarningMessage(
+                                warningMsg,
+                                strgs.libVersionIncompatibleContinue,
+                                strgs.libVersionIncompatibleDontAsk,
+                                strgs.libVersionIncompatibleCancel
+                            );
+                            
+                            if (choice === strgs.libVersionIncompatibleCancel || choice === undefined) {
+                                // User cancelled - throw error to stop the entire update flow
+                                this.stopLibUpdateProgress();
+                                throw new Error(strgs.updateLibProgressCancelLog);
+                            } else if (choice === strgs.libVersionIncompatibleDontAsk) {
+                                // Don't ask again this session
+                                this._skipVersionWarning = true;
+                            }
+                            // If "Continue", just proceed without setting the flag
+                        }
+                    }
+                }
+            } catch (error) {
+                // Re-throw cancellation errors to stop the flow
+                const errMsg = this.getErrorMessage(error);
+                if (errMsg === strgs.updateLibProgressCancelLog) {
+                    throw error;
+                }
+                // If version check fails for other reasons, just log and continue
+                console.log('Version compatibility check failed, continuing:', error);
+            }
+        }
+        
         this._progInc=10;
         // refresh all files based on the libtag and cpversion
         const cpVersionFmt = `${cpVersion}.x-mpy`;
@@ -764,8 +841,14 @@ export class LibraryMgmt {
             await this.updateLibraries();
         } catch (error) {
             //report the error, will get out
-            vscode.window.showErrorMessage(strgs.updateLibGeneralError+this.getErrorMessage(error));
-            this.stopLibUpdateProgress();
+            // Don't show error message if user cancelled - just re-throw to propagate
+            const errMsg = this.getErrorMessage(error);
+            if (errMsg !== strgs.updateLibProgressCancelLog) {
+                vscode.window.showErrorMessage(strgs.updateLibGeneralError+errMsg);
+                this.stopLibUpdateProgress();
+            }
+            // Re-throw to stop stub updates from running
+            throw error;
         }
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
     }
@@ -899,6 +982,7 @@ export class LibraryMgmt {
     private _progInc: number = 0;
     private _customCancelToken: vscode.CancellationTokenSource | null = null;
     private _libUpdateVerChg: boolean = false;
+    private _skipVersionWarning: boolean = false;  // Session-level flag for "don't ask again"
 
     // ** private methods **
 
@@ -1070,36 +1154,47 @@ export class LibraryMgmt {
 
     private async getLatestCompatibleBundleTag(cpVersionMajor: string): Promise<string> {
         try {
-            let r: axios.AxiosResponse = await axios.default.get(
-                strgs.libBundleAdafruitUrlReleases,
-                { 
-                    headers: { 
-                        Accept: "application/vnd.github+json",
-                        "X-GitHub-Api-Version": "2022-11-28"
-                    } 
-                }
-            );
-            
-            const releases = r.data;
             const targetPattern = `${strgs.libBundleAdafruitUrlFilePrefix}-${cpVersionMajor}.x-mpy-`;
+            const maxPages = strgs.libBundleReleasesMaxPages;
             
-            // Search through releases from newest to oldest
-            for (const release of releases) {
-                if (release.assets && Array.isArray(release.assets)) {
-                    // Check if this release has a bundle for our CP version
-                    const hasCompatibleBundle = release.assets.some((asset: any) => 
-                        asset.browser_download_url && 
-                        asset.browser_download_url.includes(targetPattern)
-                    );
-                    
-                    if (hasCompatibleBundle) {
-                        return release.tag_name;
+            // Iterate through pages of releases
+            for (let page = 1; page <= maxPages; page++) {
+                const url = `https://api.github.com/repos/adafruit/Adafruit_CircuitPython_Bundle/releases?per_page=100&page=${page}`;
+                let r: axios.AxiosResponse = await axios.default.get(
+                    url,
+                    { 
+                        headers: { 
+                            Accept: "application/vnd.github+json",
+                            "X-GitHub-Api-Version": "2022-11-28"
+                        } 
+                    }
+                );
+                
+                const releases = r.data;
+                
+                // If we get an empty page, we've reached the end
+                if (!releases || releases.length === 0) {
+                    break;
+                }
+                
+                // Search through releases from newest to oldest
+                for (const release of releases) {
+                    if (release.assets && Array.isArray(release.assets)) {
+                        // Check if this release has a bundle for our CP version
+                        const hasCompatibleBundle = release.assets.some((asset: any) => 
+                            asset.browser_download_url && 
+                            asset.browser_download_url.includes(targetPattern)
+                        );
+                        
+                        if (hasCompatibleBundle) {
+                            return release.tag_name;
+                        }
                     }
                 }
             }
             
-            // If no compatible bundle found, throw an error
-            console.log(`No compatible bundle found for CP ${cpVersionMajor}.x`);
+            // If no compatible bundle found after searching all pages, throw an error
+            console.log(`No compatible bundle found for CP ${cpVersionMajor}.x after searching ${maxPages} pages`);
             throw new Error(strgs.libBundleNoCompatibleVersionError + `${cpVersionMajor}.x. Try specifying a different CircuitPython version or bundle tag.`);
             
         } catch (error) {
@@ -1107,6 +1202,134 @@ export class LibraryMgmt {
             // Re-throw the error instead of falling back
             throw error;
         }
+    }
+    
+    /**
+     * Extract CircuitPython version from boot_out.txt content
+     * @param bootFileContent Content of boot_out.txt file
+     * @returns Major version string (e.g., "9") or empty string if not found
+     */
+    private extractCPVersionFromBootFile(bootFileContent: string): string {
+        if (!bootFileContent || bootFileContent.length === 0) {
+            return '';
+        }
+        
+        // Look for pattern like "Adafruit CircuitPython 9.0.0" or "CircuitPython 9.0.0"
+        const versionPattern = /CircuitPython\s+(\d+)\.(\d+)\.(\d+)/i;
+        const match = bootFileContent.match(versionPattern);
+        
+        if (match && match.length >= 4) {
+            // Return the major version (first number)
+            return match[1];
+        }
+        
+        return '';
+    }
+    
+    /**
+     * Check if a library bundle tag includes support for a specific CP version
+     * @param libTag Library bundle tag (e.g., "20251231")
+     * @param cpVersionMajor CP major version to check (e.g., "9")
+     * @returns true if the bundle supports the CP version, false otherwise
+     */
+    private async checkLibTagSupportsCPVersion(libTag: string, cpVersionMajor: string): Promise<boolean> {
+        try {
+            // Get the specific release by tag
+            const response: axios.AxiosResponse = await axios.default.get(
+                `https://api.github.com/repos/adafruit/Adafruit_CircuitPython_Bundle/releases/tags/${libTag}`,
+                {
+                    headers: {
+                        Accept: "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    }
+                }
+            );
+            
+            const release = response.data;
+            const targetPattern = `${strgs.libBundleAdafruitUrlFilePrefix}-${cpVersionMajor}.x-mpy-`;
+            
+            // Check if this release has a bundle for our CP version
+            if (release.assets && Array.isArray(release.assets)) {
+                const hasCompatibleBundle = release.assets.some((asset: any) =>
+                    asset.name && asset.name.includes(targetPattern)
+                );
+                return hasCompatibleBundle;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking library tag compatibility:', error);
+            // If we can't check, assume it's compatible to avoid blocking the user
+            return true;
+        }
+    }
+    
+    /**
+     * Read boot_out.txt from the CircuitPython drive if available
+     * @returns Content of boot_out.txt or empty string if not available
+     */
+    private async getBootFileFromDrive(): Promise<string> {
+        try {
+            // Get the current drive setting from configuration
+            const curDriveSetting = vscode.workspace.getConfiguration().get<string>(`circuitpythonsync.${strgs.confDrivepathPKG}`, '');
+            
+            if (!curDriveSetting || curDriveSetting === '') {
+                // No drive configured, return empty
+                return '';
+            }
+            
+            // Prepare the URI for the drive
+            let baseUri = curDriveSetting;
+            if (os.platform() === 'win32' && !baseUri.startsWith('serialfs:')) {
+                baseUri = 'file:' + baseUri;
+            }
+            
+            const boardUri: vscode.Uri = vscode.Uri.parse(baseUri);
+            
+            // Try to read the directory
+            const dirContents = await vscode.workspace.fs.readDirectory(boardUri);
+            
+            // Look for boot_out.txt
+            const bootFileName = vscode.workspace.getConfiguration().get<string>(`circuitpythonsync.${strgs.confCPBootFilenamePKG}`, strgs.cpBootFile);
+            const foundBootFile = dirContents.find((value: [string, vscode.FileType]) => {
+                return value.length > 0 && value[0] === bootFileName;
+            });
+            
+            if (foundBootFile) {
+                // Read the boot file
+                const bootFileUri: vscode.Uri = vscode.Uri.joinPath(boardUri, bootFileName);
+                const bootFileContents = await vscode.workspace.fs.readFile(bootFileUri);
+                
+                // Convert binary to string
+                const decoder = new TextDecoder('utf-8');
+                return decoder.decode(bootFileContents);
+            }
+            
+            return '';
+        } catch (error) {
+            // If there's any error reading the boot file (drive not connected, etc.), just return empty
+            console.log('Could not read boot_out.txt from drive:', error);
+            return '';
+        }
+    }
+    
+    /**
+     * Get a warning indicator string if there's a version mismatch with boot_out.txt
+     * @returns ' $(warning) Board boot_out.txt CP version X.x' if there's a mismatch, empty string otherwise
+     */
+    private async getCPVersionWarningIndicator(): Promise<string> {
+        try {
+            const bootFileContent = await this.getBootFileFromDrive();
+            if (bootFileContent && bootFileContent.length > 0) {
+                const bootCPVersion = this.extractCPVersionFromBootFile(bootFileContent);
+                if (bootCPVersion && bootCPVersion !== '' && this._cpVersion !== '' && bootCPVersion !== this._cpVersion) {
+                    return ` $(warning) Board boot_out.txt CP version is ${bootCPVersion}.x`;
+                }
+            }
+        } catch (error) {
+            // Silently ignore errors - we're just adding a visual indicator
+        }
+        return '';
     }
     
     private async getLatestCPTag(): Promise<string> {
