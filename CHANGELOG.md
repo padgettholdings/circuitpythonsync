@@ -72,4 +72,4 @@
     * Small update to Library and Stub Install command that checks requested CP version and library tag against CP version on board if mapped.
 
 ## v2.1.3 - 2025-02-02
-    * Documentation cleanup only.
+    * Documentation cleanup only..
