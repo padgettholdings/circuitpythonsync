@@ -2,7 +2,9 @@
 
 The purpose of this extension is to provide developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is for code and library files to reside on the storage of the development workstation with tools for synchronizing application assets with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync. Having code assets on the workstation also allows VS Code to efficiently leverage python language services like auto-completion and intellisense in conjunction with CircuitPython language and library "stubs" managed by the extension. There are other excellent VS Code extensions and alternate IDEs that use a model having the workstation directly edit files on the CircuitPython drive should you prefer not to use the source-control-first methodology.
 
-**New in Version 2**. Support has been added for boards that don't have native USB support, that is, that don't mount a "CIRCUITPY" drive when connected to the workstation USB port. These boards can be used with the extension by leveraging a serial port connection to upload code and libraries as well as monitor the application output.  See the [Serial Port Support](#serial-port-support) section below for more details.
+**Cursor Support in Preview**.  All the extension capabilities are now available to use in a preview version for use in the Cursor IDE. (VS Code users need not install this preview, no new features were added.)  Changes for Cursor are transparent to the user and only affect the Python language completion and validation settiongs (Cursor uses a different language server from VS Code.)  Python language services should work as expected but may show up in the UI slightly differently.  Please provide feedback if you notice any anomolies.
+
+**Serial Port Support**. Support has been added for boards that don't have native USB support, that is, that don't mount a "CIRCUITPY" drive when connected to the workstation USB port. These boards can be used with the extension by leveraging a serial port connection to upload code and libraries as well as monitor the application output.  See the [Serial Port Support](#serial-port-support) section below for more details.
 
 To return to this help file while using the extension run the `Welcome and Help` command, or click on one of the help icons in the title bar of many of the commands.
 
@@ -174,6 +176,7 @@ For any libraries that are in the `lib` folder (or that are copied in later), th
         "c:\\myuser\\myprojects\\simpleCp\\libArchive\\libstubs",
     ]
 ```
+**NOTE**- in Cursor the setting name(s) are differnt but will be handled automatically by the extension.
 
 The `.py` files in the `libstubs` folder are used for intellisense and validation only; the standard bundle files are compressed/compiled `.mpy` files in the `lib` folder used by the CP runtime. Note that if you have a custom or other 3rd party library in the `lib` folder that is in `.py` format, you can add another path to the `python.analysis.extraPaths` setting to enable intellisense and validation for that library as well.  Just use the path to the `lib` folder itself; Pylance will ignore the `.mpy` files and just search for `.py` files.
 
@@ -192,6 +195,7 @@ The extension offers language support for specific board definitions as well as 
         "c:\\user-app-data\\globalStorage\\extensionname\\stubs\\circuitpython_stubs-9.2.7"
     ]
 ```
+**NOTE**- in Cursor the setting name(s) are differnt but will be handled automatically by the extension.
 
 This enables language support for CP built-ins, such as `digitalio`, `analogio`, etc.  It also contains support for the basic `board` module with functions such as `I2C`, `SPI`, etc. common to all boards.  To get support for specific boards, run the `Select Board` toolbar button or command and choose from the list of boards supported in the version of CP you chose in the `Install or Update Libraries and Stubs` command.  
 

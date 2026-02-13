@@ -954,11 +954,24 @@ export class LibraryMgmt {
         //clean up the temp dir
         fs.rmSync(libExtractLibTemp, { recursive: true });
         // set the libstubs in the settings for pylance
-        // ######TBD##### need to check if already set and add to array
-        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
-        extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
-        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
-        await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+        // ## need to check if already set and add to array
+        // ** #171- add support for cursor paths...
+        //  look at cursor first, otherwise vscode
+        //    cursor has two configs
+        if(vscode.env.appName.toLowerCase().includes('cursor')) {
+            const cursorPythonRefPaths:string[]=strgs.confCursorPyExtraPathsPKG.split(';');
+            for (const confExtraPaths of cursorPythonRefPaths){
+                let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
+                extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
+                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+            }
+        } else {
+            let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
+            extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
+            extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+        }
         // ** done with updating the libraries
         //vscode.commands.executeCommand('setContext', 'circuitpythonsync.updatinglibs', false);
         this.stopLibUpdateProgress();
