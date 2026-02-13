@@ -71,5 +71,8 @@
 ## v2.1.2 - 2026-02-01
     * Small update to Library and Stub Install command that checks requested CP version and library tag against CP version on board if mapped.
 
-## v2.1.3 - 2025-02-02
+## v2.1.3 - 2026-02-02
     * Documentation cleanup only..
+
+## p2.1.4 - 2026-02-13
+    * Preview release for Cursor support of python language service paths in settings.
