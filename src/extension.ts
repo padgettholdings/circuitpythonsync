@@ -979,7 +979,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	let templateContent:string='';
 	// ** #60, always get the default project template into the default array, may also use in main
 	//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+	// ** #171 - add separate default template filenames for vscode and cursor 
+	let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
+	if(vscode.env.appName.toLowerCase().includes('cursor')){
+		defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+	}
+	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	try{
 		const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
@@ -1009,7 +1014,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			retval=await getProjTemplateText();
 			// if empty is the default, use that
 			if(!retval){
-				const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+				// ** #171 - add separate default template filenames for vscode and cursor
+				let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
+				if(vscode.env.appName.toLowerCase().includes('cursor')){
+					defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+				}
+				const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 				//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 				try{
 					const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
@@ -1082,6 +1092,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 	*/
 
+	// ** TEST ** see what app is, e.g. vs code or cursor
+	//vscode.window.showInformationMessage(`App name: ${vscode.env.appName}`);
 
 	const helloWorldId:string=strgs.cmdHelloPKG;
 	// The command has been defined in the package.json file
@@ -3003,7 +3015,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			// might have deleted list after load, so set back to default
 			projTemplatePath='';
 			await cpsyncSettings.update(strgs.confCPTemplatePathPKG,projTemplatePath, vscode.ConfigurationTarget.Global);
-			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+			// ** #171 - add separate default template filenames for vscode and cursor
+			let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
+			if(vscode.env.appName.toLowerCase().includes('cursor')){
+				defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+			}
+			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 			try{
 				const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);
@@ -3115,7 +3132,12 @@ export async function activate(context: vscode.ExtensionContext) {
 					templateContent=projTemplateText;
 				} else {
 					//const fullTemplPath=context.asAbsolutePath(path.join('resources','cptemplate.txt'));
-					const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/cptemplate.txt');
+					// ** #171 - add separate default template filenames for vscode and cursor
+					let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
+					if(vscode.env.appName.toLowerCase().includes('cursor')){
+						defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+					}
+					const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 					//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 					try{
 						const templateContentBytes=await vscode.workspace.fs.readFile(fullTemplPathUri);

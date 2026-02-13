@@ -22,6 +22,9 @@ export const confCPFilesNameBakPkg:string ='cpfilesbak';
 export const confCPBootFilenamePKG:string='cpbootfile';
 export const confCPTemplatePathPKG:string='cptemplatepath';
 export const confCPTemplatePathListPKG:string='cptemplatepaths';
+// #171- add support for cursor- need different default templates for vscode and cursor, must be in /resources dir
+export const CPTemplateDefaultVscode:string='cptemplate.txt';
+export const CPTemplateDefaultCursor:string='cptemplate-cursor.txt';
 // for the help at start
 export const confNoShowHelpPKG:string='doNotShowWelcome';
 // these are for the lib and stub mgmt settings, fixed to prefix with 'circuitpythonsync.'
@@ -37,6 +40,8 @@ export const confBoardFileDownloadSizeLimitPKG:string ='boardFileDownloadSizeLim
 // the python/pylance setting for extra paths, DO NOT prefix with 'circuitpythonsync.'
 // **NOT currently in package.json, but can be added if needed**
 export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
+// ** add support for cursor python settings
+export const confCursorPyExtraPathsPKG:string='python.autoComplete.extraPaths;cursorpyright.analysis.extraPaths';
 //context keys used in package.json for enablement
 export const libUpdatingContextKeyPKG:string='circuitpythonsync.updatinglibs';
 export const stubsUpdatingContextKeyPKG:string='circuitpythonsync.updatingstubs';

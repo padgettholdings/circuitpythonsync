@@ -112,13 +112,29 @@ export class StubMgmt {
                 await vscode.workspace.getConfiguration().update(`circuitpythonsync.${strgs.confBoardNamePKG}`, selectedBoard.label, vscode.ConfigurationTarget.Workspace);
                 //and update the python analysis extra paths, must be at top
                 //  AND replace any other board def
-                let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
-                //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
-                const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
-                extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
-                extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
-                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
-                await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                // ** #171- add support for cursor paths...
+                //  look at cursor first, otherwise vscode
+                //    cursor has two configs
+                if(vscode.env.appName.toLowerCase().includes('cursor')) {
+                    const cursorPythonRefPaths:string[]=strgs.confCursorPyExtraPathsPKG.split(';');
+                    for (const confExtraPaths of cursorPythonRefPaths){
+                        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
+                        //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
+                        const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                        extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                        extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                        await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                    }
+                } else {
+                    let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
+                    //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
+                    const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                    extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                    extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                    extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                    await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                }
                 //update the status bar button
                 if(this._selectBoardButton){
                     this._selectBoardButton.tooltip = new vscode.MarkdownString(strgs.boardButtonSetTTMKDN[0]+selectedBoard.label+strgs.boardButtonSetTTMKDN[1]);
@@ -372,25 +388,36 @@ export class StubMgmt {
     }
     
     private async refreshExtraPaths(cpVersionFullStubUri: vscode.Uri) {
-        //just make sure extra path for the base stub dir is in config
-        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
-        const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
-        extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
-        extraPathsConfig=extraPathsConfig.concat([cpVersionFullStubUri.fsPath]);
-        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
-        // ** also do the board path in extrapaths in case version changed
+        // ** #171- add support for cursor paths...
+        //  look at cursor first, otherwise vscode
+        //    cursor has two configs, vscode just one
+        // get board to use in the checks
         const boardName = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
-        if(boardName){
-            const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
-            extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
-            const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(cpVersionFullStubUri, 'board_definitions'),boardName);
-            // ** #64, bug fix, if no board definitions then don't add to extra paths
-            if(boardStubExtraPath){
-                extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
-                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
-            }
+        let cursorPythonRefPaths:string[]=[strgs.confPyExtraPathsPKG];
+        if(vscode.env.appName.toLowerCase().includes('cursor')) {
+            cursorPythonRefPaths=strgs.confCursorPyExtraPathsPKG.split(';');
         }
-        await vscode.workspace.getConfiguration().update(strgs.confPyExtraPathsPKG, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+        // now apply each of the config names to the settings
+        for (const confExtraPaths of cursorPythonRefPaths){
+            //just make sure extra path for the base stub dir is in config
+            let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
+            const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
+            extraPathsConfig=extraPathsConfig.filter(value => !stubextrapath.test(value));
+            extraPathsConfig=extraPathsConfig.concat([cpVersionFullStubUri.fsPath]);
+            extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+            // ** also do the board path in extrapaths in case version changed
+            if(boardName){
+                const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                const boardStubExtraPath = await this.createBoardStubExtraPath(vscode.Uri.joinPath(cpVersionFullStubUri, 'board_definitions'),boardName);
+                // ** #64, bug fix, if no board definitions then don't add to extra paths
+                if(boardStubExtraPath){
+                    extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                    extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                }
+            }
+            await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+        }
     }
 
     // utility to get message from error
