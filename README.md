@@ -1,6 +1,6 @@
 # CircuitPython Sync for Visual Studio Code
 
-### Preview Version 2.1.4 adds support for running in Cursor. No functional changes but Cursor uses different python language services so settings.json changes.  Run the "Welcome and Help" command from the Command Palette for details.
+### Preview Version 2.1.5 adds support for running in Cursor IDE. See end of this note for more information on installing in Cursor.
 
 ## Overview
 This extension provides developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is that code and library files reside on the storage of the development workstation with tools for synchronizing application assets (python code, libraries, support files) with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync.
@@ -31,3 +31,13 @@ The extension can download library and board definitions (either the latest or a
 * **Adafruit Project Bundle Support** - Quick access to Adafruit project bundles in the learn system.
 * **Serial Monitor Compatibility** - Compatible with the built-in serial monitor in VS Code. **NEW in V2** Includes a lightweight serial terminal.
 * **Firmware Upload** - Command to source and upload a CircuitPython firmware .uf2 file to a compatible board connected in bootloader mode.  Also allows choice of any CircuitPython version available for the board type.
+
+#### *Cursor IDE Support*: This preview release can be installed in Cursor from their extension marketplace ([Open VSX](https://open-vsx.org/)).   No functional changes were needed but Cursor uses different python language services so settings.json changes.  Run the "Welcome and Help" command from the Command Palette for details.  Please note that the regular Install button from within Cursor may not work at this time.  The best alternative is to click on the `Marketplace` link on the extension page in Cursor, then click on the `Download` button on that page:
+
+![OpenVSXDownload](https://raw.githubusercontent.com/padgettholdings/circuitpythonsync/refs/heads/master/resources/openvsxdnld.png)
+
+This will download a `.vsix` file you can install with the command in Cursor:
+```
+Extensions: Install from VSIX....
+```
+
