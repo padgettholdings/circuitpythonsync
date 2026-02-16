@@ -76,3 +76,6 @@
 
 ## p2.1.4 - 2026-02-13
     * Preview release for Cursor support of python language service paths in settings.
+
+## p2.1.5 - 2026-02-16
+    * Docs-only release for cursor that include alternative install instructions in the Readme.md
