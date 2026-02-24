@@ -79,3 +79,6 @@
 
 ## p2.1.5 - 2026-02-16
     * Docs-only release for cursor that include alternative install instructions in the Readme.md
+
+## v2.2.0 - 2026-02-23
+    * Full release of Cursor support plus new functionality in Files Copy Support command.
