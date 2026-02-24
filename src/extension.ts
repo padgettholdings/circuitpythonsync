@@ -29,6 +29,8 @@ import { SerialTerminal } from './serialTerminal';
 
 // the serial file system provider
 import { SerialFileSysProvider } from './serialFileSysProvider';
+//import { connect } from 'http2';
+//import { brotliCompress } from 'zlib';
 //import { LineEnding } from '@microsoft/vscode-serial-monitor-api';
 
 //import { isSet } from 'util/types';
@@ -116,6 +118,9 @@ let lastDrives:drvlstDrive[]=Array<drvlstDrive>(0);
 // **#72, quick pick command buttons
 const iconCommandHelp:ThemeIcon=new ThemeIcon('question');
 const iconSerialPort:ThemeIcon=new ThemeIcon('plug');
+// **#145- add buttons for mng files cmd quick pick items for functions
+const iconComment:ThemeIcon=new ThemeIcon('close');
+const iconMap:ThemeIcon=new ThemeIcon('arrow-right');
 interface cmdQuickInputButton extends QuickInputButton {
 	commandName: string;
 }
@@ -204,6 +209,26 @@ async function parseCpfiles(preserveComments:boolean=false): Promise<cpFileLine[
 					);
 				}
 			}
+		}
+	}
+	return outLines;
+}
+
+// **#145- just read lines from cpfiles
+async function readCpfiles(): Promise<string[]>  {
+	let outLines:string[]=Array<string>(0);
+	const wsRootFolder=vscode.workspace.workspaceFolders?.[0];
+	if(!wsRootFolder) {return outLines;}
+	const relPat=new vscode.RelativePattern(wsRootFolder,`.vscode/${strgs_cpfiles}`);
+	const fles=await vscode.workspace.findFiles(relPat);
+	if(fles.length>0){
+		//cpfiles exists, read and split into lines
+		let fil=await vscode.workspace.fs.readFile(fles[0]);
+		let sfil=fromBinaryArray(fil);
+		// ** use a platform agnostic line split 
+		const lines:string[]= sfil.split(/\r?\n|\r/);
+		if(lines) {
+			outLines.push(...lines);
 		}
 	}
 	return outLines;
@@ -516,7 +541,8 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 	for(const entry of fileDir){
 		// ** #115 - recurse down through non-lib and non settings dirs ** also not the archive folders
 		const entryType:vscode.FileType=entry[1] as vscode.FileType;
-		if(entryType===vscode.FileType.File){
+		// ** #176- exclude .uf2 files
+		if(entryType===vscode.FileType.File && !entry[0].toLowerCase().endsWith('.uf2')){
 			let curEntry:fileListSelect={
 				src:entry[0],
 				dest:"",
@@ -540,7 +566,8 @@ async function getFileListSelect(cpLines:cpFileLine[]): Promise<fileListSelect[]
 			const subDirUri=vscode.Uri.joinPath(wsRootFolder.uri,entry[0]);
 			const subDirContents=await vscode.workspace.fs.readDirectory(subDirUri);
 			for(const subEntry of subDirContents){
-				if(subEntry[1]===vscode.FileType.File){
+				// ** #176- exclude .uf2 files
+				if(subEntry[1]===vscode.FileType.File && !subEntry[0].toLowerCase().endsWith('.uf2')){
 					let curEntry:fileListSelect={
 						src:subEntry[0],
 						dest:"",
@@ -585,6 +612,82 @@ export function parseCpFilePath(cpFileLine:cpFileLine): {path:string, fileName:s
 		retFileName=pathParts[0];
 	}
 	return {path:retPath, fileName:retFileName};
+}
+
+// ** #176 - parse composite cpline string to src and dest file paths to compare for dups
+export function parseCpFileCompositePath(cpFileLineStr:string): {srcPath:string, srcFileName:string, destPath:string, destFileName:string} {
+	let srcPath:string='';
+	let srcFileName:string='';
+	let destPath:string='';
+	let destFileName:string='';
+	let fromFile:string='';
+	let toFile:string='';
+	// *** note will not expect comments and no library paths
+	let cpFileLine:cpFileLine={	src:'',
+								dest:'',
+								inLib: false,
+								origLine:cpFileLineStr };
+	const fromTo:string[]=cpFileLineStr.split('->');
+	fromFile=fromTo[0].trim();
+	toFile=fromTo.length>1 ? fromTo[1].trim() : '';
+	if(fromFile){
+		cpFileLine.src=fromFile;
+		cpFileLine.dest=toFile;
+	}
+	// for compatibility with all functions just return empty if no source
+	if(cpFileLine.src && cpFileLine.src.length!==0) {
+		const srcParts=cpFileLine.src.split('/');
+		// src should not have leading / so skip if there
+		if(srcParts.length>0 && srcParts[0].length===0){
+			srcParts.shift();
+		}
+		if(srcParts.length>1){
+			//multiple parts, last is file name
+			srcFileName=srcParts.pop() ?? '';
+			srcPath=srcParts.join('/');
+		} else {
+			//just one part, it is the file name
+			srcFileName=srcParts[0];
+		}
+		// as final check if srcFileName is empty just return all empty
+		if(!srcFileName || srcFileName.length===0){
+			return {srcPath:'', srcFileName:'', destPath:'', destFileName:''};
+		}
+		// now do dest, rules are:
+		//  -if dest is empty just copy source path and file
+		//  -parse dest path and file:
+		//		- if there was a leading / (first path segment empty)
+		//			- if multiple parts, last is file name, path is everything but last
+		//			- if just one part, it is the file name, path is empty
+		//		- if there was no leading / (first path segment not empty)
+		//			- if multiple parts then last is file name, path is everything but last plus source path
+		//			- if just one part, it is the file name, path is source path if there
+		if(!cpFileLine.dest || cpFileLine.dest.length===0){
+			destFileName=srcFileName;
+			destPath=srcPath;
+		} else {
+			const destParts=cpFileLine.dest.split('/');
+			if(destParts.length>0 && destParts[0].length===0){
+				// got leading / so just parse dest
+				if(destParts.length>1){
+					destFileName=destParts.pop() ?? '';
+					destPath=destParts.join('/');
+				} else {
+					destFileName=destParts[0];
+				}
+			} else if(destParts.length>1){
+				//multiple parts, last is file name
+				destFileName=destParts.pop() ?? '';
+				const destPathPart=destParts.join('/');
+				destPath= [srcPath,destPathPart].join('/');
+			} else {
+				//just one part, it is the file name
+				destFileName=destParts[0];
+				destPath=srcPath;
+			}
+		}
+	}
+	return {srcPath, srcFileName, destPath, destFileName};
 }
 
 //refresh the drive list
@@ -1801,6 +1904,25 @@ export async function activate(context: vscode.ExtensionContext) {
 		dest:string
 	}
 	
+	// **#145 - some helpers for matching cplines for new function buttons
+	// Helper to build the regex
+	function escapeForRegex(s: string, flexibleInner = true): string {
+		const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex metachars
+		return flexibleInner ? escaped.replace(/\s+/g, '\\s+') : escaped;
+	}
+
+	/**
+	 * Build matcher:
+	 * - matches: "string1" or "# string1" or "string1 -> string2" or "# string1 -> string2"
+	 * - allows arbitrary whitespace around tokens
+	 */
+	function buildMatcher(string1: string, string2?: string, flexibleInner = true, flags = 'u') {
+		const s1 = escapeForRegex(string1, flexibleInner);
+		const s2 = string2 ? escapeForRegex(string2, flexibleInner) : undefined;
+		const reSource = `^\\s*(?:#\\s*)?(${s1})${s2 ? `(?:\\s*->\\s*(${s2}))` : ''}\\s*$`;
+		return new RegExp(reSource, flags);
+	}
+
 	const mngCpFilesId:string=strgs.cmdMngFilesPKG;
 	//#37, command to manage cpfiles  settings
 	const cmdMngFilesSettings=vscode.commands.registerCommand(mngCpFilesId, async () => {
@@ -1816,7 +1938,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		//first read the current cpfile
 		// ** #37, preserve the comments
 		const cpLines=await parseCpfiles(true);
-		//then get the current merged list
+		//then get the current merged list- note this has just one line
+		// for each source file even if there are multiple lines with either comments
+		// or different destinations.  so need to multi-match!!
 		let fileListSelects=await getFileListSelect(cpLines);
 		//now create a list of quickpicks
 		// construct themeicons to use in pick instead of literals
@@ -1824,27 +1948,108 @@ export async function activate(context: vscode.ExtensionContext) {
 		const fileIcon:vscode.ThemeIcon=new vscode.ThemeIcon("file");
 		const folderIcon:vscode.ThemeIcon=new vscode.ThemeIcon("folder");
 		let picks:fileSelPick[]=Array<fileSelPick>(0);
+		// **#145- define buttons for quick pick items to add functionality
+		const commentButton:cmdQuickInputButton={
+			iconPath: iconComment,
+			tooltip: strgs.mngFilesLineButtonCommentTT,
+			commandName:'comment'
+		};
+		const mapButton:cmdQuickInputButton={
+			iconPath: iconMap,
+			tooltip: strgs.mngFilesLineButtonMapTT,
+			commandName:'map'
+		};
 		// ** #37, make list of comments and use to annotate matches and add back in later
 		const cpLinesComments=cpLines.filter(lne => lne.origLine && lne.origLine!=='');
+		// also list of non-comment lines for checking against file selects
+		const cpLinesNonComments=cpLines.filter(lne => !lne.origLine || lne.origLine==='');
 		for(const fileSel of fileListSelects) {
-			const cpLineMatch=cpLinesComments.find((cmt) => {
+			// ** #176- bug if commented source only matches uncommented but with two different dest, 
+			//	so need to match on full dest also BUT need to get multiple based on source
+			// AND the select flag from getFileSelectList may need to be calculated based on match
+			//	note that the selected flag from fileSel means the orig match as not a comment
+			//	so it should just go on through first, then check comments  
+			// now if no comment matched OR the fileSel is selected (meaning it may have matched but is potential dup), add it
+			// ** first check the non-comment lines, may be muliple too
+			const cpLineMatches=cpLinesNonComments.filter((ncline)=>{
+				return (fileSel.fullPath===ncline.src);
+			});
+			// and check matches to comments only
+			const cpLineCmtMatches=cpLinesComments.filter((cmt) => {
 				const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
 				return (cmtSrcOnly && cmtSrcOnly===fileSel.fullPath);
 			});
-			let cpLineMatchDest='';
-			if(cpLineMatch && cpLineMatch.origLine && cpLineMatch.origLine.includes('->')){
-				cpLineMatchDest=cpLineMatch.origLine.slice(1).trim().split('->')[1].trim();
+			// 3 conditions for this fileSel:
+			//	* does not match any lines from cplines, just add as non-selected pick
+			//	* matches one or more non-comment lines and selected, add them as non-comments
+			//  * matches one or more comment lines, add as comment only
+			if(cpLineCmtMatches.length===0 && cpLineMatches.length===0){
+				picks.push({
+					label: fileSel.fullPath + (fileSel.dest ? " -> "+fileSel.dest : ""),
+					picked:false,
+					iconPath:(fileSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
+					// ** #176- this needs to be full path to compare src later
+					//src:fileSel.src,
+					src:fileSel.fullPath,
+					dest:fileSel.dest,
+					description: "",
+					buttons:[commentButton,mapButton]
+				});
 			}
-			const pick:fileSelPick={
-				label: fileSel.fullPath + (fileSel.dest ? " -> "+fileSel.dest : ""),
-				picked:fileSel.selected,
-				iconPath:(fileSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
-				src:fileSel.src,
-				dest:fileSel.dest,
-				description: 
-					cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) '+strgs.pickCommentFlag : ''
-			};
-			picks.push(pick);
+			if(cpLineMatches.length>0 && fileSel.selected){
+				for(const cpLineMatch of cpLineMatches){
+					picks.push({
+						label: cpLineMatch.src +(cpLineMatch.dest ? " -> "+cpLineMatch.dest : ""), //fileSel.fullPath + (fileSel.dest ? " -> "+fileSel.dest : ""),
+						picked:fileSel.selected,
+						iconPath:(fileSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
+						// ** #176- this needs to be full path to compare src later
+						//src:fileSel.src,
+						src: cpLineMatch.src,		//fileSel.fullPath,
+						dest: cpLineMatch.dest,		//fileSel.dest,
+						description: "",
+						buttons:[commentButton,mapButton]
+					});
+				}
+			}
+			// now see if there are any matches to the comment lines, will be src only, add all
+			for(const cpLineMatch of cpLineCmtMatches){
+				let cpLineMatchDest:string="";
+				let cmtSrcOnly:string="";
+				// need source and possibly dest from comment
+				if(cpLineMatch && cpLineMatch.origLine ){
+					cmtSrcOnly= cpLineMatch.origLine?.slice(1).trim().split('->')[0].trim();
+					if(cpLineMatch.origLine.includes('->')){
+						cpLineMatchDest=cpLineMatch.origLine.slice(1).trim().split('->')[1].trim();
+					}
+				}
+				// const cpLineMatch=cpLinesComments.find((cmt) => {
+				// 	if(cmt.origLine){
+				// 		const cmtParts=cmt.origLine?.slice(1).trim().split('->');
+				// 		const cmtSrcOnly=cmtParts[0].trim();
+				// 		const cmtDestOnly=cmtParts.length>1 ? cmtParts[1].trim() : "";
+				// 		return (cmtSrcOnly && cmtSrcOnly===fileSel.fullPath && cmtDestOnly && cmtDestOnly===fileSel.dest);
+				// 	} else {
+				// 		return false;
+				// 	}
+				// });
+				// let cpLineMatchDest='';
+				// if(cpLineMatch && cpLineMatch.origLine && cpLineMatch.origLine.includes('->')){
+				// 	cpLineMatchDest=cpLineMatch.origLine.slice(1).trim().split('->')[1].trim();
+				// }
+				const pick:fileSelPick={
+					label: cmtSrcOnly + (cpLineMatchDest ? " -> "+cpLineMatchDest : ""),
+					picked:false,
+					iconPath:(fileSel.fType===vscode.FileType.File ? fileIcon : folderIcon),
+					// ** #176- this needs to be full path to compare src later
+					//src:fileSel.src,
+					src:cmtSrcOnly,
+					dest:cpLineMatchDest,
+					description: 
+						cpLineMatch ? (cpLineMatchDest ? ' -> '+cpLineMatchDest : '') +' $(close) '+strgs.pickCommentFlag : '',
+					buttons:[commentButton,mapButton]
+				};
+				picks.push(pick);
+			}
 		}
 		// const pickOpt:vscode.QuickPickOptions={
 		// 	canPickMany:true,
@@ -1859,6 +2064,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		// const newChoices=await vscode.window.showQuickPick<fileSelPick>(picks,
 		// 	{title:strgs_mngFileChooseFiles, placeHolder:strgs.mngFileChecks, canPickMany:true}
 		// );
+		// **#145- may need to read cpfiles raw lines if item buttons are clicked
+		let rawCpLines:string[] | undefined=undefined;
+		//
 		const qpFileCopyChoices=vscode.window.createQuickPick<fileSelPick>();
 		qpFileCopyChoices.items=picks;
 		qpFileCopyChoices.selectedItems=picks.filter(pick => pick.picked);
@@ -1874,6 +2082,148 @@ export async function activate(context: vscode.ExtensionContext) {
 				vscode.commands.executeCommand(strgs.cmdHelloPKG,strgs.helpFilesCopySupport);
 			}
 		});
+		qpFileCopyChoices.onDidTriggerItemButton(async (evt) => {
+			//check to see if have rawCpLines, if not read them in now since will need to parse for comment vs non-comment and map vs non-map
+			if(!rawCpLines){
+				rawCpLines=await readCpfiles();
+			}
+			const btn=evt.button as cmdQuickInputButton;
+			//vscode.window.showInformationMessage(btn.commandName+" clicked for "+evt.item.label);
+			// try to match the item to a line in cpfiles raw
+			// track whether cplines modified
+			let cpLinesModified:boolean=false;
+			for(const line of rawCpLines){
+				// may need to split at -> to be able to match
+				const s1= evt.item.label.trim().split('->')[0].trim();
+				const s2= evt.item.label.trim().split('->')[1] ? evt.item.label.trim().split('->')[1].trim() : undefined;
+				const matcher=buildMatcher(s1, s2, true);
+				const match=line.match(matcher);
+				if(match){
+					// if comment button, toggle comment on line and update item description and label as needed
+					if(btn.commandName==='comment'){
+						if(line.trim().startsWith('#')){
+							// uncomment- remove # and any whitespace after #
+							const newLine=line.replace(/^(\s*)#\s?/, '$1');
+							// update the rawCpLines with newLine
+							const lineIndex=rawCpLines.indexOf(line);
+							if(lineIndex!==-1){
+								rawCpLines[lineIndex]=newLine;
+								cpLinesModified=true;
+								break;
+							} else {
+								// should never happen since matched above, but just in case????
+							}
+							// // update the item description to remove comment flag and $(close)
+							// evt.item.description=evt.item.description?.replace('$(close) '+strgs.pickCommentFlag,'').trim() || '';
+							// // update the item label to remove comment if was there
+							// evt.item.label=evt.item.label.trim();
+						} else {
+							// comment- add # to start of line
+							const newLine='# '+line;
+							// update the rawCpLines with newLine
+							const lineIndex=rawCpLines.indexOf(line);
+							if(lineIndex!==-1){
+								rawCpLines[lineIndex]=newLine;
+								cpLinesModified=true;
+								break;
+							} else {
+								// should never happen since matched above, but just in case????
+							}
+							// // update the item description to add comment flag and $(close)
+							// evt.item.description=(evt.item.description ? evt.item.description+' ' : '') + '$(close) '+strgs.pickCommentFlag;
+							// // update the item label to add comment if not there
+							// evt.item.label='# '+evt.item.label.trim();
+						}
+					} else if (btn.commandName==='map'){
+						// for map, will hide pick, bring up input box, take input, hide it, update file, re-run cmd:
+						// - if no mapping bring up blank input box
+						// - if mapping put the dest in input box with note to blank if taking off mapping
+						let existingMap="";
+						if(line.includes('->')){
+							existingMap=line.trim().split('->')[1].trim();
+						}
+						qpFileCopyChoices.hide();
+						// different placeholder if have existing map vs not
+						const newMap=await vscode.window.showInputBox(
+							{
+								title: strgs.fileMapInputBoxTitle,
+								placeHolder: existingMap ? strgs.fileMapInputBoxPlaceholder : strgs.fileMapInputBoxPlaceholderNew,
+								value: existingMap
+							}
+						);
+						if(newMap!==undefined){
+							let newLine:string;
+							if(existingMap){
+								// have existing map, so need to replace it with new map or remove if blank
+								if(newMap.trim()===''){
+									// just remove the mapping, so take everything before -> and trim
+									newLine=line.trim().split('->')[0].trim();
+								} else {
+									// replace the existing map with new map, so take everything before -> and add new map
+									newLine=line.trim().split('->')[0].trim()+' -> '+newMap.trim();
+								}
+							} else {
+								// no existing map, so just add new map to end of line with -> if not blank
+								if(newMap.trim()!==''){
+									newLine=line.trim()+' -> '+newMap.trim();
+								} else {
+									newLine=line.trim();
+								}
+							}
+							// update the rawCpLines with newLine
+							const lineIndex=rawCpLines.indexOf(line);
+							if(lineIndex!==-1){
+								rawCpLines[lineIndex]=newLine;
+								cpLinesModified=true;
+								break;
+							} else {
+								// should never happen since matched above, but just in case????
+								vscode.window.showErrorMessage("Unexpected error: could not find line to update with new mapping");
+							}
+						} else {
+							// esc hit for input, just get out of command
+							return;
+						}
+					}
+				}			
+			}
+			// if no matches add new line to the end of the file, which will be either just the src or src -> dest if map, and comment if comment, but only if have a src to add (should always have since matching on label which is based on src)
+			// ** if didn't have any existing lines just write the new line (had to be just a file) (really doesn't matter)
+			if(!cpLinesModified){
+				if(btn.commandName==='comment'){
+					// since did not match any existing line, can only be file[path] so just comment 
+					rawCpLines.push('# '+evt.item.label);
+					cpLinesModified=true;
+				} else if (btn.commandName==='map'){
+					// for map since not in file can only be src file[path] so just prompt for empty input box
+					qpFileCopyChoices.hide();
+					const newMap=await vscode.window.showInputBox(
+						{
+							title: strgs.fileMapInputBoxTitle,
+							placeHolder: strgs.fileMapInputBoxPlaceholderNew,
+							value: ""
+						}
+					);
+					if(newMap!==undefined && newMap.trim()!==""){
+						rawCpLines.push(evt.item.label.trim()+' -> '+newMap.trim());
+						cpLinesModified=true;
+					}
+					// otherwise just ends command, including blank
+				}
+			}
+			// **#145- write back to cpfiles and rerun this command
+			if(cpLinesModified && rawCpLines && rawCpLines.length>0){
+				const wrslt=await writeCpfiles(rawCpLines.join('\n'));
+				if(wrslt){
+					vscode.window.showErrorMessage(wrslt);
+					return;
+				}
+				// just hide and re-show to refresh with new cpfiles content, which will update the picks and their descriptions and labels based on comments
+				qpFileCopyChoices.hide();
+				vscode.commands.executeCommand(mngCpFilesId);
+				return;
+			}
+		});
 		qpFileCopyChoices.onDidAccept(async () => {
 			// get the selected items
 			const newChoices=qpFileCopyChoices.selectedItems;
@@ -1882,9 +2232,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				//the return is only the new picks, all others in cpfiles should be deleted OR commented
 				//just format the file again from cpLines and newChoices
 				// **BUT, if cplines had dest and it is NOT in choices, give warning and choice to stop **
+				// #176- need to match on both src and dest since allowing dup srcs
 				if(
 					cpLines.some((cpl) => {
-						return (!cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+						return (!cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src && nc.dest===cpl.dest));
 					})
 				){
 					let ans=await vscode.window.showWarningMessage(strgs.destMapsDel,"Preserve","Remove","No, cancel","Help");
@@ -1934,12 +2285,34 @@ export async function activate(context: vscode.ExtensionContext) {
 				//	- previously selected mapped that pass through
 				//	- ** lines that were commented and are now selected...
 				//	-	WHICH can be either mapped or not, if mapped defer to question...
+				// ** #176- also check here for duplicate destinations, either mapped or not
+				let newChoicesDests:string[]=[];
 				for(const nc of newChoices){
 					if(nc.description && nc.description.endsWith(strgs.pickCommentFlag) && nc.description.includes('->')){
 						//??? let below handle????
 					} else {
 						newFileContents+=nc.label+"\n";
 					}
+					// so all new choices can be processed since any that were commented
+					//  will be uncommented
+					// ### parse fully
+					//const cpLineTmp:cpFileLine={src:nc.src,dest:nc.dest,inLib:false,};
+					const ncParsed=parseCpFileCompositePath(nc.label);
+					newChoicesDests.push([ncParsed.destPath,ncParsed.destFileName].join('/'));
+					//newChoicesDests.push([ncParsed.srcPath,ncParsed.srcFileName].join('/'));
+					//###
+					// if(nc.dest){
+					// 	newChoicesDests.push(nc.dest);
+					// } else {
+					// 	newChoicesDests.push(nc.src);
+					// }
+				}
+				// ** now check to see if there are any dup destinations, if so bail
+				const destSet=new Set(newChoicesDests);
+				if(destSet.size!==newChoicesDests.length){
+					vscode.window.showErrorMessage(strgs.dupDestMapping);
+					vscode.commands.executeCommand(strgs.cmdMngFilesPKG);
+					return;
 				}
 				//get the lib only lines from cpLines
 				//  ** #37, ignore the comment lines which have no src
@@ -1952,8 +2325,10 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 				// **look at cplines having mappings that may be flagged to preserve with comments
+				// #176- bug here where new choice with src having folder only has filename in .src
+				//	so need to compare full path from lib for these too, and also check dest if have mapping
 				if(prsvDestWCmts){
-					const prsvList=cpLines.filter(cpl => !cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src));
+					const prsvList=cpLines.filter(cpl => !cpl.inLib && cpl.dest && !newChoices.some(nc => nc.src===cpl.src && nc.dest===cpl.dest));
 					if(prsvList){
 						//just add cpline back with comment
 						for(const plne of prsvList){
@@ -1967,7 +2342,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				for(const cmt of cpLinesComments){
 					// take off any dest mapping that is in comment, just match src
 					const cmtSrcOnly=cmt.origLine?.slice(1).trim().split('->')[0].trim();
-					if(!newChoices.some(nc => cmtSrcOnly && nc.label===cmtSrcOnly)){
+					const cmtDestOnly=cmt.origLine?.slice(1).trim().split('->')[1]?.trim() || "";
+					// ** #176, bug here where not comparing both sides of mapping in case of dup src
+					// ** #145, bug if no mapping for commented source
+					if(!newChoices.some(nc => cmtSrcOnly && nc.label.trim().split('->')[0].trim()===cmtSrcOnly
+							&& (nc.label.trim().split('->')[1]?.trim()===cmtDestOnly || (!nc.label.includes('->') && cmtDestOnly==="")))){
 						newFileContents+=cmt.origLine+'\n';
 					} else {
 						//if comment is being removed that has dest, flag to ask later
@@ -2269,34 +2648,61 @@ export async function activate(context: vscode.ExtensionContext) {
 	//	have the current mapping and the last drive list
 	// find the first usb drive in last drives, if any
 	//BUT can't do anything if no workspace
+	// ** #175- change logic so only gives modal choice if more of a useful choice:
+	//  - If current mapped drive is serialfs no modal
+	//  - Else if current mapped drive has circuitpy volume label or boot_out.txt no modal
+	//  - Otherwise follow current flow
 	if(haveCurrentWorkspace) {
-		const connectCandidate=lastDrives.find((drv:drvlstDrive,index,ary) => {
-			return drv.isRemovable;		// no longer using drv.isUsb;
-		});
-		//if got a candidate, check it...
+		// ** use this as flag for gating the modal
 		let connectDrvPath:string='';
-		if(connectCandidate) {
-			if(connectCandidate.drvPath.toLowerCase().includes('circuitpy') || connectCandidate.volumeLabel?.toLowerCase()==='circuitpy') {
-				connectDrvPath=connectCandidate.drvPath;
-			} else {
-				// need to search for the boot file
-				let baseUri=connectCandidate.drvPath;
-				if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
-					baseUri='file:'+baseUri;
-				}
-				const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-				let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-					if(value.length>0){
-						return value[0]===strgs_cpBootFile;
+		// check if current drive is serialfs, if so don't check any further
+		let connectCandidate:drvlstDrive | undefined=undefined;
+		let connectCandidates:drvlstDrive[] | undefined=undefined;
+		if(!(curDriveSetting && curDriveSetting.toLowerCase().startsWith(strgs.serialfsScheme))){
+			// not serial so get list of all drives meeting criteria, including current drive so can check boot
+			// ** have to use loop, can't use filter because of async checks on each drive
+			for (const drv of lastDrives) {
+				// criteria is same as before including the current drive but go ahead and
+				// also do the checks on each that had been done on the first removable drive
+				// so that the whole set can be evaluated for the best fit.
+				if(drv.isRemovable){
+					if(drv.drvPath.toLowerCase().includes('circuitpy') || drv.volumeLabel?.toLowerCase()==='circuitpy'){
+						connectCandidates=connectCandidates ? [...connectCandidates,drv] : [drv];
 					} else {
-						return false;
+						let baseUri=drv.drvPath;
+						if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
+							baseUri='file:'+baseUri;
+						}
+						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+							if(value.length>0){
+								return value[0]===strgs_cpBootFile;
+							} else {
+								return false;
+							}
+						});
+						if(foundBootFile){
+							connectCandidates=connectCandidates ? [...connectCandidates,drv] : [drv];
+						}
 					}
-				});
-				if(foundBootFile){
-					connectDrvPath=connectCandidate.drvPath;
+				}
+			};
+			// now check to see if there were any drives and make sure one was not current
+			if(connectCandidates && connectCandidates.length>0){
+				// if current drive is in candidates, bail, otherwise take first candidate and offer modal
+				if (!connectCandidates.some((drv) => {
+						return drv.drvPath===curDriveSetting;
+					})){
+					connectCandidate=connectCandidates[0];
 				}
 			}
-			//if got a connect path, offer it in info message
+		}
+		//if got a candidate, check it...
+		if(connectCandidate) {
+			connectDrvPath=connectCandidate.drvPath;
+			//if got a connect path, offer it in info message,
+			// either the standard message if no current drive
+			//  or the change message if have current drive, then update config if accepted
 			if(connectDrvPath){
 				//make sure is not same as current mapping
 				if(connectDrvPath!==curDriveSetting) {

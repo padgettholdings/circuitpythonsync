@@ -108,7 +108,7 @@ export function getCpBootMsgs(strgs_cpBootFile:string):[strgs_cpBootNoFindMKDN:s
 //various messages
 export const helloWorldNoWkspc:string = 'Hello from CircuitPythonSync- WORKSPACE NOT FOUND - ACTIONS INACTIVE!';
 export const mngLibChecks:string = 'Check or uncheck desired files and folders';
-export const mngFileChecks:string = 'Check or uncheck desired files';
+export const mngFileChecks:string = 'Check or uncheck desired files, hover over file for action buttons';
 export const btnFilesTTPrefixMKDN:string="***Files***-";
 export const btnLibsTTPrefixMKDN:string="***Libs***-";
 export const mustMapMKDN:string='**MUST MAP DRIVE FIRST**';
@@ -127,6 +127,12 @@ export const noLibSpecd:string='!! No libraries specified to copy exist !! Showi
 export const warnEntireLib:string='WARNING! Entire lib folder will be copied, continue?';
 export const noLibDir:string='!! No libraries yet created !';
 export const destMapsDel:string='Destination mappings can be preserved or deleted, or cancel all?';
+export const dupDestMapping:string="Duplicate copy destinations not allowed, changes not saved, try again.";
+export const mngFilesLineButtonCommentTT:string="Comment/uncomment this item";
+export const mngFilesLineButtonMapTT:string="Map/unmap this item";
+export const fileMapInputBoxTitle:string="File Copy Mapping";
+export const fileMapInputBoxPlaceholder:string="Enter destination file path or clear to remove";
+export const fileMapInputBoxPlaceholderNew:string="Enter destination file path";
 export const cnfrmEntireLib:string='No lib folders/files selected, entire lib folder will be copied, continue?';
 export const cnfrmNoPyFiles:string= 'No python files selected, only code.py/main.py will be copied, continue?';
 export const cnfrmNoPyFilesAtAll:string= 'No python files will be copied, continue?';
@@ -137,9 +143,9 @@ export const fndCPDrvInsPath:string[]=[
 export const fndCPDrvInsPathChange:string[]=[
     'Found potential CP drive at "', //+connectDrvPath+'"
     '". Connect it instead of current "', //+curDriveSetting+'"?'
-    '"?'
+    '" which may not be CP?'
 ];
-export const fndCPDrvInsPathDetail:string='You can alway run Set Drive later';
+export const fndCPDrvInsPathDetail:string='You can always run Set Drive later';
 export const pickManual:string='Pick Manually';
 export const autoDetect:string='Auto Detected';
 export const autoDetectNotUSB:string='Auto Detected but may not be CP';

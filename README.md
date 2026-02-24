@@ -1,6 +1,8 @@
 # CircuitPython Sync for Visual Studio Code
 
-### Preview Version 2.1.5 adds support for running in Cursor IDE. See end of this note for more information on installing in Cursor.
+### New functionality in command that manages files copy manifests.  See Help File.
+
+### Full Version support for running in Cursor IDE. See end of this note for more information on installing in Cursor.
 
 ## Overview
 This extension provides developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is that code and library files reside on the storage of the development workstation with tools for synchronizing application assets (python code, libraries, support files) with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync.
