@@ -2,7 +2,9 @@
 
 The purpose of this extension is to provide developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is for code and library files to reside on the storage of the development workstation with tools for synchronizing application assets with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync. Having code assets on the workstation also allows VS Code to efficiently leverage python language services like auto-completion and intellisense in conjunction with CircuitPython language and library "stubs" managed by the extension. There are other excellent VS Code extensions and alternate IDEs that use a model having the workstation directly edit files on the CircuitPython drive should you prefer not to use the source-control-first methodology.
 
-**Cursor Support in Preview**.  All the extension capabilities are now available to use in a preview version for use in the Cursor IDE. (VS Code users need not install this preview, no new features were added.)  Changes for Cursor are transparent to the user and only affect the Python language completion and validation settiongs (Cursor uses a different language server from VS Code.)  Python language services should work as expected but may show up in the UI slightly differently.  Please provide feedback if you notice any anomolies.
+**New features in Files Mapping Command**.  See the section [Files Copy Support](#files-copy-support) for some handy new features in the UI for managing the file copy manifest.
+
+**Cursor Support in Full Release**.  All the extension capabilities are now available to use in the Cursor IDE.  Changes for Cursor are transparent to the user and only affect the Python language completion and validation settiongs (Cursor uses a different language server from VS Code.)  Python language services should work as expected but may show up in the UI slightly differently.  *Please provide feedback if you notice any anomolies*.
 
 **Serial Port Support**. Support has been added for boards that don't have native USB support, that is, that don't mount a "CIRCUITPY" drive when connected to the workstation USB port. These boards can be used with the extension by leveraging a serial port connection to upload code and libraries as well as monitor the application output.  See the [Serial Port Support](#serial-port-support) section below for more details.
 
@@ -124,7 +126,7 @@ The extension queries the operating system for available drives and shows them i
 
 Here the `D:` drive had the correct volume label, but an SD card mounted as the `F:` drive had a `boot_out.txt` file that had been used for testing.  In fact, any file directory can be selected by choosing the `Pick Manually` option and selecting a folder.  One use case for this feature is for making a copy of the development files and libraries on a removable drive and later copying to the board on a different workstation.
 
-For MacOS and Linux, the selected drive path will show as something like `/Volumes/CIRCUITPY` or `/media/username/CIRCUITPY`.  In all cases the proper string will be saved in the workspace settings so that the extension can find the drive again when you open the workspace.
+For MacOS and Linux, the selected drive path will show as something like `/Volumes/CIRCUITPY` or `/media/username/CIRCUITPY`.  In all cases the proper string will be saved in the workspace settings so that the extension can find the drive again when you open the workspace.  Also on startup of the extension the available drives and any current setting are checked to see if a "better" connection is can be offered through a modal pop-up.
 
 **NEW in V2**. When a serial port is connected (see [Serial Port Support](#serial-port-support)), a special "virtual" drive is available that enables file activity to the connected board.  This virtual drive is named `serialfs:` and shows up in the drive mapping like:
 
@@ -270,7 +272,7 @@ The commenting feature noted above for libraries also works for the files copy s
 
 ![Manage Files 3](cpfiles3.png)
 
-Note that unlike the library copy, the files copy does not clear out any prior files on the board that are not included in the current copy manifest.  You can use the board explorer to delete files as noted in prior sections.
+Note that unlike the library copy, the files copy does not clear out any prior files on the board that are not included in the current copy manifest.  You can use the board explorer to delete files as noted in prior sections.  **LATEST VERSION** adds more validation and functionality in the command UI that previously required editing the manifest file.  See the [end of this section](#new-features-in-the-command-ui) for details.
 
 As with the library copy support, files that are currently configured to be copied by the copy files button will be decorated with a color and a "CP" badge:
 
@@ -297,6 +299,13 @@ This can be contrasted with the file copied from the "extras" folder into the sa
 ![new file map 3](newFileMap3.png)
 
 During the work on the re-rooting feature a bug was fixed where the compare feature (noted in [Toolbar and Board Explorer](#toolbar-and-board-explorer)) did not always follow the mapping in `cpfiles.txt`.  Additionally the compare also picks up the new re-rooting mapping.
+
+### New features in the command UI
+Several new features are available in the latest version for the `Manage Files Copy` command.  First, the file listing excludes `.uf2` files since those cannot be copied to the board unless it is in bootloader mode (see [Uploading Circuit Python Firmware UF2](#uploading-uf2)).  Next the command now does some validation of selections: an error is thrown if the same destination on the board is selected for two different sources (While this technically could work the sequence is not guaranteed); and one source file can be copied to two different destinations without an error. Finally two line level function buttons have been added:
+
+![copy file line functions](cpfiles5.png)
+
+The X button comments or uncomments a file line; if the file was not in the manifest file it will be added.  The -> button adds or modifies a mapping on the source to a destination on the board (see above).  Using these buttons along with existing functionality should let you have almost all the full features of file copy management without hand editing the manifest file.
 
 [Top](#welcome-to-circuitpython-sync)
 
