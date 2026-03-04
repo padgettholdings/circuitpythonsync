@@ -105,6 +105,7 @@ export class UploadUf2 {
         this._detectedDrives = [];
         this._driveSearchTimeout = 10000; // 10 seconds
 
+        // #183- No changes made to progress reporting since only doing one partial, then full.
         // setup the command
         const uploadUf2CmdId = strgs.cmdUf2LoadingPKG;
         let cmdUploadUf2 = vscode.commands.registerCommand(uploadUf2CmdId, async (ctxFile:vscode.Uri|undefined) => {

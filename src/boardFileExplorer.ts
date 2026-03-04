@@ -246,6 +246,7 @@ export class BoardFileExplorer {
 			// ** setup and show progress indicator
 			let progInc=0;
 			let progStep=10;	//will get reset by which copy is done
+			let progIncRpt=0;	// #183, the report inc is summed by progress display, NOT by code
 			// ** if using the serial port extend timeout quite a bit...****** TBD ****** how to set max timeout
 			let progressTimeout=10000;
 			if(baseUri.startsWith(_strgs.serialfsScheme)){
@@ -260,12 +261,17 @@ export class BoardFileExplorer {
 					console.log("User canceled the long running operation");
 				});
 				progress.report({ increment: 0 });
+				let progIncLast=0;		// for tracking when to report, only report when there is a change since last report
 				const p = new Promise<void>(resolve => {
 					const intvlId=setInterval(() => {
-						progress.report({increment:progInc,message:'Downloading File...',});
+						if(progInc !== progIncLast){
+							progress.report({increment:progIncRpt,message:'Downloading File...',});
+						}
 						if(progInc>=100){
 							clearInterval(intvlId);
 							resolve();
+						} else {
+							progIncLast=progInc;
 						}
 					},500);
 					setTimeout(() => {
@@ -276,11 +282,17 @@ export class BoardFileExplorer {
 				return p;
 			});
 			//calc prog step and setup interval for faking progress on single file copy
-			progStep=100/(fsize===0 ? 1 : fsize/1000);
+			progStep=100/(fsize===0 ? 2 : fsize/1000);
 			const fakeStepTimer=setInterval(() => {
-				progInc+=progStep;
-				if(progInc>=100){
+				// #183- can't let fake timer stop progress, so stop inc just before 100
+				if(progInc + progStep >= 100){
+					// just be able to report "almost" done
+					progIncRpt=100-progInc-1;
+					progInc=99;
 					clearInterval(fakeStepTimer);
+				} else {
+					progInc+=progStep;
+					progIncRpt=progStep;
 				}
 			}, 1000);
 			// do the copy
@@ -294,6 +306,7 @@ export class BoardFileExplorer {
 			}
 			// ** get rid of the progress bar
 			progInc=101;
+			progIncRpt=100;
 		});
 
 		vscode.commands.registerCommand('boardExplorer.filestat', async (resource:Entry) => {

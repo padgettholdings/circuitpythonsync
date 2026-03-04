@@ -53,7 +53,8 @@ const resourceLocker = new ResourceLocker();
 
 // ** use mutex
 // ** with timeout to prevent deadlock
-const mutex = withTimeout(new Mutex(), 5000, new Error('Timeout waiting for access to device.'));
+//const mutex = withTimeout(new Mutex(), 5000, new Error('Timeout waiting for access to device.'));
+const mutex = withTimeout(new Mutex(), 30000, new Error('Timeout waiting for access to device.'));
 
 let port: SerialPort | undefined = undefined;
 let activeSerialPort: serialPortInfo | undefined = undefined;

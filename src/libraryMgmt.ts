@@ -1048,6 +1048,7 @@ export class LibraryMgmt {
         }
     }
     // ** show progress and set context flag
+    // #183- progress report takes an inc not running total, so just calc inc each time
     private async showLibUpdateProgress(progressMessage:string) {
         vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, true);
         this._progInc=0;
@@ -1061,13 +1062,21 @@ export class LibraryMgmt {
                 vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
             });
             progress.report({ increment: 0 });
+            let progIncLast=0;  // this keeps last running total from the code
             const p = new Promise<void>(resolve => {
                 const intvlId=setInterval(() => {
-                    progress.report({increment:this._progInc,message:progressMessage,});
+                    let curProgStep=this._progInc;  // if 100+ just pass thru, will end
+                    if(this._progInc<100 && this._progInc !== progIncLast){
+                        curProgStep= this._progInc-progIncLast;
+                        if(curProgStep<0){curProgStep=0;}
+                    }
+                    progress.report({increment:curProgStep,message:progressMessage,});
                     if(this._progInc>=100){
                         clearInterval(intvlId);
                         vscode.commands.executeCommand('setContext', strgs.libUpdatingContextKeyPKG, false);
                         resolve();
+                    } else {
+                        progIncLast=this._progInc;
                     }
                 },500);
                 setTimeout(() => {
