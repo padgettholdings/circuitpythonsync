@@ -22,6 +22,7 @@ const PROMPT_TIMEOUT = 20000;
 const CODE_EXECUTION_TIMEOUT = 15000;
 const CODE_INTERRUPT_TIMEOUT = 5000;
 const PROMPT_CHECK_INTERVAL = 50;
+const PARTIAL_TOKEN_TIMEOUT = 250;
 
 const REGEX_PROMPT_RAW_MODE = /raw REPL; CTRL-B to exit/;
 const REGEX_PROMPT_NORMAL_MODE = />>> /;
@@ -219,10 +220,13 @@ with open("${path}", "r") as f:
         let code = `
 import os
 import time
-contents = os.listdir("${path}")
-for item in contents:
-    result = os.stat("${path}" + item)
-    print(item, result[0], result[6], result[9])
+try:
+    contents = os.listdir("${path}")
+    for item in contents:
+        result = os.stat("${path}" + item)
+        print(item, result[0], result[6], result[9])
+except OSError:
+    pass
 `;
         const result = await this._repl.runCode(code);
         let contents = [];
@@ -348,13 +352,13 @@ class InputBuffer {
         // ####TEST#### try leaving the ok at end
         if(result.toLowerCase().endsWith("ok\r\n")){
             this._pointer += result.length - 4;
-            tconsole_log('grb - ends with ok\\r\\n, new pointer:',this._pointer);
+            tconsole_log('grb-1 - ends with ok\\r\\n, new pointer:',this._pointer);
         } else if (result.toLowerCase().endsWith("ok\n")){
             this._pointer += result.length - 3;
-            tconsole_log('grb - ends with ok\\n, new pointer:',this._pointer);
+            tconsole_log('grb-2 - ends with ok\\n, new pointer:',this._pointer);
         } else if (result.toLowerCase().endsWith("ok")){
             this._pointer += result.length - 2;
-            tconsole_log('grb - ends with ok, new pointer:',this._pointer);
+            tconsole_log('grb-3 - ends with ok, new pointer:',this._pointer);
         } else {
         this._pointer += result.length;
         }
@@ -429,6 +433,7 @@ export class REPL {
         this._promptCheckPointer = 0; // Used for looking at prompt output/control characters
         this._checkpointCount = 0;
         this._rawByteCount = 0;
+        this._partialToken = null;
         this.terminalOutput = true;
     }
 
@@ -437,7 +442,7 @@ export class REPL {
         return this._serialInputBuffer.get();
     }
 
-    //// Placeholder Functions ////
+    //// Abstract Functions ////
     setTitle(title, append=false) {
         return;
     }
@@ -575,21 +580,26 @@ export class REPL {
             // or we receive an error message
             let bytes = this._serialInputBuffer.getRemainingBuffer();
             this._rawByteCount += bytes.length;
-            tconsole_log('ccr - raw bytes cnt: ',this._rawByteCount);
+            tconsole_log('ccr-1 - raw bytes cnt: ',this._rawByteCount);
             if (this._rawByteCount >= 2) {
-                tconsole_log('%cccr- bytes beginning: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
+                tconsole_log('%cccr-2- bytes beginning: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
                 while (bytes.length > 0) {
                     if (this._checkpointCount == 0) {
                         if (bytes.slice(0, 2).match("OK")) {
-                            tconsole_log('ccr- ckptcnt 0, ok found');
+                            tconsole_log('ccr-3- ckptcnt 0, ok found');
                             this._checkpointCount++;
                             bytes = bytes.slice(2);
-                            tconsole_log('%cccr- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
+                            tconsole_log('%cccr-4- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
                         } else if (bytes.slice(0, 2).match("ra")) {
-                            tconsole_log('ccr- ckptcnt 0, ra found -error');
+                            tconsole_log('ccr-5- ckptcnt 0, ra found -error');
                             if (DEBUG) {
                                 console.log("Unexpected bytes encountered. " + bytes);
                             }
+                            return;
+                        } else if (bytes.slice(0, 4) == CHAR_TITLE_START) {
+                            // Device was reset, wait for prompt
+                            await this.serialTransmit(CHAR_CTRL_C);
+                            await this.getToPrompt();
                             return;
                         } else {
                             console.error("Unexpected output in raw mode: " + bytes);
@@ -598,29 +608,35 @@ export class REPL {
                     } else {
                         //tconsole_log('ccr- ckptcnt>0: ',this._checkpointCount);
                         if (bytes.slice(0, 1).match(CHAR_CTRL_D)) {
-                            tconsole_log('ccr- matched ctrl-d for chkptcnt:',this._checkpointCount);
+                            tconsole_log('ccr-6- matched ctrl-d for chkptcnt:',this._checkpointCount);
                             this._checkpointCount++;
                             //console.log("Checkpoint Count: " + this._checkpointCount);
                         } else {
                             if (this._checkpointCount == 1) {
                                 // *** if have ok was a dup, get rid of it
-                                if (bytes.slice(0, 2).match("OK")) {
-                                    tconsole_log('ccr- **DUP ok found, removing** for ckptcnt=1');
-                                    bytes = bytes.slice(2);
-                                    tconsole_log('%cccr- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
-                                }
+                                // if (bytes.slice(0, 2).match("OK")) {
+                                //     tconsole_log('ccr-7- **DUP ok found, removing** for ckptcnt=1');
+                                //     bytes = bytes.slice(2);
+                                //     tconsole_log('%cccr-8- bytes remaining: (len='+ bytes.length.toString()+ ')','color:#ff0;','\r\n', (bytes.length>50 ? bytes.slice(0,48)+'...' : bytes),'\r\n');
+                                // }
                                 // Code Output
                                 this._codeOutput += bytes.slice(0, 1);
+                                //check to make sure an OK didn't end up at beggining of code output
+                                if (this._codeOutput.length >= 2 && this._codeOutput.slice(0, 2).match("OK")) {
+                                    tconsole_log('ccr-7- **DUP ok found at beggining of code output, removing for ckptcnt=1**');
+                                    this._codeOutput = this._codeOutput.slice(2);
+                                }
+                                //
                                 //tconsole_log('ccr- ckptcnt=1, new codeOutput: (len=',this._codeOutput.length,'):',this._codeOutput.length>25 ? this._codeOutput.slice(0,25)+'...' : this._codeOutput);
                                 //console.log("Code Output: " + bytes.slice(0,1));
                             } else if (this._checkpointCount == 2) {
                                 // Error Output
                                 this._errorOutput += bytes.slice(0, 1);
-                                tconsole_log('ccr- ckptcnt=2, new error output:',this._errorOutput);
+                                tconsole_log('ccr-9- ckptcnt=2, new error output:',this._errorOutput);
                                 //console.log("Error: " + bytes.slice(0,1));
                             } else if (this._checkpointCount >= 2) {
-                                tconsole_log('ccr- ckptcnt done, ending running:',this._checkpointCount);
-                                tconsole_log('%cccr- final code output:','color:#0f0;','\r\n', this._codeOutput);
+                                tconsole_log('ccr-10- ckptcnt done, ending running:',this._checkpointCount);
+                                tconsole_log('%cccr-11- final code output:','color:#0f0;','\r\n', this._codeOutput);
                                 // We're done
                                 this._pythonCodeRunning = false;
                             }
@@ -636,7 +652,7 @@ export class REPL {
 
         // In normal mode, we need to look for the prompt
         if (!!this._currentLineIsNormalPrompt()) {
-            tconsole_log('ccr- back at normal prompt, ending code running');
+            tconsole_log('ccr-12- back at normal prompt, ending code running');
             if (DEBUG) {
                 console.log("REPL at Normal Mode prompt");
             }
@@ -833,13 +849,15 @@ export class REPL {
         for (let token of tokens) {
             this._tokenQueue.push(token);
         }
+
+        // Process the queued tokens
         await this._processQueuedTokens();
     }
 
     // Allows for supplied python code to be run on the device via the REPL in normal mode
     async runCode(code, codeTimeoutMs=CODE_EXECUTION_TIMEOUT, showOutput=false) {
         this.terminalOutput = DEBUG || showOutput;
-
+        tconsole_log('rc-1 - running code, code:', code);
         await this.getToPrompt();
         let result = await this.execRawMode(code + LINE_ENDING_LF, codeTimeoutMs);
         this.terminalOutput = true;

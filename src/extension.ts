@@ -1333,10 +1333,23 @@ export async function activate(context: vscode.ExtensionContext) {
 		});  
 		// ** setup and show progress indicator
 		let progInc=0;
+		let progIncRpt=0;	// #183, the report inc is summed by progress display, NOT by code
 		// ** if using the serial port extend timeout quite a bit...****** TBD ****** how to set max timeout
-		let progressTimeout=10000;
+		// ** #183- calc timeouts based on number of files and if serial or not, but set a max and min
+		//  -- measurements- 
+		//		* for circuitpy mapped drive, esp32s2, 4 text files is 2.7 secs
+		//		  4 text files including a 34kB image is 4.38 secs
+		//		  so use 2000ms per file with 10000 ms min
+		//		* for serial, 4 files, including subdir, took 38 secs on seeed c6, so 9.5 secs/file
+		//		  with 5 files where one was 34kB image, 52 secs, so 10.4 secs per file, so use 10
+		//		  single small code.py copy was 12.2 secs, so to be safe use 25000 ms min. 
+		//		 SO use 10000 ms per file.
+		// assume mapped drive...
+		let progressTimeout=cpCodeLines.length*(2000);
+		progressTimeout=progressTimeout < 10000 ? 10000 : progressTimeout;
 		if(curDriveSetting.startsWith(strgs.serialfsScheme)){
-			progressTimeout=60000;	// 1 minute
+			progressTimeout=cpCodeLines.length*(10000*2);	// guess at 2x per file??
+			progressTimeout=progressTimeout < 25000 ? 25000 : progressTimeout;	// set a min of 25 secs
 		}
 		vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
@@ -1347,12 +1360,17 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.log("User canceled the long running operation");
 			});
 			progress.report({ increment: 0 });
+			let progIncLast=0;		// for tracking when to report, only report when there is a change since last report
 			const p = new Promise<void>(resolve => {
 				const intvlId=setInterval(() => {
-					progress.report({increment:progInc,message:'Copying files...',});
+					if(progInc !== progIncLast){
+						progress.report({increment:progIncRpt,message:'Copying files...',});
+					}
 					if(progInc>=100){
 						clearInterval(intvlId);
 						resolve();
+					} else {
+						progIncLast=progInc;
 					}
 				},500);
 				setTimeout(() => {
@@ -1363,7 +1381,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			return p;
 		});
 		//calc progress counts
-		const progStep=100/(cpCodeLines.length===0 ? 1 : cpCodeLines.length);
+		const progStep=100/(cpCodeLines.length===0 ? 2 : cpCodeLines.length);
 		for(const codeFile of cpCodeLines){
 			// do some file checking and tracking
 			if(checkForCodeOrMainPy(codeFile)){
@@ -1386,6 +1404,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					errorFileCnt+=1;
 				}
 				progInc+=progStep;
+				progIncRpt=progStep;
 			} else if(codeFile.src.includes('/')) {
 				// is a subfolder, parse and try to copy
 				const parsedPath=parseCpFilePath(codeFile);
@@ -1412,22 +1431,27 @@ export async function activate(context: vscode.ExtensionContext) {
 							errorFileCnt+=1;
 						}
 						progInc+=progStep;
+						progIncRpt=progStep;
 					} else {
 						skippedFilesCnt+=1;
 						progInc+=progStep;
+						progIncRpt=progStep;
 					}
 				}
 				else {
 					skippedFilesCnt+=1;
 					progInc+=progStep;
+					progIncRpt=progStep;
 				}
 			} else {
 				skippedFilesCnt+=1;
 				progInc+=progStep;
+				progIncRpt=progStep;
 			}
 		}
 		//just make sure progress is gone
 		progInc=101;
+		progIncRpt=100;
 		vscode.window.showInformationMessage(`Copy done: ${copiedCodeOrMainPy ? 'DID' : 'DID NOT'} copy python file.  ${copiedFilesCnt.toString()} files copied. ${skippedFilesCnt.toString()} files skipped. ${errorFileCnt.toString()} files errored.`);
 		statusBarItem1.backgroundColor=undefined;
 		// ** #36, refresh the board explorer
@@ -1520,15 +1544,51 @@ export async function activate(context: vscode.ExtensionContext) {
 		const srcLibUri=vscode.Uri.joinPath(wsRootFolder.uri,srcLibPath);
 		const destLibUri=vscode.Uri.joinPath(vscode.Uri.parse(baseUri),deviceCpLibPath);
 		const libDir=await vscode.workspace.fs.readDirectory(srcLibUri);
+		// **#183- trying to set timeouts better
+		//	- measurements:
+		//		* circuitpy mapped drive, 2 folders (total of 13 files) and 5 mpy files, 8 secs on esp32s2, so 440ms/file
+		//		  so don't have to count in subdirs, assume 5 files/folder + top level files, and 2 sec each, 15 sec min
+		//		* serial mapped, 2 folders (total of 13 files) and 5 mpy files, 1 min 5 secs (65 secs) on seeed c6,
+		//		  so 3.6 sec/file actual, use 6 secs with margin, 90 sec min
 		// ** setup and show progress indicator
 		let progInc=0;
 		let progStep=10;	//will get reset by which copy is done
+		let progIncRpt=0;	// #183, the report inc is summed by progress display, NOT by code
+		// **#183- use the estimate file count for the fake progress step calculation
+		const totalFileCntEstMin=10;
+		let totalFileCntEst=totalFileCntEstMin;	// will be set below based on number of files
+		// ** just set some starting points and mins
+		const progressTimeoutMinCPDrive=15000;
+		const progressTimeoutMinSerialDrive=90000;
+		let progressTimeout=progressTimeoutMinCPDrive;	//cp drive typical but will be set below
+		let fakeStepTimerInvl=progressTimeout/totalFileCntEst;
+		// Now for cp mapped drive check whether full lib or just lines
+		if(copyFullLibFolder){
+			//need a count of folders and files
+			const libFolderCnt=libDir.filter(dEnt => dEnt[1]===vscode.FileType.Directory).length;
+			totalFileCntEst=libFolderCnt*5+(libDir.length-libFolderCnt);
+			if(totalFileCntEst<totalFileCntEstMin){totalFileCntEst=totalFileCntEstMin;}
+			// progressTimeout=totalFileCntEst*2000;
+			// if(progressTimeout<15000){progressTimeout=15000;}
+			// fakeStepTimerInvl=progressTimeout/totalFileCntEst;
+		} else {
+			// count lines in cpLibLines, guessing that folders don't end in .py or .mpy
+			const libFolderCnt=cpLibLines.filter(lEnt => !(lEnt.src.endsWith('.py') || lEnt.src.endsWith('.mpy'))).length;
+			totalFileCntEst=libFolderCnt*5+(cpLibLines.length-libFolderCnt);
+			if(totalFileCntEst<totalFileCntEstMin){totalFileCntEst=totalFileCntEstMin;}
+			// progressTimeout=totalFileCntEst*2000;
+			// if(progressTimeout<15000){progressTimeout=15000;}
+			// fakeStepTimerInvl=progressTimeout/totalFileCntEst;
+		}
+		// this is for cp mapped drive...
+		progressTimeout=totalFileCntEst*2000;
+		if(progressTimeout<progressTimeoutMinCPDrive){progressTimeout=progressTimeoutMinCPDrive;}
+		fakeStepTimerInvl=progressTimeout/totalFileCntEst;
 		// ** if using the serial port extend timeout quite a bit...****** TBD ****** how to set max timeout
-		let progressTimeout=10000;
-		let fakeStepTimerInvl=1000;
 		if(curDriveSetting.startsWith(strgs.serialfsScheme)){
-			progressTimeout=90000;	// 1.5 minute
-			fakeStepTimerInvl=5000;	// run the fake step slower too
+			progressTimeout=totalFileCntEst*6000;
+			if(progressTimeout<progressTimeoutMinSerialDrive){progressTimeout=progressTimeoutMinSerialDrive;}
+			fakeStepTimerInvl=progressTimeout/totalFileCntEst;
 		}
 		vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
@@ -1539,12 +1599,18 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.log("User canceled the long running operation");
 			});
 			progress.report({ increment: 0 });
+			let progIncLast=0;
 			const p = new Promise<void>(resolve => {
 				const intvlId=setInterval(() => {
-					progress.report({increment:progInc,message:'Copying libraries...',});
+					// ** #183- ONLY report progress if running sum different than last
+					if(progInc !== progIncLast){
+						progress.report({increment:progIncRpt,message:'Copying libraries...',});
+					}
 					if(progInc>=100){
 						clearInterval(intvlId);
 						resolve();
+					} else {
+						progIncLast=progInc;
 					}
 				},500);
 				setTimeout(() => {
@@ -1559,9 +1625,15 @@ export async function activate(context: vscode.ExtensionContext) {
 			//calc prog step and setup interval for faking progress on full lib copy, max 10 secs
 			progStep=100/(libDir.length===0 ? 2 : libDir.length+1);
 			const fakeStepTimer=setInterval(() => {
-				progInc+=progStep;
-				if(progInc>=100){
+				// **#183- can't let the fake step end the progress, just stop before 100
+				if(progInc + progStep >= 100){
+					// just be able to report "almost" done
+					progIncRpt=100-progInc-1;
+					progInc=99;
 					clearInterval(fakeStepTimer);
+				} else {
+					progInc+=progStep;
+					progIncRpt=progStep;
 				}
 			}, fakeStepTimerInvl);
 			if(srcLibPath!==''){
@@ -1595,6 +1667,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 				// ** get rid of the progress bar
 				progInc=101;
+				progIncRpt=100;
 				// ** give copied notice here of just whole library
 				vscode.window.showInformationMessage(strgs.wholeLibCopyDone);
 			} else {
@@ -1627,6 +1700,7 @@ export async function activate(context: vscode.ExtensionContext) {
 								await serialFileSysProvider.copyFolder(srcUri,destUri);
 								copiedFilesCnt+=1;	//** count as one file copied **
 								progInc+=progStep;
+								progIncRpt=progStep;
 								continue;	// done with this one
 							}
 						}
@@ -1640,15 +1714,18 @@ export async function activate(context: vscode.ExtensionContext) {
 						errorFileCnt+=1;
 					}
 					progInc+=progStep;
+					progIncRpt=progStep;
 				} else {
 					skippedFilesCnt+=1;
 					progInc+=progStep;
+					progIncRpt=progStep;
 				}
 			}
 			vscode.window.showInformationMessage(`Lib Copy done with ${copiedFilesCnt.toString()} files copied, ${skippedFilesCnt.toString()} files skipped, ${errorFileCnt.toString()} files errored.`);
 		}
 		//just make sure progress is gone
 		progInc=101;
+		progIncRpt=100;
 		statusBarItem2.backgroundColor=undefined;
 		// ** #36, refresh the board explorer
 		bfe.boardFileProvider.refresh(curDriveSetting);
@@ -2673,14 +2750,22 @@ export async function activate(context: vscode.ExtensionContext) {
 						if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
 							baseUri='file:'+baseUri;
 						}
-						const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
-						let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-							if(value.length>0){
-								return value[0]===strgs_cpBootFile;
-							} else {
-								return false;
-							}
-						});
+						let foundBootFile:[string,vscode.FileType]|undefined=undefined;
+						// **#185 - use same pattern as other probes of potential drives that may throw errors.
+						try {
+							const dirContents=await vscode.workspace.fs.readDirectory(vscode.Uri.parse(baseUri));
+							foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+								if(value.length>0){
+									return value[0]===strgs_cpBootFile;
+								} else {
+									return false;
+								}
+							});
+						} catch(error) {
+							// just log into console and keep going
+							console.log(strgs.errListingDrvBadBootPath, drv.drvPath);
+							continue;
+						}
 						if(foundBootFile){
 							connectCandidates=connectCandidates ? [...connectCandidates,drv] : [drv];
 						}

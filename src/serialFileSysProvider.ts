@@ -216,6 +216,17 @@ export class SerialFileSysProvider implements vscode.FileSystemProvider {
 	// ** copy workspace folder to board - NOT part of FileSystemProvider interface but repl doesn't directly do folders
 	// ** HOWEVER, it does depend on repl creating folder if needed when writing a file
 	async copyFolder(wsFolder: vscode.Uri, boardFolder: vscode.Uri): Promise<void> {
+		// ** repl doesn't actually create folder, it is the python file system
+		// which is NOT being used here, so need to see if folder needs to be created
+		const entry=await this._lookup(boardFolder, true);	// just check folder but don't throw error
+		if(!entry) {
+			try {
+				await this.createDirectory(boardFolder);
+			} catch (error) {
+				vscode.window.showErrorMessage(strgs.errSerialFileProvCreatingDir(boardFolder.path, error));
+				return;
+			}
+		}
 		// get all files in the workspace folder
 		const files = await vscode.workspace.fs.readDirectory(wsFolder);
 		for (const [name, type] of files) {

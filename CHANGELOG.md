@@ -82,3 +82,7 @@
 
 ## v2.2.0 - 2026-02-23
     * Full release of Cursor support plus new functionality in Files Copy Support command.
+
+## v2.2.1 - 2026-03-04
+    * Improvements in serial file copying, correcting issue with library folder copy and better reliability.  Also more accurate progress reporting during copy.
+    * User reported bug introduced in 2.2.0 on some workstations when drive list probed during extension startup caused crash.
