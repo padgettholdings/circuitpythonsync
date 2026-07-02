@@ -948,6 +948,55 @@ export class REPL {
         return this._codeOutput;
     }
 
+    // Snapshot of the board's runtime state in a single round trip.
+    // Returns { readOnly, usbConnected }. Each field is null when the
+    // underlying CircuitPython attribute isn't available or the probe failed.
+    async getRuntimeStatus() {
+        const code = `
+try:
+    import storage
+    _ro = storage.getmount("/").readonly
+except Exception:
+    _ro = None
+try:
+    import supervisor
+    _usb = supervisor.runtime.usb_connected
+except Exception:
+    _usb = None
+print("RUNTIME_STATUS", _ro, _usb)
+`;
+        const output = await this.runCode(code);
+        const match = (output || "").match(/RUNTIME_STATUS\s+(\S+)\s+(\S+)/);
+        if (!match) {
+            return { readOnly: null, usbConnected: null };
+        }
+        return {
+            readOnly: this._parsePyBoolOrNone(match[1]),
+            usbConnected: this._parsePyBoolOrNone(match[2]),
+        };
+    }
+
+    // Best-effort classification of why the filesystem is read-only:
+    //   "not-readonly" - filesystem is writable
+    //   "usb-claim"    - host has CIRCUITPY mounted via USB MSC
+    //   "boot-py"      - read-only without USB; boot.py likely didn't remount
+    //   "hardware"     - read-only with no detectable software cause
+    //   "unknown"      - probe couldn't determine the readonly state
+    async getReadOnlyReason() {
+        const { readOnly, usbConnected } = await this.getRuntimeStatus();
+        if (readOnly === false) return "not-readonly";
+        if (readOnly === null) return "unknown";
+        if (usbConnected === true) return "usb-claim";
+        if (usbConnected === false) return "boot-py";
+        return "hardware";
+    }
+
+    _parsePyBoolOrNone(token) {
+        if (token === "True") return true;
+        if (token === "False") return false;
+        return null;
+    }
+
     getCodeOutput() {
         return this._codeOutput;
     }

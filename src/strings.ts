@@ -551,6 +551,27 @@ export const serialTerminalGreeting:string='Circuit Python Sync Serial Monitor\r
 export const serialTerminalGreetingNoPort:string='Circuit Python Sync Serial Monitor - OPEN PORT\r\n';
 export const serialTerminalProfileName:string="circuitpythonsync.terminal-profile";
 export const serialTerminalSerialDisabledWarning:string="Serial Port support disabled in config";
+// #139- adding CP version to board explorer title when available, and other places we want to show it
+export const boardExplorerCPVersionMessage=(cpVersion: string) => `[CP Ver ${cpVersion}]`;
+export const boardExplorerBoardIdMessage=(boardId: string) => `(${boardId})`;
+export const boardExplorerCPVersionCheckingMessage:string='[CP Ver ...]';
+// #190, command to set board from boot file
+export const cmdSetBoardFromBootPKG='circuitpythonsync.setBoardFromBoot';
+export const cmdSetBoardFromBootNeedDriveError:string='A current drive must be configured.';
+export const cmdSetBoardFromBootNoBootFileError:string='No boot_out.txt file found on the current drive.';
+export const cmdSetBoardFromBootNoBoardNameFoundError:string='No board name found in boot_out.txt file.';
 // DEPRECATED
 //export const errorSerialTerminalCloseVSCodeMonitor=(err:string) => `Error closing serial port monitor: ${err}`;
-
+// #189 - add command to copy one file to board, right click or use what is in editor.
+export const cmdFileCopyPKG='circuitpythonsync.copyFileToBoard';
+export const mustSetDrvCopy='Must set a current drive to copy file to board.';
+export const copyContextWarning='Must have active file in editor, or use context menu in explorer.';
+export const copyBoardFileExists:string[]=['File ',' already exists on board, overwrite?'];
+export const copyBoardFileSuccess:string[]=['File ',' copied to board successfully.'];
+export const copyBoardFileProgressMsg:string='Copying file to board...';
+// while implementing #189 noticed that on macOS, ._ files are created and need to be cleaned up after copying files to the board.
+// This applies to all file copy operations to a drive mapped on macOS as FAT, but not serial mapped.
+export const cleanMacMetafilesNoDriveMapped:string='._ file cleanup not done: no valid drive path provided.';
+export const cleanMacMetafilesOSCommand=(safePath: string) => `/usr/sbin/dot_clean -m '${safePath}'`;
+export const cleanMacMetaFilesExecWarn=(error: string) => `dot_clean warning: ${error}`;
+export const cleanMacMetaFilesExecErr=(error: unknown) => `Failed to execute dot_clean: ${error}`;

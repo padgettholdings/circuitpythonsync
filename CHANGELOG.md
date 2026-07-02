@@ -86,3 +86,7 @@
 ## v2.2.1 - 2026-03-04
     * Improvements in serial file copying, correcting issue with library folder copy and better reliability.  Also more accurate progress reporting during copy.
     * User reported bug introduced in 2.2.0 on some workstations when drive list probed during extension startup caused crash.
+
+## v2.2.2 - 2026-07-01
+    * Several new utilities in the board explorer including indicator of current board CP version and board type.  Command to set board type in workspace settings from board boot file.  Quick single file copy from workspace to board.
+    * Improved MacOS functions by automatically cleaning up `._` meta files created when files copied from Mac file system to board formatted as FAT.
