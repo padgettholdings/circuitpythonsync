@@ -8,6 +8,8 @@ import * as path from 'path';
 import * as os from 'os';
 import * as tar from 'tar';
 import { promises } from 'dns';
+import { getCurrentDriveConfig,getBootFileContents,extractCPVerBrdFromBootFile } from './extension';
+
 
 export class StubMgmt {
     private _context: vscode.ExtensionContext;
@@ -208,6 +210,67 @@ export class StubMgmt {
         }
         );
         context.subscriptions.push(selectBoardCmd);
+
+        // ** #190- command to set board from boot_out.txt file if found
+        const setBoardFromBootCmdId= strgs.cmdSetBoardFromBootPKG;
+        const setBoardFromBootCmd=vscode.commands.registerCommand(setBoardFromBootCmdId, async () => {
+            if(!this._workspaceUri){
+                vscode.window.showErrorMessage(strgs.mustHaveWkspce);
+                return;
+            }
+            const curDrive=getCurrentDriveConfig();
+            if(!curDrive){
+                vscode.window.showErrorMessage(strgs.cmdSetBoardFromBootNeedDriveError);
+                return;
+            }
+            // may need to show a wait if serial, don't really need countdown, just a finish
+            let progFinish:boolean=false;
+            const progressTimeout=10000;
+            // if serial drive, setup progress wait notify
+            if(curDrive.toLowerCase().includes('serial')){
+                // setup progress wait notify
+                vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: "Reading boot_out.txt file...",
+                        cancellable: true
+                    },
+                    (progress,token) => {
+                        token.onCancellationRequested(() => {
+                            console.log("User canceled the long running operation");
+                        });
+                        const p = new Promise<void>(resolve => {
+                            const intvlId=setInterval(() => {
+                                if(progFinish){
+                                    clearInterval(intvlId);
+                                    resolve();
+                                } 
+                            },500);
+                            setTimeout(() => {
+                                clearInterval(intvlId);
+                                resolve();
+                            }, progressTimeout);
+                        });
+                        return p;
+                    }
+                );
+            }
+            const bootFileContents = await getBootFileContents(curDrive);
+            progFinish=true;
+            if(!bootFileContents){
+                vscode.window.showErrorMessage(strgs.cmdSetBoardFromBootNoBootFileError);
+                return;
+            }
+            const [ver, board] = await extractCPVerBrdFromBootFile(bootFileContents);
+            if(!board){
+                vscode.window.showErrorMessage(strgs.cmdSetBoardFromBootNoBoardNameFoundError);
+                return;
+            }
+            // call the select board command with the board name
+            vscode.commands.executeCommand(selectBoardCmdId, board);
+        }
+        );
+        context.subscriptions.push(setBoardFromBootCmd);
 
         // create status bar button linked to selectBoardCmd
         const curBoardSelection = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');

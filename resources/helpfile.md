@@ -61,9 +61,25 @@ Note that there are some action buttons that only show up when you float your mo
 
 ![CPS Board Explorer Secondary](boardexplorerright.png)
 
+**NEW** The view now includes an indicator of the version of CircuitPython running on the board and the type of board as reported by the `boot_out.txt` file if it exists.  Also, a new command is available to set the board type from the file:
+
+![CPS Board Explorer CP Version](boardexplorerVerBdSet.png)
+
+If the file does not exist or the contents cannot be parsed to extract the version and board id from the text as recorded by the CP runtime installer the indicator will be empty.  The indicator is also read from boards connected by a serial port, however the indicator may be delayed due to the extra time it takes to read the file. In that case a wait notification may show up:
+
+![CPS Board Explorer Boot Read Wait](boardexplorerbootwait.png)
+
+ The command to set the board type from the file can be accessed with the icon in the title bar of the board explorer or through the command palette using `CP Set Board from boot_out.txt`.  As with the initial indicator the wait notification may show up when using the command on serial connected boards.
+
 In addition to showing the files and folders on the mapped board, the explorer enables actions: deleting a file from the board (right click on a file); downloading a single file to your workspace (right click on a file); opening the drive in the operating system (file explorer on Windows, Finder on MacOS, terminal on Linux); and refreshing the view when changes occur outside the extension.  The board files can also be downloaded to your workspace with various options as detailed in [Board Downloading](#board-downloading).
 
 While not directly accessible from the explorer, there is a companion command that compares a file in the workspace with the same file on the board.  This is useful for checking if a file has been modified on the board or in the workspace.  The command is `Compare File to Board` and can be run from the command palette or by right-clicking on a file in the explorer.  Note that if the workspace file is not found on the board BUT the file is mapped to a filename that is on the board (see [Files Copy Support](#files-copy-support)), the command will ask if you want to compare the two files.
+
+**NEW**. Another utility command available either from the command palette or by right clicking a file in the workspace explorer is `Copy Single File to Board`:
+
+![Copy Single File to Board](copysinglefiletobrd.png)
+
+This will copy the file chosen to the same path on the board as in the workspace.  In the example shown here the file `r1a.txt` will be copied to the `bak` folder in the root of the board, creating the folder if needed.  A warning will be given if the file exists to confirm overwrite or cancel.  Note that if the file is included in the file copy manifest as discussed in [Files Copy Support](#files-copy-support) the path configured could be different; no check is done in this quick single copy action.  The copy is supported for serially connected boards; a wait notification will be shown similar to that shown for the cp-version/board name indicator above.  **MacOS Users:** This file copy as well as the general file and library copies generally created `._` meta files on USB volume mounted boards.  The extension now uses the `dot_clean` OS command after copies to try to clean up the board.
 
 **NEW in V2**. The Board Explorer now supports boards connected via serial port (see [Serial Port Support](#serial-port-support)).  When a serial port is connected and the `serialfs:` drive is mapped (see [CP Drive Mapping](#cp-drive-mapping)), the explorer will show the files and folders on the connected board.  Most of the same actions are supported as with a standard CircuitPython drive; however, the `Open in OS` option is disabled since the serial "drive" is virtual within the extension only:
 
