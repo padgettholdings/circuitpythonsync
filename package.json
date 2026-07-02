@@ -2,7 +2,7 @@
   "name": "circuitpythonsync",
   "displayName": "CircuitPythonSync",
   "description": "Sync files from pc to board for CircuitPython development.",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "publisher": "padgettholdings",
   "license": "MIT",
   "icon": "resources/circuitpythonsync-icon.png",
@@ -86,6 +86,13 @@
         "category": "CircuitPythonSync"
       },
       {
+        "command": "circuitpythonsync.setBoardFromBoot",
+        "title": "CP Set Board from boot_out.txt",
+        "enablement": "!circuitpythonsync.updatingstubs",
+        "category": "CircuitPythonSync",
+        "icon": "$(circuit-board)"
+      },
+      {
         "command": "circuitpythonsync.mngcpfiles",
         "title": "CP Manage Files Copy",
         "category": "CircuitPythonSync"
@@ -138,6 +145,12 @@
         "command": "circuitpythonsync.filediff",
         "title": "CP Compare file to board",
         "enablement": "!explorerResourceIsFolder",
+        "category": "CircuitPythonSync"
+      },
+      {
+        "command": "circuitpythonsync.copyFileToBoard",
+        "title": "CP Copy single file to board",
+        "enablement": "!explorerResourceIsFolder && !(resourceDirname =~ /\\.vscode/)",
         "category": "CircuitPythonSync"
       },
       {
@@ -221,6 +234,11 @@
           "command": "circuitpythonsync.uploaduf2",
           "when": "!explorerResourceIsFolder && resourceExtname=='.uf2' && !circuitpythonsync.serialdriveconnected",
           "group": "2_workspace"
+        },
+        {
+          "command": "circuitpythonsync.copyFileToBoard",
+          "when": "!explorerResourceIsFolder && !(resourceDirname =~ /\\.vscode/)",
+          "group": "2_workspace"
         }
       ],
       "view/title": [
@@ -231,6 +249,11 @@
         },
         {
           "command": "boardExplorer.openBoardOS",
+          "when": "view ==boardExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "circuitpythonsync.setBoardFromBoot",
           "when": "view ==boardExplorer",
           "group": "navigation"
         },
