@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as os from 'os';
-import { getCurrentDriveConfig,getLibPath } from './extension';
+import { getCurrentDriveConfig,getLibPath,getBootFileContents,extractCPVerBrdFromBootFile } from './extension';
 import { toNamespacedPath } from 'path';
 import * as strgs from './strings';
 
@@ -24,12 +24,45 @@ export class Entry extends vscode.TreeItem{
 	contextValue = 'entry';
 }
 
+// #139, #190- as with setting board from boot, create notify wait helper 
+//		that can be used in multiple places, and can be cancelled by user
+let bootFileReadDone={finished:false};
+const progressTimeout=20000;	// 20 seconds, needs to be enough to handle
+// tree refresh too, if not done by then, just stop progress bar
+function showBootFileReadProgress(readDone: {finished:boolean}) {
+	vscode.window.withProgress(
+		{
+			location: vscode.ProgressLocation.Notification,
+			title: "Reading boot_out.txt file...",
+			cancellable: true
+		},
+		(progress,token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					if(readDone.finished){
+						clearInterval(intvlId);
+						resolve();
+					} 
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, progressTimeout);
+			});
+			return p;
+		}
+	);
+}
+
 // ** #150 - add delete of folders that are not excluded.
 const foldersDeleteExcludes:string[]=strgs.foldersDeleteExcludes;
 
 export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
     _CurDriveSetting: string;
-    
+
     constructor(curDriveSetting:string){
         this._CurDriveSetting=curDriveSetting;
     }
@@ -40,6 +73,35 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 	refresh(curDriveSetting:string): void {
 		this._CurDriveSetting=curDriveSetting;
 		this._onDidChangeTreeData.fire();
+		// ** #139 - see if boot file is on board and if so, extract CP version and board id and show in title
+		// first init the message to empty and then let async process update as needed
+		treeView.message='';
+		if (this._CurDriveSetting) {
+			// set message to a wait sequence since have a drive...
+			treeView.message=strgs.boardExplorerCPVersionCheckingMessage;
+			// if serial drive, setup progress wait notify
+			if(this._CurDriveSetting.toLowerCase().includes('serial')){
+				bootFileReadDone.finished=false;
+				showBootFileReadProgress(bootFileReadDone);
+			}
+			getBootFileContents(this._CurDriveSetting).then(bootFileContent => {
+				bootFileReadDone.finished=true;
+				if(bootFileContent!==''){
+					extractCPVerBrdFromBootFile(bootFileContent).then(([cpVersion, board]) => {
+						if(cpVersion!==''){
+							treeView.message=strgs.boardExplorerCPVersionMessage(cpVersion);
+							if(board!==''){
+								treeView.message+=' '+strgs.boardExplorerBoardIdMessage(board);
+							}
+						} else {
+							treeView.message='';
+						}
+					});
+				} else {
+					treeView.message='';
+				}
+			});
+		}
 	}
 
 
@@ -63,6 +125,8 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 			gotCpDirectory=true;
 		} catch {gotCpDirectory=false;}
 		if(!gotCpDirectory || this._CurDriveSetting===''){
+			// try blanking the treeview message, since no board connected
+			treeView.message='';
 			return Array<Entry>(0);
 		}
 		children.sort((a, b) => {
@@ -95,6 +159,8 @@ export class BoardFileProvider implements vscode.TreeDataProvider<Entry> {
 
 }
 
+// make treeview accessible to refresh
+let treeView: vscode.TreeView<Entry>;
 export class BoardFileExplorer {
 	boardFileProvider:BoardFileProvider;
     _curDriveSetting: string;
@@ -105,7 +171,39 @@ export class BoardFileExplorer {
 			treeDataProvider:this.boardFileProvider,
 			showCollapseAll:true
 		};
-        context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
+		treeView=vscode.window.createTreeView('boardExplorer',tvo);
+		// ** #139 - see if boot file is on board and if so, extract CP version and show in title
+		// first init the message to empty and then let async process update as needed
+		treeView.message='';
+		if (this._curDriveSetting) {
+			// set message to a wait sequence since have a drive...
+			treeView.message=strgs.boardExplorerCPVersionCheckingMessage;
+			// if serial drive, setup progress wait notify
+			if(this._curDriveSetting.toLowerCase().includes('serial')){
+				bootFileReadDone.finished=false;
+				showBootFileReadProgress(bootFileReadDone);
+			}
+			getBootFileContents(this._curDriveSetting).then(bootFileContent => {
+				bootFileReadDone.finished=true;
+				if(bootFileContent!==''){
+					extractCPVerBrdFromBootFile(bootFileContent).then(([cpVersion, board]) => {
+						if(cpVersion!==''){
+							treeView.message=strgs.boardExplorerCPVersionMessage(cpVersion);
+							if(board!==''){
+								treeView.message+=' '+strgs.boardExplorerBoardIdMessage(board);
+							}
+						} else {
+							treeView.message='';
+						}
+					});
+				} else {
+					treeView.message='';
+				}
+			});
+		}
+		//treeView.message=this._curDriveSetting ? '[CP version xx]' : '';
+        //context.subscriptions.push(vscode.window.createTreeView('boardExplorer',tvo));
+		context.subscriptions.push(treeView);
 		vscode.commands.registerCommand('boardExplorer.refresh', () => {
 			const _curDrive=getCurrentDriveConfig();
 			this.boardFileProvider.refresh(_curDrive);

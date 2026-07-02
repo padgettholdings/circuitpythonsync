@@ -26,6 +26,9 @@ export class REPL {
     writeToTerminal: ((msg: string) => void) | null;
     //####TEST#### read input buffer
     getInputBuffer(): string;
+    //june 2026
+    getRuntimeStatus(): Promise<{ readOnly: boolean|null, usbConnected: boolean|null }>;
+    getReadOnlyReason(): Promise<string>;
 }
 
 export interface FileInfo {

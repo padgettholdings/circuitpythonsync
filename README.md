@@ -1,8 +1,8 @@
 # CircuitPython Sync for Visual Studio Code
 
-### Fixed bug reported by user in 2.2.0 where extension crashed on some workstations during startup.  Also improved performance and reliability of file copies to serial attached board.
+### Added several utility features in board explorer including an indicator of CP version and board type.  See the `Toolbar and Board Explorer` section of the extension help file.
 
-### Support for the Cursor IDE. See end of this note for more information on installing in Cursor.
+### Support included for the Cursor IDE. See end of this note for more information on installing in Cursor.
 
 ## Overview
 This extension provides developers using Adafruit's CircuitPython (CP) on microcontrollers with tools for efficient CP coding, uploading, and monitoring during development.  The workflow supported by this extension is that code and library files reside on the storage of the development workstation with tools for synchronizing application assets (python code, libraries, support files) with the attached board. This model is primarily intended to keep development assets in source control while ensuring the microcontroller storage is kept in sync.
@@ -26,7 +26,7 @@ Using these buttons you can perform most of your workflow with a connected Circu
 The extension can download library and board definitions (either the latest or a specified version), saving the configuration such that at any time your source control repo can be downloaded to restore your last saved development configuration.  The definitions support full Python IntelliSense and code completion, including pin definitions for the selected board. 
 
 ## Features
-* **Board Explorer** - Shows current files on the board.  Compare of local and board files.  Download files from the board to workspace.  Delete files on the board.  **NEW in V2** Download files or entire board over serial connection.
+* **Board Explorer** - Shows current files on the board.  Compare of local and board files.  Download files from the board to workspace.  Delete files on the board. View current CP version and board type. **NEW in V2** Download files or entire board over serial connection.
 * **Python Language Support** - VS Code Pylance augmented by library and board "stub" definitions for error checking, code completion, and IntelliSense. Compatibilty checking of CP and library versions against board firmware.
 * **Configurable File and Copy Actions** - Manifest file saved in configuration to tailor which files and libraries are copied to the board.  Supports comments and filename mapping.
 * **Project Templates** - Create new projects from templates.  A default is provided but you can create your own to suit your needs.

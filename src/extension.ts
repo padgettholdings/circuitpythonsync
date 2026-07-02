@@ -47,6 +47,8 @@ import { SerialFileSysProvider } from './serialFileSysProvider';
 //import { CustomPromisifyLegacy } from 'util';
 //import { validateHeaderValue } from 'http';
 //import { validateHeaderValue } from 'http';
+import {exec} from 'child_process';
+import {promisify} from 'util';
 
 // ** strings that come from settings - defaults still in strings.ts **
 let strgs_cpfiles:string=strgs.cpfiles;
@@ -743,6 +745,72 @@ export function getCurrentDriveConfig(): string {
 	return curDrive;
 }
 
+// ** #139 - move from activate to be able to export and call from board explorer also
+export async function getBootFileContents(curDriveSetting:string): Promise<string> {
+	let retval:string='';
+	let foundBootFile:string='';
+	const _curDrive=curDriveSetting;
+	if(_curDrive){
+		let baseUri=_curDrive;	
+		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
+			baseUri='file:'+baseUri;
+		}
+		const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
+		const dirContents=await vscode.workspace.fs.readDirectory(boardUri);
+		let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+			if(value.length>0){
+				return value[0]===strgs_cpBootFile;
+			} else {
+				return false;
+			}
+		});
+		if(foundBootFile){
+			//get the contents of the boot_out.txt file
+			const bootFileUri:vscode.Uri=vscode.Uri.joinPath(boardUri,strgs_cpBootFile);
+			const bootFileContents=await vscode.workspace.fs.readFile(bootFileUri);
+			const constBootContent=fromBinaryArray(bootFileContents);
+			retval=constBootContent;
+		}
+	}
+	return retval;
+}
+
+// ** #139 - read the cp version and board name from boot file on drive to show in UI
+//		export to be able to use from board explorer as well
+/**
+ * Extract CircuitPython version from boot_out.txt content
+ * @param bootFileContent Content of boot_out.txt file
+ * @returns [ver: string, board: string] Full version string (e.g., "9.0.0") or empty string if not found
+*/
+export async function extractCPVerBrdFromBootFile(bootFileContent: string): Promise<[ver: string, board:string]> {
+	if (!bootFileContent || bootFileContent.length === 0) {
+		return ['', ''];
+	}
+	let version: string = '';
+	let board: string = '';
+
+	// first get the cp version if found...
+	// Look for pattern like "Adafruit CircuitPython 9.0.0" or "CircuitPython 9.0.0"
+	const versionPattern = /CircuitPython\s+(\d+)\.(\d+)\.(\d+)/i;
+	const match = bootFileContent.match(versionPattern);
+	
+	if (match && match.length >= 4) {
+		// Return the full version string
+		version= `${match[1]}.${match[2]}.${match[3]}`;
+	}
+	
+	// now get the board id from a line like:
+	// Board ID:adafruit_qtpy_esp32s2
+	const boardPattern = /Board ID:\s*(\S+)/i;
+	const boardMatch = bootFileContent.match(boardPattern);
+	if (boardMatch && boardMatch.length >= 2) {
+		board = boardMatch[1];
+	}
+	
+	return [version, board];
+}
+
+
 // **interface and parsing of circuitpython project template file**
 interface cpProjTemplateItem {
 	folderName:string,
@@ -1027,6 +1095,82 @@ function getErrorMessage(error: any): string {
 	} else {
 		return 'An unknown error occurred';
 	}
+}
+
+// ** #189- add non-discrete wait notify helper for showing file action progress
+function showFileActionProgress(waitDone: {finished:boolean}, progressTimeout:number, notifyMessage:string, _vscode=vscode): void {
+	_vscode.window.withProgress(
+		{
+			location: _vscode.ProgressLocation.Notification,
+			title: notifyMessage,
+			cancellable: true
+		},
+		(progress,token) => {
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			const p = new Promise<void>(resolve => {
+				const intvlId=setInterval(() => {
+					if(waitDone.finished){
+						clearInterval(intvlId);
+						resolve();
+					} 
+				},500);
+				setTimeout(() => {
+					clearInterval(intvlId);
+					resolve();
+				}, progressTimeout);
+			});
+			return p;
+		}
+	);
+}
+
+// for the mac run the dot_clean util
+// Convert exec into a Promise-based function
+const execPromise = promisify(exec);
+
+/**
+ * Runs the macOS dot_clean utility against a specific drive or directory path.
+ * @param drivePath - The absolute path to the target drive or folder (e.g., '/Volumes/MyFatDrive')
+ * @returns A promise that resolves when the cleaning is complete.
+ * note that both vscode and strgs pointers can be passed in to be able to use in context methods like single file copy
+ */
+export async function cleanMacMetadataFiles(drivePath: string, _vscode=vscode, _strgs=strgs): Promise<string> {
+  // Ensure the command is only executed on macOS
+  if (process.platform !== 'darwin') {
+    //just return
+	return '';
+  }
+
+  // don't run if serial mapped drive, ._ files not created
+  if(drivePath.startsWith(_strgs.serialfsSchemeName)){
+	return '';
+  }
+
+  if (!drivePath || drivePath.trim() === '') {
+    _vscode.window.showWarningMessage(_strgs.cleanMacMetafilesNoDriveMapped);
+    return '';
+  }
+
+  // Escape single quotes in the path to prevent command injection
+  const safePath = drivePath.replace(/'/g, "'\\''");
+
+  // -m: Always delete dot-underscore files if there is no matching native file
+  const command = _strgs.cleanMacMetafilesOSCommand(safePath);
+
+  try {
+    const { stdout, stderr } = await execPromise(command);
+    
+    if (stderr) {
+      throw new Error(_strgs.cleanMacMetaFilesExecWarn(stderr));
+    }
+    
+    return stdout || 'Drive successfully cleaned of ._ files.';
+  } catch (error: any) {
+    _vscode.window.showErrorMessage(_strgs.cleanMacMetaFilesExecErr(error));
+    return '';
+  }
 }
 
 
@@ -1454,6 +1598,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		progIncRpt=100;
 		vscode.window.showInformationMessage(`Copy done: ${copiedCodeOrMainPy ? 'DID' : 'DID NOT'} copy python file.  ${copiedFilesCnt.toString()} files copied. ${skippedFilesCnt.toString()} files skipped. ${errorFileCnt.toString()} files errored.`);
 		statusBarItem1.backgroundColor=undefined;
+		// ** on mac, clean up ._ files
+		await cleanMacMetadataFiles(curDriveSetting);
 		// ** #36, refresh the board explorer
 		bfe.boardFileProvider.refresh(curDriveSetting);
 	});
@@ -1727,6 +1873,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		progInc=101;
 		progIncRpt=100;
 		statusBarItem2.backgroundColor=undefined;
+		// ** on mac, clean up ._ files
+		await cleanMacMetadataFiles(curDriveSetting);
 		// ** #36, refresh the board explorer
 		bfe.boardFileProvider.refresh(curDriveSetting);
 
@@ -2869,34 +3017,57 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(wkspcChg);
 
-	async function getBootFileContents(curDriveSetting:string): Promise<string> {
-		let retval:string='';
-		let foundBootFile:string='';
-		const _curDrive=curDriveSetting;
-		if(_curDrive){
-			let baseUri=_curDrive;	
-			if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
-				baseUri='file:'+baseUri;
-			}
-			const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
-			const dirContents=await vscode.workspace.fs.readDirectory(boardUri);
-			let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
-				if(value.length>0){
-					return value[0]===strgs_cpBootFile;
-				} else {
-					return false;
-				}
-			});
-			if(foundBootFile){
-				//get the contents of the boot_out.txt file
-				const bootFileUri:vscode.Uri=vscode.Uri.joinPath(boardUri,strgs_cpBootFile);
-				const bootFileContents=await vscode.workspace.fs.readFile(bootFileUri);
-				const constBootContent=fromBinaryArray(bootFileContents);
-				retval=constBootContent;
-			}
-		}
-		return retval;
-	}
+	// async function getBootFileContents(curDriveSetting:string): Promise<string> {
+	// 	let retval:string='';
+	// 	let foundBootFile:string='';
+	// 	const _curDrive=curDriveSetting;
+	// 	if(_curDrive){
+	// 		let baseUri=_curDrive;	
+	// 		if (os.platform()==='win32' && !baseUri.startsWith(strgs.serialfsScheme)) {
+	// 			baseUri='file:'+baseUri;
+	// 		}
+	// 		const boardUri:vscode.Uri=vscode.Uri.parse(baseUri);
+	// 		const dirContents=await vscode.workspace.fs.readDirectory(boardUri);
+	// 		let foundBootFile=dirContents.find((value:[string,vscode.FileType],index,ary) => {
+	// 			if(value.length>0){
+	// 				return value[0]===strgs_cpBootFile;
+	// 			} else {
+	// 				return false;
+	// 			}
+	// 		});
+	// 		if(foundBootFile){
+	// 			//get the contents of the boot_out.txt file
+	// 			const bootFileUri:vscode.Uri=vscode.Uri.joinPath(boardUri,strgs_cpBootFile);
+	// 			const bootFileContents=await vscode.workspace.fs.readFile(bootFileUri);
+	// 			const constBootContent=fromBinaryArray(bootFileContents);
+	// 			retval=constBootContent;
+	// 		}
+	// 	}
+	// 	return retval;
+	// }
+
+	// // ** #139 - read the cp version from boot file on drive to show in UI
+	// /**
+    //  * Extract CircuitPython version from boot_out.txt content
+    //  * @param bootFileContent Content of boot_out.txt file
+    //  * @returns Major version string (e.g., "9") or empty string if not found
+    // */
+    // async function extractCPVersionFromBootFile(bootFileContent: string): Promise<string> {
+    //     if (!bootFileContent || bootFileContent.length === 0) {
+    //         return '';
+    //     }
+        
+    //     // Look for pattern like "Adafruit CircuitPython 9.0.0" or "CircuitPython 9.0.0"
+    //     const versionPattern = /CircuitPython\s+(\d+)\.(\d+)\.(\d+)/i;
+    //     const match = bootFileContent.match(versionPattern);
+        
+    //     if (match && match.length >= 4) {
+    //         // Return the major version (first number)
+    //         return match[1];
+    //     }
+        
+    //     return '';
+    // }
 
 
 	const openDirId:string=strgs.cmdSetDirPKG;
@@ -4343,6 +4514,128 @@ export async function activate(context: vscode.ExtensionContext) {
 		*/
 	});
 	context.subscriptions.push(fileDiffCmd);
+
+	// **#189 -  single file copy file **
+	const cmdFileCopyId =strgs.cmdFileCopyPKG;
+	const fileCopyCmd=vscode.commands.registerCommand(cmdFileCopyId, async (ctxFile:vscode.Uri|undefined) =>{
+		// Capture required modules in local variables to ensure they're available in this scope
+		const _vscode = vscode;
+		const _os = os;
+		const _strgs = strgs;
+		// ** this is per claude 3.7 sonnet thinking 4/9/25
+		let rootFolder:vscode.WorkspaceFolder|undefined;
+		//const ctxFile:vscode.Uri|undefined=undefined;
+		if(_vscode.workspace.workspaceFolders)	{			//if(!haveCurrentWorkspace) {
+			rootFolder=_vscode.workspace.workspaceFolders[0];
+		} else {
+			_vscode.window.showInformationMessage(_strgs.mustHaveWkspce);
+			return;
+		}
+		//also have to have drive mapping to try to copy to
+		if(curDriveSetting==='') {
+			_vscode.window.showInformationMessage(_strgs.mustSetDrvCopy);
+			return;
+		}
+		// ** the arg array should have a length >=1 if context driven, else can look at active editor
+		let fileUri:vscode.Uri;
+		//if(args.length>0){
+		if(ctxFile!==undefined){
+			//[0]should be uri
+			//fileUri=args[0] as vscode.Uri;
+			fileUri=ctxFile as vscode.Uri;
+		} else if(_vscode.window.activeTextEditor){
+			fileUri=_vscode.window.activeTextEditor.document.uri;
+		} else {
+			//just bail
+			_vscode.window.showWarningMessage(_strgs.copyContextWarning);
+			return;
+		}
+		// now will need to look up paths to see if overwrite warning needed
+		// first remove root from fileUri to just get path, fileUri still has path to use on board!
+		let fromFile:string=fileUri.fsPath.replace(rootFolder.uri.fsPath,'');
+		if(fromFile.startsWith('/') || fromFile.startsWith('\\')){
+			fromFile=fromFile.slice(1);
+		}
+		//need to add file scheme in windows
+		let baseUri=curDriveSetting;
+		if (_os.platform()==='win32' && !baseUri.startsWith(_strgs.serialfsScheme)) {
+			baseUri='file:'+baseUri;
+		}
+		// ** read the device to see if it is there **
+		try{
+			// try just doing a stat on the base uri
+			const rootStat=await _vscode.workspace.fs.stat(_vscode.Uri.parse(baseUri));
+			if(rootStat.type !== _vscode.FileType.Directory){
+				throw new Error('Not a valid device mount');
+			}
+		} catch(error) {
+			// ***** give error and bail *****
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			_vscode.window.showErrorMessage(_strgs.abortFileCopyError+fse.message);
+			return;
+		}
+		//now do rel pattern against the board
+		// ** take out use of relative pattern for serialfs since it doesn't work
+		let fles: vscode.Uri[] = [];
+		// need to calc uri for appropriate file system... by default file type
+		let boardFileUri: vscode.Uri=_vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), fromFile); 
+		if (baseUri.startsWith(_strgs.serialfsSchemeName)) {
+			// ** need to normalize fromFile to use / for serialfs, but don't change original, will be handled below
+			const normFromFile=fromFile.replace(/\\/g,'/');
+			try {
+				boardFileUri = _vscode.Uri.joinPath(_vscode.Uri.parse(baseUri), normFromFile);
+				const stat = await _vscode.workspace.fs.stat(boardFileUri);
+				if (stat) {
+					fles.push(boardFileUri);
+				}
+			} catch (error) {
+				// if file not found continue on, else error out
+				if ((error as vscode.FileSystemError).code !== 'FileNotFound') {
+					const errMsg = _strgs.couldNotReadCpDnld[0] + curDriveSetting + _strgs.couldNotReadCpDnld[1];
+					await _vscode.window.showErrorMessage(errMsg);
+					return;
+				}
+			}
+		} else {
+			try {
+				const relPat = new _vscode.RelativePattern(_vscode.Uri.parse(baseUri), fromFile);
+				fles = await _vscode.workspace.findFiles(relPat);
+			} catch (error) {
+				const errMsg = _strgs.couldNotReadCpDnld[0] + curDriveSetting + _strgs.couldNotReadCpDnld[1];
+				await _vscode.window.showErrorMessage(errMsg);
+				return;
+			}
+		}
+		// ** if file exists on board, ask if want to overwrite
+		if(fles && fles.length>0){
+			const ans=await _vscode.window.showWarningMessage(_strgs.copyBoardFileExists[0]+fromFile+_strgs.copyBoardFileExists[1],'Yes','No');
+			if(ans!=='Yes'){
+				return;
+			}
+		}
+		// now copy the file to the board
+		// if serial, do non-discrete progress notify
+		let copyDone={finished:false};
+		const copyProgressTimeout=20000;
+		if(baseUri.startsWith(_strgs.serialfsSchemeName)) {
+			showFileActionProgress(copyDone,copyProgressTimeout,_strgs.copyBoardFileProgressMsg,_vscode);
+		}
+		try {
+			await _vscode.workspace.fs.copy(fileUri, boardFileUri, { overwrite: true });
+			copyDone.finished=true;
+			_vscode.window.showInformationMessage(_strgs.copyBoardFileSuccess[0]+fromFile+_strgs.copyBoardFileSuccess[1]);
+		} catch (error) {
+			const fse:vscode.FileSystemError=error as vscode.FileSystemError;
+			_vscode.window.showErrorMessage(_strgs.abortFileCopyError+fse.message);
+			return;
+		}
+		// clean up ._ files on mac
+		await cleanMacMetadataFiles(curDriveSetting,_vscode,_strgs);
+		// refresh the board explorer to show the new file
+		bfe.boardFileProvider.refresh(curDriveSetting);
+
+	});
+	context.subscriptions.push(fileCopyCmd);
 
 	// look for config change
 	const cfgChg=vscode.workspace.onDidChangeConfiguration(async (event) => {
