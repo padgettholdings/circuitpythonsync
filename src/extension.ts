@@ -1231,6 +1231,20 @@ export async function activate(context: vscode.ExtensionContext) {
 	if(vscode.env.appName.toLowerCase().includes('cursor')){
 		defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
 	}
+	// ** #200- add support for vscodium
+	// ####TEST####
+	//vscode.window.showInformationMessage(`App name: ${vscode.env.appName}`);
+	// ####END TEST####
+	if(vscode.env.appName.toLowerCase().includes('vscodium')){
+		// need to install basedpyright if not already installed as extension
+		if(vscode.extensions.all.find(ext => ext.id === 'detachhead.basedpyright') === undefined) {
+			// use buiit in command to install the extension
+			await vscode.commands.executeCommand('workbench.extensions.installExtension', 'detachhead.basedpyright');
+			vscode.window.showInformationMessage('BasedPyright extension installed for VSCodium.');
+		}
+		defaultTemplateFileName=strgs.CPTemplateDefaultVscodium;
+	}
+	// **
 	const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 	//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 	try{
@@ -1265,6 +1279,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
 				if(vscode.env.appName.toLowerCase().includes('cursor')){
 					defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+				}
+				// ** #200- add support for vscodium
+				if(vscode.env.appName.toLowerCase().includes('vscodium')){
+					defaultTemplateFileName=strgs.CPTemplateDefaultVscodium;
 				}
 				const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 				//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
@@ -3682,6 +3700,10 @@ export async function activate(context: vscode.ExtensionContext) {
 			if(vscode.env.appName.toLowerCase().includes('cursor')){
 				defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
 			}
+			// ** #200 -- add support for vscodium
+			if(vscode.env.appName.toLowerCase().includes('vscodium')){
+				defaultTemplateFileName=strgs.CPTemplateDefaultVscodium;
+			}
 			const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 			//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);
 			try{
@@ -3798,6 +3820,10 @@ export async function activate(context: vscode.ExtensionContext) {
 					let defaultTemplateFileName:string=strgs.CPTemplateDefaultVscode;
 					if(vscode.env.appName.toLowerCase().includes('cursor')){
 						defaultTemplateFileName=strgs.CPTemplateDefaultCursor;
+					}
+					// ** #200 -- add support for vscodium
+					if(vscode.env.appName.toLowerCase().includes('vscodium')){
+						defaultTemplateFileName=strgs.CPTemplateDefaultVscodium;
 					}
 					const fullTemplPathUri=vscode.Uri.joinPath(context.extensionUri,'resources/'+defaultTemplateFileName);
 					//vscode.window.showInformationMessage("cp proj template path: "+fullTemplPathUri.fsPath);

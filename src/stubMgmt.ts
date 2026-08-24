@@ -115,7 +115,8 @@ export class StubMgmt {
                 //and update the python analysis extra paths, must be at top
                 //  AND replace any other board def
                 // ** #171- add support for cursor paths...
-                //  look at cursor first, otherwise vscode
+                // ** #200 - add support for vscodium,
+                //  look at cursor first, then vscodium, otherwise vscode
                 //    cursor has two configs
                 if(vscode.env.appName.toLowerCase().includes('cursor')) {
                     const cursorPythonRefPaths:string[]=strgs.confCursorPyExtraPathsPKG.split(';');
@@ -128,9 +129,18 @@ export class StubMgmt {
                         extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
                         await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
                     }
+                } else if (vscode.env.appName.toLowerCase().includes('vscodium')) {
+                    const vscodiumPythonRefPaths:string[]=strgs.confVscodiumPyExtraPathsPKG.split(';');
+                    for (const confExtraPaths of vscodiumPythonRefPaths){
+                        let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
+                        const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
+                        extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
+                        extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
+                        extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                        await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+                    }
                 } else {
                     let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(strgs.confPyExtraPathsPKG,[]);
-                    //extraPathsConfig=extraPathsConfig.filter((value)=>!value.includes('circuitpython_stubs-'+this._cpVersionFull+'/board_definitions'));
                     const bdefextrapath= /circuitpython_stubs-[\d\.]+.*board_definitions/i;
                     extraPathsConfig=extraPathsConfig.filter(value => !bdefextrapath.test(value));
                     extraPathsConfig=[boardStubExtraPath,...extraPathsConfig];
@@ -461,16 +471,20 @@ export class StubMgmt {
     
     private async refreshExtraPaths(cpVersionFullStubUri: vscode.Uri) {
         // ** #171- add support for cursor paths...
-        //  look at cursor first, otherwise vscode
-        //    cursor has two configs, vscode just one
+        // ** #200 - add support for vscodium,
+        //  look at cursor first, then vscodium, otherwise vscode
+        //    cursor and vscodium have two configs, vscode just one
         // get board to use in the checks
+        // NOTE that this change refactors the cursorPythonRefPaths var to a generic vscPythonRefPaths var, and then uses that to loop through the config names to update
         const boardName = vscode.workspace.getConfiguration().get(`circuitpythonsync.${strgs.confBoardNamePKG}`,'');
-        let cursorPythonRefPaths:string[]=[strgs.confPyExtraPathsPKG];
+        let vscPythonRefPaths:string[]=[strgs.confPyExtraPathsPKG];
         if(vscode.env.appName.toLowerCase().includes('cursor')) {
-            cursorPythonRefPaths=strgs.confCursorPyExtraPathsPKG.split(';');
+            vscPythonRefPaths=strgs.confCursorPyExtraPathsPKG.split(';');
+        }else if (vscode.env.appName.toLowerCase().includes('vscodium')) {
+            vscPythonRefPaths=strgs.confVscodiumPyExtraPathsPKG.split(';');
         }
         // now apply each of the config names to the settings
-        for (const confExtraPaths of cursorPythonRefPaths){
+        for (const confExtraPaths of vscPythonRefPaths){
             //just make sure extra path for the base stub dir is in config
             let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
             const stubextrapath= /circuitpython_stubs-[\d\.]+$/i;
@@ -641,7 +655,9 @@ export class StubMgmt {
         let rls=stubsReleases.releases[pypiVersion];
         if(!rls){
             //throw new Error('No releases found for tag: '+this._cpVersionFull);
-            vscode.window.showErrorMessage(strgs.installStubsNoRelForCpVerErr+this._cpVersionFull);
+            // ** #197- delay just a bit to make sure this error comes up after lib finishes
+            await new Promise(resolve => setTimeout(resolve, 750));
+            vscode.window.showErrorMessage(strgs.installStubsNoRelForCpVerErr(this._cpVersionFull));
             this.stopStubUpdateProgress();
             return;
         }
