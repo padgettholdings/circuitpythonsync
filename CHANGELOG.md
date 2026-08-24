@@ -90,3 +90,6 @@
 ## v2.2.2 - 2026-07-01
     * Several new utilities in the board explorer including indicator of current board CP version and board type.  Command to set board type in workspace settings from board boot file.  Quick single file copy from workspace to board.
     * Improved MacOS functions by automatically cleaning up `._` meta files created when files copied from Mac file system to board formatted as FAT.
+
+## p2.2.3 - 2026-08-24
+    * PREVIEW release of the extension in the VSCodium Oprn License version of VSCode. (https://github.com/VSCodium/vscodium).  Handles differences in the python language services settings.

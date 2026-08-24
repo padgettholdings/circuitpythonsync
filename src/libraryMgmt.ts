@@ -958,9 +958,18 @@ export class LibraryMgmt {
         // ** #171- add support for cursor paths...
         //  look at cursor first, otherwise vscode
         //    cursor has two configs
+        // #200 - also add support for vscodium, also has multiple configs, look at after cursor
         if(vscode.env.appName.toLowerCase().includes('cursor')) {
             const cursorPythonRefPaths:string[]=strgs.confCursorPyExtraPathsPKG.split(';');
             for (const confExtraPaths of cursorPythonRefPaths){
+                let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
+                extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
+                extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates
+                await vscode.workspace.getConfiguration().update(confExtraPaths, extraPathsConfig, vscode.ConfigurationTarget.Workspace);
+            }
+        } else if (vscode.env.appName.toLowerCase().includes('vscodium')) {
+            const vscodiumPythonRefPaths:string[]=strgs.confVscodiumPyExtraPathsPKG.split(';');
+            for (const confExtraPaths of vscodiumPythonRefPaths){
                 let extraPathsConfig:string[]=vscode.workspace.getConfiguration().get(confExtraPaths,[]);
                 extraPathsConfig=extraPathsConfig.concat([libExtractTarget]);
                 extraPathsConfig=[...new Set(extraPathsConfig)]; //remove duplicates

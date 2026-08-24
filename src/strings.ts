@@ -25,6 +25,8 @@ export const confCPTemplatePathListPKG:string='cptemplatepaths';
 // #171- add support for cursor- need different default templates for vscode and cursor, must be in /resources dir
 export const CPTemplateDefaultVscode:string='cptemplate.txt';
 export const CPTemplateDefaultCursor:string='cptemplate-cursor.txt';
+// #200 - add support for vscodium- need different default templates for vscode and vscodium, must be in /resources dir
+export const CPTemplateDefaultVscodium:string='cptemplate-vscodium.txt';
 // for the help at start
 export const confNoShowHelpPKG:string='doNotShowWelcome';
 // these are for the lib and stub mgmt settings, fixed to prefix with 'circuitpythonsync.'
@@ -42,6 +44,8 @@ export const confBoardFileDownloadSizeLimitPKG:string ='boardFileDownloadSizeLim
 export const confPyExtraPathsPKG:string ='python.analysis.extraPaths';
 // ** add support for cursor python settings
 export const confCursorPyExtraPathsPKG:string='python.autoComplete.extraPaths;cursorpyright.analysis.extraPaths';
+// ** #200 add support for vscodium python settings
+export const confVscodiumPyExtraPathsPKG:string='python.autoComplete.extraPaths;basedpyright.analysis.extraPaths';
 //context keys used in package.json for enablement
 export const libUpdatingContextKeyPKG:string='circuitpythonsync.updatinglibs';
 export const stubsUpdatingContextKeyPKG:string='circuitpythonsync.updatingstubs';
@@ -368,7 +372,7 @@ export const installStubsProgressMsg:string='Checking/Updating Python stubs...';
 export const installStubsExtractErrMsg:string='Error extracting stubs tar file: ';  // + err
 export const installStubsMetadataFilename:string='circuitpython-stubs.json';
 export const installStubsMetadataGetError:string='Error getting pypi stubs metadata: ';  // + err
-export const installStubsNoRelForCpVerErr:string='No releases found for tag: '; //+this._cpVersionFull
+export const installStubsNoRelForCpVerErr=(stubTag:string):string => `No stub releases found for tag: ${stubTag}, may want to change CP version.`; //+this._cpVersionFull
 export const installStubsDnldErr:string='Error downloading stubs: ';  // + err
 export const installStubsGetLatestCPTagErrMsg:string='Error getting latest CP tag: ';  // + err
 export const installStubsGeneralError:string='Error installing stubs: ';  // + err.message
