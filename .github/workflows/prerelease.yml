@@ -35,7 +35,7 @@ jobs:
           - uses: actions/setup-python@v5
             with:
               python-version: "3.11"
-          - run: npm i -g npm@latest
+          - run: npm i -g npm@10.8.2
           - run: npm --version
           - run: npm install
             env:
